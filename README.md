@@ -14,6 +14,10 @@ Repository：<https://github.com/harukaxxxx/hermes-session-crew>。建議 checko
 
 持有的目錄 fd 指向選定目錄物件，不保證它在並行 rename 後仍位於原路徑。寫入後會再核對父目錄與子目錄 identity，但檢查並非原子性保證，也不能保證檢查後不再被移動；失敗時操作結果可能未知，禁止盲目重試或移除目錄。僅於合成 fixture 測試，不等於 live 認證、OS 權限、遠端連線或 Docker terminal filesystem 驗收。
 
+## 授權
+
+SessionCrew 自有程式碼依 [MIT License](LICENSE) 授權。第三方程式碼的通知及條款分別見 [`dashboard/OFFICE-LICENSE`](dashboard/OFFICE-LICENSE) 與 [`desktop/HERMES-REMOTE-PICKER-LICENSE`](desktop/HERMES-REMOTE-PICKER-LICENSE)。
+
 ## 新建專案：gateway 資料夾瀏覽（受控 candidate）
 
 ### 與上游 remote picker 的互動比對（尚未完成，不能視為驗收通過）
