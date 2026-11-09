@@ -1,0 +1,22 @@
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local deployment history and private evidence (not release artifacts)
+/archive/
+/history/
+/evidence/
+/design/integration-notes-historical.md
+
+# Generated fixtures, caches, and dependencies
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+/tests/sdk-bundle.js
+/tests/original-folder-bundle.js
+/tests/sdk-css/
+.DS_Store

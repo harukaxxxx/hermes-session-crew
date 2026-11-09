@@ -1,0 +1,6 @@
+name: profile-rail
+version: "0.1.0"
+description: "SessionCrew: bot-style session management with profile-authorized metadata and backend filesystem browsing and folder creation endpoints (candidate; live acceptance incomplete)."
+author: "SessionCrew contributors"
+python_dependencies:
+  - "ruamel.yaml>=0.18.16,<0.19"
