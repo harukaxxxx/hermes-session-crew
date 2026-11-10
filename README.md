@@ -148,6 +148,8 @@ app-level standalone loader `~/.hermes/desktop-plugins/profile-rail` 指向本�
 
 舊 `tests/run-*.py` 部分寫入歷史 evidence，並非乾淨 checkout 的獨立測試入口。受控前端套件可使用 `tests/run-controlled.mjs`：設定絕對路徑 `HERMES_CHECKOUT`、`CHROME_PATH` 及 repo 外既存的 `RAIL_TEST_SCRATCH` 後以 Node 22 執行；它在 scratch 副本內產生結果，不安裝或連接 gateway。需既有 Hermes checkout、其 JavaScript 依賴、Python venv 與 Chrome。獨立狀態 collector 來源與 coverage 限制見歷史獨立狀態結果（本機未隨發布紀錄 `evidence/standalone-status-result.json`）：live 認證、Python 模組版本與原生 renderer 仍未驗證。原生重啟未進行。頭像其他回歸見 最終頭像疊影回歸（本機未隨發布紀錄 `evidence/avatar-stack-final-result.json`）；活動實作限制見 活動結果（本機未隨發布紀錄 `evidence/activity-result.json`）。
 
+本修補版的新增回歸、乾淨官方 v0.23.1 source baseline、仍未通過的 owner-routing compatibility gate 與 `requires_hermes` 具體缺口，見 [tests/COMPATIBILITY.md](tests/COMPATIBILITY.md)。後續已在固定官方 SHA 的 selected-function integration 重現 [shared-primary 等待期間切換來源的 A → B 錯送](docs/known-issues/hermes-v0.23.1-routing-race.md)；這不是舊 `options.targetProfile` 形狀斷言的失敗，也不是 live Desktop 驗收。尚未上報上游或修 core，v0.23.1 不能作本案 owner-routing 保證下的無條件支持下限。公開 SDK mock 與受控 runner 的綠燈不能取代官方路由驗證；`sdk-upstream-baseline.mjs` 仍保留為獨立 gate，其 adapter-only 失敗本身不構成 wire 錯送證據。
+
 以下為歷史命令；部分 runner 會寫入 source 的 evidence，請先複製到隔離 scratch 再執行。Windows PID unknown 可能漏顯 waiting，尚未實機驗證；`requires_hermes` 下限、官方 validator、真實 Desktop／backend 與官方審查尚未驗證，不能宣稱符合參賽資格。從隔離副本目錄執行：
 
 ```sh
