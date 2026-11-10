@@ -76,6 +76,7 @@ _STATE_TTL_SEC = 2.0
 # _db_lock serializes both cache mutation AND execute/fetch on those conns.
 _db_lock = threading.Lock()
 _ro_conns: Dict[str, sqlite3.Connection] = {}
+_ro_identities: Dict[str, Tuple[int, int]] = {}
 
 # Cached /state response: (monotonic_deadline, payload)
 _state_cache_lock = threading.Lock()
@@ -161,6 +162,7 @@ def _db_path(profile: str) -> str:
 def _close_ro_conn_unlocked(path: str) -> None:
     """Drop a cached connection. Caller must hold _db_lock."""
     con = _ro_conns.pop(path, None)
+    _ro_identities.pop(path, None)
     if con is None:
         return
     try:
@@ -171,6 +173,14 @@ def _close_ro_conn_unlocked(path: str) -> None:
 
 def _get_ro_conn_unlocked(path: str) -> Optional[sqlite3.Connection]:
     """Return a process-cached read-only connection. Caller must hold _db_lock."""
+    try:
+        stat = os.stat(path)
+        identity = (stat.st_dev, stat.st_ino)
+    except OSError:
+        _close_ro_conn_unlocked(path)
+        return None
+    if _ro_identities.get(path) != identity:
+        _close_ro_conn_unlocked(path)
     con = _ro_conns.get(path)
     if con is not None:
         try:
@@ -180,20 +190,29 @@ def _get_ro_conn_unlocked(path: str) -> Optional[sqlite3.Connection]:
             _close_ro_conn_unlocked(path)
 
     try:
-        uri = "file:" + path + "?mode=ro"
+        uri = Path(path).absolute().as_uri() + "?mode=ro"
         con = sqlite3.connect(
             uri,
             uri=True,
             timeout=2.0,
             check_same_thread=False,
         )
+        # A replacement during connect must not associate a stale handle with
+        # the new path. Fail closed for this poll and try again on the next.
+        stat = os.stat(path)
+        if (stat.st_dev, stat.st_ino) != identity:
+            con.close()
+            return None
         try:
             con.execute("PRAGMA query_only=ON")
         except sqlite3.Error:
             pass
         _ro_conns[path] = con
+        _ro_identities[path] = identity
         return con
     except Exception:
+        if con is not None:
+            con.close()
         return None
 
 
@@ -238,8 +257,6 @@ def _read_session_stats(profile: str) -> Dict[str, Any]:
         "last_session_activity": None,
     }
     path = _db_path(profile)
-    if not os.path.exists(path):
-        return result
 
     with _db_lock:
         con = _get_ro_conn_unlocked(path)
