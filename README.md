@@ -24,7 +24,7 @@ Cron 過濾只認 `session.list` 的結構化 `source === 'cron'`；缺少來源
 
 歷史品牌名為 **Profile Rail**。為維持既有安裝和資料相容，插件 ID、namespace、storage keys、API 路徑及 loader 等識別碼仍使用 `profile-rail`，不是顯示品牌。歷史紀錄保留原名原文。
 
-下列 `evidence/`、`history/`、`archive/` 與 `design/integration-notes-historical.md` 歷史材料只留在本機、未隨此次發布，以避免公開私人部署路徑及工作紀錄；其紀錄不代表現版驗收。公開倉庫從插件本身的獨立快照開始，不包含開發者 Hermes profile 的 Git 歷史、設定或憑證。
+下列 `evidence/`、`history/`、`archive/` 歷史材料只留在本機、未隨此次發布，以避免公開私人部署路徑及工作紀錄；其紀錄不代表現版驗收。公開倉庫從插件本身的獨立快照開始，不包含開發者 Hermes profile 的 Git 歷史、設定或憑證。
 
 > 改名前版本曾部署至本機共用來源，當時受控測試 61/61 通過。使用者曾確認「新建專案」與資料夾瀏覽可正常開啟；真實建立與持久化仍未驗證，不代表本次發布版本的全流程 live 通過。原始部署紀錄僅在本機保留。
 
@@ -121,6 +121,16 @@ app-level standalone loader `~/.hermes/desktop-plugins/profile-rail` 指向本�
 
 ## 驗證
 
+### 設計原則與驗收注意事項
+
+已選 A 版的目標是透明、無框的聊天左緣 rail：訊息與 composer 預留 inset，氣泡覆蓋聊天但不重排內容，sidebar 收合時仍以 workspace 為錨點。**現行 pane 並非此 overlay**；先前 source 查核未找到公開的聊天 overlay slot／由宿主管理的 inset 契約，實作前須重新確認實際執行版本，不得以操作宿主 DOM 或注入 CSS 假裝等價。
+
+- 保持 rail 可捲動且最後一個頭像可達；使用宿主 theme tokens、保留層次與幾何，不複製模擬宿主 CSS。原型的 idle／offline／unknown 頭像部分收進邊緣、hover／focus／選中展開是設計參考，與現行呈現的差異須明確記錄，不視為已通過。
+- 氣泡箭頭應跟隨所選頭像，列表更新、重排、捲動及 resize 後仍對準；接近圓角安全區或離開 rail 時關閉。短畫面優先縮清單而非藏起 footer；長名稱與短句不得拉寬氣泡或擠走 footer。兩層浮窗的 Escape、鍵盤操作和 reduced motion 需一併檢查。
+- working 小氣泡為視覺提示，不攔截點擊；同一頭像的大氣泡開啟時隱藏，文字保持可讀。不得在缺少真實狀態來源時展示假 working；不加入彩色狀態點、recent 標題或「未讀完成」文字標籤。正式介面不包含原型的狀態切換或模擬完成控制。
+- 顯示名稱與穩定 owner-qualified 身分分離；project membership 必須有 owner session 關聯依據。✋ 與狀態分離，不能從 idle 推論完成，也不能以 Office recent 推論 running；實際 coverage、逐筆確認及全部已讀範圍以上文現行限制為準。短句可由使用者自行撰寫，不自動讀取或同步 SOUL。
+- 驗收應涵蓋正常及短畫面、頂／中／底頭像、初始與展開列表、雙向捲動、hover／focus、箭頭安全區及長文字；footer 和專案選項需實際 hit-test 與點擊，不只確認 DOM 存在。另以真實資料驗證身分、頭像、owner route、連線／重連、project cwd、Home 語意及確認範圍；受控測試、實際 Desktop／backend live 與官方審查分開記錄，清單本身不是通過證據。
+
 專案次浮窗以單行呈現專案名稱，正常高度顯示最多三列，超出時捲動；列右新增圖示建立該專案對話，資訊區本身不建立。圖示依 tree 的 icon/color/isAuto 套用原生規則及公開 Codicon；不顯示分支。「新增專案」使用插件自有 Dialog，而非未公開的原生 `openProjectDialog`；其資料夾邊界和未驗證事項如本頁開頭所述。
 
 歷史受控 Chromium 回歸見 專案列表結果（本機未隨發布紀錄 `evidence/project-list-results.json`），不代表目前版本或 live Desktop renderer 已驗收。歷史 runner 會寫 evidence，應僅在隔離副本執行。
@@ -176,4 +186,4 @@ env -i PATH=/usr/bin:/bin HOME="$HOME" PYTHONNOUSERSITE=1 TMPDIR="$TMPDIR" /path
 
 `tests/native-snapshot-integration.mjs` 在同一測試中將原生 `SessionDB` admission／claim／settle，接到真 FastAPI TestClient HTTP 路由，經 checkout 的真實 `pluginRest` 和模擬 bridge 接入真 React Query，切換 default → alpha → beta → default；不啟動網路 listener，也不連真 gateway。`tests/test_native_mount_consent.py` 測真 Hermes mount 的 enabled／disabled gate，但替換 HTTP 認證／scope dependency，因此不是完整 live authorization 測試。`tests/snapshot-switch.mjs` 另外測來源 epoch、跨連線、延遲回覆及暫存舊快照。Chromium fixture 使用真 React Query、checkout 的 Popover 和合成 snapshot，不連真 gateway；fixture CSS 不是原生宿主樣式驗證。執行依賴本機 Hermes checkout 和 Chrome；測試結果與缺口（本機未隨發布紀錄 `evidence/multi-profile-routing-result.json`） 分開記錄受控與 live 驗證。
 
-[設計](design/floating-version.md)、[驗收項目](design/acceptance.md)、漂浮版封存（本機未隨發布紀錄 `archive/floating-v1/README.md`）、歷史競賽探索（本機未隨發布紀錄 `history/contest-exploration/README.md`） 保留供參考；歷史文件的結果不代表目前版本。
+漂浮版封存（本機未隨發布紀錄 `archive/floating-v1/README.md`）、歷史競賽探索（本機未隨發布紀錄 `history/contest-exploration/README.md`）保留供參考；歷史文件的結果不代表目前版本。

@@ -9,7 +9,6 @@
 /archive/
 /history/
 /evidence/
-/design/integration-notes-historical.md
 
 # Generated fixtures, caches, and dependencies
 __pycache__/
