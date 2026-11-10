@@ -4,7 +4,7 @@ import {createRequire} from 'node:module'
 import {SourceTextModule,SyntheticModule} from 'node:vm'
 import assert from 'node:assert/strict'
 const require=createRequire((process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT||(()=>{throw Error('Set HERMES_CHECKOUT or HERMES_AGENT_ROOT')})())+'/package.json'),React=require('react'),{createRoot}=require('react-dom/client'),{JSDOM}=require('jsdom'),jsx=require('react/jsx-runtime'),{useQuery,QueryClient,QueryClientProvider}=require('@tanstack/react-query')
-const dom=new JSDOM('<div id="root"></div>',{url:'https://fixture.invalid'});globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true
+const dom=new JSDOM('<div id="root"></div>',{url:'https://fixture.invalid'});globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true;globalThis.innerHeight=dom.window.innerHeight;globalThis.innerWidth=dom.window.innerWidth
 const route={connectionId:'fixture',mode:'remote',profile:'beta',targetProfile:'backend-beta'},atom=v=>({get:()=>v,subscribe:()=>()=>{}});let calls=[],activations=0
 const host={state:{connectionId:atom('fixture'),profile:atom('alpha')},profiles:{list:async()=>({profiles:[{name:'beta'}]})},profileRoutes:async()=>[route],request:async()=>({}),requestProfile:async(r,m)=>{calls.push([r,m]);return m==='session.list'?{sessions:[{id:'s',title:'Session'}]}:{projects:[{id:'unrelated',label:'Unrelated',path:'/other',sessionIds:[],repos:[]}]}},ensureAgent:()=>activations++}
 const tag=t=>({children,...props})=>React.createElement(t,props,children)
