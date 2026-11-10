@@ -8,7 +8,7 @@ import {mkdir} from 'node:fs/promises'
 const root=(process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT||(()=>{throw Error('Set HERMES_CHECKOUT or HERMES_AGENT_ROOT')})())
 const chrome=process.env.CHROME_PATH||(()=>{throw Error('Set CHROME_PATH')})()
 const {chromium}=createRequire(root+'/package.json')('playwright')
-const fixture=spawn(root+'/.venv/bin/python',['-I',path.resolve('tests/folder_browser_fixture.py')],{env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'},stdio:['pipe','pipe','inherit']})
+const fixture=spawn(root+'/.venv/bin/python',['-I','-B',path.resolve('tests/folder_browser_fixture.py')],{env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'},stdio:['pipe','pipe','inherit']})
 const pending=[]
 createInterface({input:fixture.stdout}).on('line',line=>{const p=pending.shift();if(p)p.resolve(JSON.parse(line))})
 fixture.on('exit',()=>{for(const p of pending.splice(0))p.reject(Error('folder fixture exited'))})

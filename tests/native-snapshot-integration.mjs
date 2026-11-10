@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 const home=(process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT||(()=>{throw Error('Set HERMES_CHECKOUT or HERMES_AGENT_ROOT')})())
 const require=createRequire(home+'/package.json'),React=require('react'),{createRoot}=require('react-dom/client'),{JSDOM}=require('jsdom'),jsx=require('react/jsx-runtime'),{useQuery,QueryClient,QueryClientProvider}=require('@tanstack/react-query')
 const dom=new JSDOM('<div id="root"></div>',{url:'https://fixture.invalid'});globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true
-const child=spawn(home+'/.venv/bin/python',['-I',new URL('./native_snapshot_fixture.py',import.meta.url).pathname],{env:{PATH:'/usr/bin:/bin',HOME:process.env.HOME,PYTHONNOUSERSITE:'1',TMPDIR:process.env.TMPDIR},stdio:['pipe','pipe','inherit']})
+const child=spawn(home+'/.venv/bin/python',['-I','-B',new URL('./native_snapshot_fixture.py',import.meta.url).pathname],{env:{PATH:'/usr/bin:/bin',HOME:process.env.HOME,PYTHONNOUSERSITE:'1',TMPDIR:process.env.TMPDIR},stdio:['pipe','pipe','inherit']})
 const pending=[];const lines=createInterface({input:child.stdout});lines.on('line',line=>{const next=pending.shift();if(next)next.resolve(JSON.parse(line))});child.on('exit',()=>{while(pending.length)pending.shift().reject(Error('fixture exited'))})
 function receive(){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('fixture timeout')),5000);pending.push({resolve:v=>{clearTimeout(timer);resolve(v)},reject})})}
 function request(command){const result=receive();child.stdin.write(JSON.stringify(command)+'\n');return result}

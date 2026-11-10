@@ -21,6 +21,7 @@ const browser='browser-project-list browser-stack-centering browser-children-met
 mock.push('session-hand-regression')
 mock.push('display-settings')
 mock.push('localization')
+mock.push('request-priority')
 browser.push('browser-session-hand')
 browser.push('browser-recent-footer')
 browser.push('browser-project-stability')
@@ -28,9 +29,13 @@ browser.push('browser-project-narrow-probe')
 browser.push('browser-floating-text')
 browser.push('browser-spinner-profiles')
 browser.push('browser-settings')
-const commands=[['node','--check','desktop/plugin.js'],[path.join(HERMES_CHECKOUT,'.venv/bin/python'),'-I','tests/folder_backend_fixture.py'],['node','tests/live-contract.mjs'],['node','tests/popover-fixture-contract.mjs'],...mock.map(x=>['node','--experimental-vm-modules',`tests/${x}.mjs`]),['node','tests/build-sdk.mjs'],...browser.map(x=>['node',`tests/${x}.mjs`])]
-const env={...process.env,HOME:path.join(run,'home'),HERMES_HOME:path.join(run,'hermes'),HERMES_AGENT_ROOT:HERMES_CHECKOUT,TMPDIR:run,PYTHONDONTWRITEBYTECODE:'1',PYTHONNOUSERSITE:'1'}
+const commands=[['node','--check','desktop/plugin.js'],[path.join(HERMES_CHECKOUT,'.venv/bin/python'),'-I','-B','tests/folder_backend_fixture.py'],['node','tests/live-contract.mjs'],['node','tests/popover-fixture-contract.mjs'],...mock.map(x=>['node','--experimental-vm-modules',`tests/${x}.mjs`]),['node','tests/build-sdk.mjs'],...browser.map(x=>['node',`tests/${x}.mjs`])]
+const inherited=Object.fromEntries(['PATH','CHROME_PATH','RAIL_TEST_SCRATCH','HERMES_CHECKOUT'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]))
+const env={...inherited,HOME:path.join(run,'home'),HERMES_HOME:path.join(run,'hermes'),HERMES_AGENT_ROOT:HERMES_CHECKOUT,TMPDIR:run,PYTHONDONTWRITEBYTECODE:'1',PYTHONNOUSERSITE:'1'}
+const git=(...args)=>{const p=spawnSync('git',['-C',HERMES_CHECKOUT,...args],{env,encoding:'utf8'});if(p.status!==0)throw Error('Cannot attest Hermes source: '+p.stderr);return p.stdout.trim()}
+const hostSource={checkout:HERMES_CHECKOUT,revision:git('rev-parse','HEAD'),worktreeStatus:git('status','--porcelain'),scope:'Existing dependencies and native fixtures; NOT a clean official compatibility certification. Run sdk-upstream-baseline.mjs separately.'}
+console.log('Hermes source:',JSON.stringify(hostSource))
 const sha256=createHash('sha256').update(await readFile(path.join(run,'desktop/plugin.js'))).digest('hex'),backend_sha256=createHash('sha256').update(await readFile(path.join(run,'dashboard/plugin_api.py'))).digest('hex'),results=[]
-for(const [bin,...args] of commands){const p=spawnSync(bin,args,{cwd:run,env,encoding:'utf8',timeout:75000,maxBuffer:10*1024*1024});const r={command:[bin,...args],exit_code:p.status,signal:p.signal,error:p.error?.message||null,output:(p.stdout||'')+(p.stderr||'')};results.push(r);console.log(r.exit_code,bin,...args);await writeFile(path.join(run,'results.json'),JSON.stringify({scope:'controlled mock and Chromium; not live',source,sha256,backend_sha256,results},null,2)+'\n')}
+for(const [bin,...args] of commands){const p=spawnSync(bin,args,{cwd:run,env,encoding:'utf8',timeout:75000,maxBuffer:10*1024*1024});const r={command:[bin,...args],exit_code:p.status,signal:p.signal,error:p.error?.message||null,output:(p.stdout||'')+(p.stderr||'')};results.push(r);console.log(r.exit_code,bin,...args);await writeFile(path.join(run,'results.json'),JSON.stringify({scope:'controlled mock and Chromium; not live',source,sha256,backend_sha256,hostSource,results},null,2)+'\n')}
 console.log('Artifacts:',run,'passed:',results.filter(r=>r.exit_code===0).length,'/',results.length)
 if(results.some(r=>r.exit_code!==0))process.exitCode=1
