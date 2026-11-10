@@ -19,10 +19,12 @@ await mkdir(path.join(run,'evidence'));await mkdir(path.join(run,'home'));await 
 const mock='recent-live-stored recent-order-refresh roster recent-name-red owner-recent loading-regression sdk-route-contract status-quote actions actions-switch office-cache completion native-snapshot-integration native-activity-integration root-transport-contract snapshot-switch snapshot-owner snapshot-gap snapshot-errors snapshot-malformed snapshot-missing-owner snapshot-integration catchup-quarantine status-own status-http-integration status-late-response status-quotes-state native-children-integration owner-project-dialog project-dialog-create focused-completion-regression'.split(' ')
 const browser='browser-project-list browser-stack-centering browser-children-metadata browser-quotes-persistence browser-standalone-screenshot browser-actions browser-working browser-working-pixels browser-status-token browser-completion browser-quote-ascii browser-primary-anchor browser-recent browser-floating-geometry browser-offline-avatar browser-activity browser-project-layout browser-owner-project-dialog browser-rail-visual review-owner-dialog browser-dialog-visual browser-folder-ui browser-folder-integration browser-original-folder folder-comparison'.split(' ')
 mock.push('session-hand-regression')
+mock.push('display-settings')
 browser.push('browser-session-hand')
 browser.push('browser-project-stability')
 browser.push('browser-project-narrow-probe')
 browser.push('browser-floating-text')
+browser.push('browser-settings')
 const commands=[['node','--check','desktop/plugin.js'],[path.join(HERMES_CHECKOUT,'.venv/bin/python'),'-I','tests/folder_backend_fixture.py'],['node','tests/live-contract.mjs'],['node','tests/popover-fixture-contract.mjs'],...mock.map(x=>['node','--experimental-vm-modules',`tests/${x}.mjs`]),['node','tests/build-sdk.mjs'],...browser.map(x=>['node',`tests/${x}.mjs`])]
 const env={...process.env,HOME:path.join(run,'home'),HERMES_HOME:path.join(run,'hermes'),HERMES_AGENT_ROOT:HERMES_CHECKOUT,TMPDIR:run,PYTHONDONTWRITEBYTECODE:'1',PYTHONNOUSERSITE:'1'}
 const sha256=createHash('sha256').update(await readFile(path.join(run,'desktop/plugin.js'))).digest('hex'),backend_sha256=createHash('sha256').update(await readFile(path.join(run,'dashboard/plugin_api.py'))).digest('hex'),results=[]

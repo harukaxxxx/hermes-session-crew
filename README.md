@@ -4,6 +4,12 @@ SessionCrew 是 Hermes Desktop 插件，以類似 Bots 的 profile 清單管理�
 
 Repository：<https://github.com/harukaxxxx/hermes-session-crew>。建議 checkout 目錄名稱為 `hermes-session-crew`，可置於任意工作目錄；本機既有部署可透過舊 `profile-rail` 路徑的相容連結繼續使用。
 
+## 顯示設定（受控測試；尚未 live 驗收）
+
+Desktop **Settings → Plugins → SessionCrew** 可隱藏 offline profiles、逐一選擇可見 profile，以及控制泡泡內 cron sessions。預設所有 profile 可見、offline 可見、cron 可見；新 profile 預設可見。僅確定為 offline 才依離線選項隱藏，狀態 unknown 不隱藏。設定寫入公開 `ctx.storage` 的 `hermes.plugin.profile-rail.display-settings-v1`，在此 client 的 plugin storage 保存，所有連線共用（同名 profile 共用可見性）；不是 gateway profile 設定、不跨裝置同步。寫入讀回成功後立即套用；失敗時顯示錯誤。需要支援公開 `ctx.registerSettingsPage` 的 Desktop 版本，舊版不提供該頁。
+
+Cron 過濾只認 `session.list` 的結構化 `source === 'cron'`；缺少來源的列保留，不從 session 標題或 ID 猜測。這表示來源缺失或 backend 不回傳的 cron 仍可能顯示。使用者已取消額外顯示 `⏰<cron job 名稱>` 的需求，因此不實作此功能；不同版本的實際 feed 與認證路由尚未 live 驗證。
+
 歷史品牌名為 **Profile Rail**。為維持既有安裝和資料相容，插件 ID、namespace、storage keys、API 路徑及 loader 等識別碼仍使用 `profile-rail`，不是顯示品牌。歷史紀錄保留原名原文。
 
 下列 `evidence/`、`history/`、`archive/` 與 `design/integration-notes-historical.md` 歷史材料只留在本機、未隨此次發布，以避免公開私人部署路徑及工作紀錄；其紀錄不代表現版驗收。公開倉庫從插件本身的獨立快照開始，不包含開發者 Hermes profile 的 Git 歷史、設定或憑證。
