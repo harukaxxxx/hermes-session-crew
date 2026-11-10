@@ -21,6 +21,7 @@ const browser='browser-project-list browser-stack-centering browser-children-met
 mock.push('session-hand-regression')
 mock.push('display-settings')
 browser.push('browser-session-hand')
+browser.push('browser-recent-footer')
 browser.push('browser-project-stability')
 browser.push('browser-project-narrow-probe')
 browser.push('browser-floating-text')

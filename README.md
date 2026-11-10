@@ -61,7 +61,7 @@ node tests/run-controlled.mjs
 
 runner 會在 scratch 複製來源並寫入 `results.json`、source/backend digest 與受控截圖；包含 fixture FastAPI TestClient、實際 checkout `pluginRest` 至模擬 bridge、真 React 與 SDK UI 元件的 Chromium 測試。它不是認證、網路、原生 renderer 或實際 backend live 驗收；模擬拒絕並不證明 OS 權限測試已完成。此前 56/56 為舊版本歷史結果，不代表本次修改。
 
-Desktop 插件權威入口是 [`desktop/plugin.js`](desktop/plugin.js)，ID `profile-rail`。顯示 roster 的 Bots 結構化 title／核心顯示名稱及頭像 fallback；不讀 client-local alias。選取頭像後，顯示該 owner 的工作階段和對應專案：初始 3 筆，⋯ 每次揭露已取得的 10 筆，內層最多五列捲動。Canonical 分別取得 live 與 stored（各最多 200 筆），live 排前、stored 保留服務端順序並去重；兩個 feed 未提供可比較的活動時間，因此不能保證跨 feed 的全域最近活動排序。舊版只使用其不帶 scope 的列表。開啟泡泡時重查，泡泡開啟且視窗在前景期間每 15 秒更新，視窗重新取得焦點時亦會更新過期資料。這不是伺服器分頁，後端的權限及過濾規則亦可能排除部分工作階段。Session 和 `projects.tree` 分開查詢：專案尚在載入或失敗時，session 仍可顯示；失敗可手動重試。工作階段、路由和專案讀取均有 30 秒期限，失敗不自動重試；僅對精確的舊版 `scope` 不支援錯誤重試一次不帶 scope 的唯讀查詢。
+Desktop 插件權威入口是 [`desktop/plugin.js`](desktop/plugin.js)，ID `profile-rail`。顯示 roster 的 Bots 結構化 title／核心顯示名稱及頭像 fallback；不讀 client-local alias。選取頭像後，顯示該 owner 的工作階段和對應專案：初始 3 筆，置中的「載入更多」每次揭露已取得的 10 筆，同列右側「全部已讀」在沒有更多列時仍可使用；內層最多五列捲動。Canonical 分別取得 live 與 stored（各最多 200 筆），live 排前、stored 保留服務端順序並去重；兩個 feed 未提供可比較的活動時間，因此不能保證跨 feed 的全域最近活動排序。舊版只使用其不帶 scope 的列表。開啟泡泡時重查，泡泡開啟且視窗在前景期間每 15 秒更新，視窗重新取得焦點時亦會更新過期資料。這不是伺服器分頁，後端的權限及過濾規則亦可能排除部分工作階段。Session 和 `projects.tree` 分開查詢：專案尚在載入或失敗時，session 仍可顯示；失敗可手動重試。工作階段、路由和專案讀取均有 30 秒期限，失敗不自動重試；僅對精確的舊版 `scope` 不支援錯誤重試一次不帶 scope 的唯讀查詢。
 
 合併去重後最多顯示 200 筆；live 排前可能擠掉部分 stored 結果。任一 canonical feed 失敗會顯示錯誤而非假裝完整。
 
@@ -82,6 +82,8 @@ Multiplexer ownership 另以原生 `multiplexer_liveness_for_profile` 判斷，�
 ✋ 現為**局部 snapshot coverage，不是完整 fleet unread**。不再訂閱 `message.complete`：server-side `SessionEvents.catch_up` 會送出沒有 `replayed` 標記的歷史 frame，無可信首個 watermark 時無法區分歷史和新完成；舊 `completion-ledger-v1` 也不再讀取或顯示。新來源是本插件自己的 `ctx.rest('/completion-snapshot')`；第一個完整快照只建 baseline，不亮歷史提醒。後續僅對同一 source/server epoch/owner/database 的完整快照，偵測新 admission 或已見 admission 轉為原生 `status=terminal, outcome=completed`，不從 idle、子代理結束或 generic session close 推論成功。
 
 Ledger 是本 client 的 plugin storage，按 connection、資料集 source、database、owner、stored session ID、admission ID 隔離；server epoch 變更先重建觀察基準，不把歷史亮成新完成。同一資料集、同一資料庫且仍可驗證的既有未讀與確認狀態保留。成功開啟列只確認開始開啟時的該列 watermark，期間的新完成和其他 owner 留下。寫入後會讀回核對；不符、格式損壞或容量上限會隱藏提醒並顯示錯誤。全量 baseline 的 metadata coverage 也寫入 storage，但重新載入、錯誤或重新連接後先重新建基準，**不把中斷期間完成當新事件回補**。資料庫替換、記錄消失或 watermark 倒退會隔離不確定來源；截斷或不可用 profile 不顯示其 badge，且有 `!` 錯誤提示。這是保守防誤亮，不是無遺漏 replay。Native SDK 的 `ackStoredSessionId(id, profileHint)` 先按 ID 找 loaded row，同 ID 跨 owner 時可能忽略 hint；本插件不直接呼叫該 mutator，不能宣稱與 core unread 同步。
+
+「全部已讀」確認點擊時目前連線、資料集及可驗證 coverage 內所有 profile 已知的未讀完成，與所選 profile 或已載入的 session 列無關；不可用或截斷的來源不在範圍內。點擊時固定事件 keys，非同步寫入期間新到的完成仍未讀。沿用序列化寫入與持久讀回核對；來源未就緒時按鈕停用，寫入失敗顯示錯誤而不假稱成功。
 
 `dashboard/plugin_api.py` 為 SessionCrew 自有唯讀 metadata snapshot；default 和各 named profile 須分別由 Hermes 原生插件 consent 啟用，請求使用目前連線／profile 的 `ctx.rest`。每個獲授權的 runtime 按需讀取由 `get_default_hermes_root()` 決定的共同資料根，並限制 runtime home 必須屬於該根目錄的有效 profile inventory；不接受呼叫者指定資料路徑。`source_root: default` 描述資料根，並非呼叫者 profile。另一個連線使用該連線自己的資料根；沒有 consent 或來源不可用時顯示未知並可手動重試，不回退讀本機。Native Hermes 對 secondary profile 可能按需啟動既有 profile plugin-host 子行程；插件本身不另開 HTTP listener 或服務，也未重啟 gateway。
 
