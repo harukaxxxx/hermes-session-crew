@@ -15,6 +15,11 @@ import math
 import json
 import os
 import sys
+import stat
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 from collections import defaultdict
 
 try:
@@ -35,7 +40,8 @@ def holder_pid_checkable(holder):
         return False
     return local is not None and token.group(1) == local.group(1)
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from hermes_constants import get_default_hermes_root, get_hermes_home
 
@@ -61,6 +67,18 @@ class FolderCreateRequest(BaseModel):
     name: StrictStr
     root_id: StrictStr
     parent_id: StrictStr
+
+
+class IdeaRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    path: StrictStr = Field(max_length=4096)
+    root_id: StrictStr = Field(max_length=128)
+    directory_id: StrictStr = Field(max_length=128)
+    runtime_id: StrictStr = Field(max_length=128)
+    project_id: StrictStr = Field(min_length=1, max_length=255)
+    owner: StrictStr = Field(min_length=1, max_length=255)
+    content: StrictStr = Field(max_length=65536)
+    parts: list[StrictStr] = Field(default_factory=list, max_length=0)
 
 
 def folder_root():
@@ -101,12 +119,91 @@ def create_folder(request: FolderCreateRequest):
     return _folder_operation(request)
 
 
+@router.post('/folders/idea')
+async def save_idea(request: Request):
+    # Bound the raw request before parsing, including malformed UTF-8 and JSON.
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > 262144:
+            raise HTTPException(status_code=413, detail='idea request too large')
+    try:
+        body = IdeaRequest.model_validate_json(bytes(raw))
+        content = body.content.encode('utf-8', 'strict')
+        if len(content) > 65536 or not body.content.strip():
+            raise ValueError('invalid content')
+    except (ValueError, UnicodeError):
+        raise HTTPException(status_code=400, detail='invalid idea request') from None
+    return await run_in_threadpool(_folder_operation, body)
+
+
+def _save_idea_at(directory_fd, target, directory_info, content):
+    if fcntl is None:
+        raise HTTPException(status_code=503, detail='safe idea saving unavailable')
+    # Serialize writers and idempotence checks made by this backend, including
+    # separate workers. Never truncate or replace a pre-existing file.
+    try:
+        fcntl.flock(directory_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise HTTPException(status_code=409, detail='directory busy; retry idea save') from None
+    try:
+        try:
+            file_fd = os.open('IDEA.md', os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=directory_fd)
+            created = True
+        except FileExistsError:
+            file_fd = os.open('IDEA.md', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd)
+            created = False
+        try:
+            info = os.fstat(file_fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                raise HTTPException(status_code=409, detail='existing IDEA.md is unsafe; not overwritten')
+            if created:
+                view = memoryview(content)
+                while view:
+                    n = os.write(file_fd, view)
+                    if not n:
+                        raise OSError('short write')
+                    view = view[n:]
+                os.fsync(file_fd)
+                os.lseek(file_fd, 0, os.SEEK_SET)
+            actual = os.read(file_fd, 65537)
+            if actual != content:
+                if created:
+                    raise OSError('idea readback mismatch')
+                raise HTTPException(status_code=409, detail='IDEA.md exists with different content; not overwritten')
+            # Re-open the complete directory path without following symlinks.
+            flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            check = os.open(target.anchor, flags)
+            try:
+                for part in target.parts[1:]:
+                    next_fd = os.open(part, flags, dir_fd=check)
+                    os.close(check)
+                    check = next_fd
+                checked = os.fstat(check)
+                current = os.stat('IDEA.md', dir_fd=check, follow_symlinks=False)
+                if ((checked.st_dev, checked.st_ino) != (directory_info.st_dev, directory_info.st_ino) or
+                    (current.st_dev, current.st_ino, current.st_nlink) != (info.st_dev, info.st_ino, 1)):
+                    raise OSError('directory or file changed')
+            finally:
+                os.close(check)
+            return {'status': 'saved', 'path': str(target / 'IDEA.md')}
+        finally:
+            os.close(file_fd)
+    except HTTPException:
+        raise
+    except OSError:
+        raise HTTPException(status_code=409, detail='IDEA.md save outcome unknown; inspect before retry') from None
+    finally:
+        fcntl.flock(directory_fd, fcntl.LOCK_UN)
+
+
 def _folder_operation(request):
     creating = isinstance(request, FolderCreateRequest)
+    saving = isinstance(request, IdeaRequest)
 
     if creating and not _folder_component(request.name):
         raise HTTPException(status_code=400, detail='invalid folder component')
-    if any(not _folder_component(part) for part in request.parts) or (not creating and request.after is not None and not _folder_component(request.after)):
+    if any(not _folder_component(part) for part in request.parts) or (not creating and not saving and request.after is not None and not _folder_component(request.after)):
         raise HTTPException(status_code=400, detail='invalid folder component')
     requested_path = request.path
     if requested_path is not None:
@@ -140,6 +237,7 @@ def _folder_operation(request):
             if home not in {path.resolve() for _, path in _profile_homes(root)}:
                 raise HTTPException(status_code=403, detail='Profile Rail runtime outside profile inventory')
             root_id = _identity(f'{root.absolute()}:{info.st_dev}:{info.st_ino}')
+            runtime_id = _identity(f'{SERVER_EPOCH}:{home}')
             if requested_path is not None:
                 next_fd = os.open(root.anchor, flags)
                 os.close(fd)
@@ -153,6 +251,21 @@ def _folder_operation(request):
                 fd = new_fd
             parent_info = os.fstat(fd)
             directory_id = _identity(f'{parent_info.st_dev}:{parent_info.st_ino}')
+            if saving:
+                if (request.root_id != root_id or request.directory_id != directory_id or
+                        request.runtime_id != runtime_id):
+                    raise HTTPException(status_code=409, detail='runtime or directory identity changed')
+                target = Path(requested_path)
+                # Never write into Hermes management or common credential trees.
+                protected_names = {'.ssh', '.gnupg', '.aws', '.azure', '.config', '.kube', '.docker', 'credentials'}
+                if (any(part.lower() in protected_names for part in target.parts) or
+                    any(target == Path.home() / name or Path.home() / name in target.parents
+                        for name in ('.hermes', '.hermes-dev'))):
+                    raise HTTPException(status_code=403, detail='protected directory')
+                if target == root or root in target.parents:
+                    raise HTTPException(status_code=403, detail='Hermes management directory')
+                result = _save_idea_at(fd, target, parent_info, request.content.encode('utf-8'))
+                return {**result, 'project_id': request.project_id, 'owner': request.owner}
             if creating:
                 if request.root_id != root_id or request.parent_id != directory_id:
                     raise HTTPException(status_code=409, detail='directory identity changed')
@@ -208,7 +321,7 @@ def _folder_operation(request):
             page = [name for name in names if request.after is None or name > request.after][:request.limit + 1]
             more = len(page) > request.limit
             page = page[:request.limit]
-            return {'root': str(root.absolute()), 'root_id': root_id, 'parts': request.parts,
+            return {'root': str(root.absolute()), 'root_id': root_id, 'runtime_id': runtime_id, 'parts': request.parts,
                     'path': requested_path if requested_path is not None else str(root.joinpath(*request.parts)),
                     'directories': page, 'next_after': page[-1] if more else None,
                     'directory_id': directory_id,

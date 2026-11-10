@@ -50,6 +50,169 @@ class FolderAPI(unittest.TestCase):
 
     def post(self, **data): return self.client.post('/folders', json=data)
 
+    def test_idea_locked_directory_rejects_without_blocking_event_loop(self):
+        import asyncio, fcntl, threading
+        import httpx
+        project = self.base / 'locked'
+        project.mkdir()
+        listing = self.post(path=str(project)).json()
+        body = {'path': str(project), 'root_id': listing['root_id'],
+                'directory_id': listing['directory_id'], 'runtime_id': listing['runtime_id'],
+                'project_id': 'fixture-id', 'owner': 'fixture-owner', 'content': 'locked idea'}
+        fd = os.open(project, os.O_RDONLY | os.O_DIRECTORY)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        released = threading.Event()
+        def release():
+            released.set()
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        timer = threading.Timer(1.0, release)
+        timer.start()
+        async def exercise():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url='http://test') as client:
+                response = await client.post('/folders/idea', json=body)
+                self.assertFalse(released.is_set(), 'lock wait blocked request until release')
+                self.assertEqual(response.status_code, 409, response.text)
+                self.assertIn('retry', response.text.lower())
+                self.assertFalse((project / 'IDEA.md').exists())
+                timer.cancel()
+                release()
+                response = await client.post('/folders/idea', json=body)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual((project / 'IDEA.md').read_text(), 'locked idea')
+        try:
+            asyncio.run(exercise())
+        finally:
+            timer.cancel()
+            timer.join()
+            if not released.is_set(): release()
+            os.close(fd)
+
+    def test_idea_saved_exactly_and_read_back(self):
+        project = self.base / 'project'
+        project.mkdir()
+        listing = self.post(path=str(project)).json()
+        response = self.client.post('/folders/idea', json={'path': str(project),
+            'root_id': listing['root_id'], 'directory_id': listing['directory_id'],
+            'runtime_id': listing['runtime_id'], 'project_id':'fixture-id', 'owner':'fixture-owner', 'content': '  synthetic idea\n'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['status'], 'saved')
+        self.assertEqual((project / 'IDEA.md').read_bytes(), b'  synthetic idea\n')
+
+    def test_slow_folder_io_does_not_block_event_loop(self):
+        import asyncio, threading
+        from unittest.mock import patch
+        import httpx
+        project = self.base / 'slow'
+        project.mkdir()
+        listing = self.post(path=str(project)).json()
+        body = {'path': str(project), 'root_id': listing['root_id'],
+                'directory_id': listing['directory_id'], 'runtime_id': listing['runtime_id'],
+                'project_id': 'fixture-id', 'owner': 'fixture-owner', 'content': 'idea'}
+        entered, release = threading.Event(), threading.Event()
+        original = api._folder_operation
+        def slow(request):
+            entered.set()
+            release.wait(2)
+            return original(request)
+        async def exercise():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url='http://test') as client:
+                task = asyncio.create_task(client.post('/folders/idea', json=body))
+                await asyncio.sleep(0.1)
+                self.assertTrue(entered.is_set())
+                self.assertFalse(task.done(), 'slow operation should still be pending while loop runs')
+                release.set()
+                self.assertEqual((await task).status_code, 200)
+        try:
+            with patch.object(api, '_folder_operation', side_effect=slow): asyncio.run(exercise())
+        finally:
+            release.set()
+
+    def test_idea_idempotent_and_never_overwrites(self):
+        project = self.base / 'project'
+        project.mkdir()
+        listing = self.post(path=str(project)).json()
+        body = {'path': str(project), 'root_id': listing['root_id'],
+                'directory_id': listing['directory_id'], 'runtime_id': listing['runtime_id'], 'project_id':'fixture-id', 'owner':'fixture-owner', 'content': 'original'}
+        self.assertEqual(self.client.post('/folders/idea', json=body).status_code, 200)
+        self.assertEqual(self.client.post('/folders/idea', json=body).status_code, 200)
+        self.assertEqual(self.client.post('/folders/idea', json={**body, 'content': 'changed'}).status_code, 409)
+        self.assertEqual((project / 'IDEA.md').read_text(), 'original')
+
+    def test_idea_refuses_changed_identities_invalid_content_and_links(self):
+        project = self.base / 'project'
+        project.mkdir()
+        listing = self.post(path=str(project)).json()
+        body = {'path': str(project), 'root_id': listing['root_id'],
+                'directory_id': listing['directory_id'], 'runtime_id': listing['runtime_id'], 'project_id':'fixture-id', 'owner':'fixture-owner', 'content': 'content'}
+        for key in ('root_id', 'directory_id', 'runtime_id'):
+            self.assertEqual(self.client.post('/folders/idea', json={**body, key: 'wrong'}).status_code, 409)
+        for content in ('  \n', 'x' * 65537):
+            self.assertEqual(self.client.post('/folders/idea', json={**body, 'content': content}).status_code, 400)
+        import json
+        self.assertEqual(self.client.post('/folders/idea', content=json.dumps({**body, 'content':'\ud800'}).encode()).status_code, 400)
+        self.assertEqual(self.client.post('/folders/idea', content=b'\xff', headers={'content-type':'application/json'}).status_code, 400)
+        self.assertEqual(self.client.post('/folders/idea', content=b'x' * 262145).status_code, 413)
+        target = self.base / 'other'
+        target.write_text('private fixture')
+        (project / 'IDEA.md').symlink_to(target)
+        self.assertNotEqual(self.client.post('/folders/idea', json=body).status_code, 200)
+        (project / 'IDEA.md').unlink()
+        os.link(target, project / 'IDEA.md')
+        self.assertNotEqual(self.client.post('/folders/idea', json=body).status_code, 200)
+        self.assertEqual(target.read_text(), 'private fixture')
+        (project / 'IDEA.md').unlink()
+        project.rename(self.base / 'old-project')
+        project.mkdir()
+        self.assertEqual(self.client.post('/folders/idea', json=body).status_code, 409)
+        self.assertFalse((project / 'IDEA.md').exists())
+
+    def test_idea_protected_and_traversal_refused(self):
+        protected = self.base / '.ssh'
+        protected.mkdir()
+        listing = self.post(path=str(protected)).json()
+        body = {'path': str(protected), 'root_id': listing['root_id'],
+                'directory_id': listing['directory_id'], 'runtime_id': listing['runtime_id'], 'project_id':'fixture-id', 'owner':'fixture-owner', 'content': 'content'}
+        self.assertEqual(self.client.post('/folders/idea', json=body).status_code, 403)
+        self.assertEqual(self.client.post('/folders/idea', json={**body, 'path':str(protected)+'/../escape'}).status_code, 400)
+        root = self.post().json()
+        self.assertEqual(self.client.post('/folders/idea', json={**body, 'path':str(self.root), 'root_id':root['root_id'], 'directory_id':root['directory_id'], 'runtime_id':root['runtime_id']}).status_code, 403)
+
+    def test_idea_parent_swap_is_not_confirmed_and_not_redirected(self):
+        from unittest.mock import patch
+        project = self.base / 'project'
+        project.mkdir()
+        replacement = self.base / 'replacement'
+        replacement.mkdir()
+        listing = self.post(path=str(project)).json()
+        body = {'path': str(project), 'root_id': listing['root_id'],
+                'directory_id': listing['directory_id'], 'runtime_id': listing['runtime_id'], 'project_id':'fixture-id', 'owner':'fixture-owner', 'content': 'fixture'}
+        real_open = os.open
+        moved = self.base / 'moved'
+        def swapping_open(name, flags, *args, **kwargs):
+            if name == 'IDEA.md' and flags & os.O_CREAT:
+                project.rename(moved)
+                project.symlink_to(replacement, target_is_directory=True)
+            return real_open(name, flags, *args, **kwargs)
+        with patch.object(api.os, 'open', side_effect=swapping_open):
+            response = self.client.post('/folders/idea', json=body)
+        self.assertNotEqual(response.status_code, 200)
+        self.assertFalse((replacement / 'IDEA.md').exists())
+        self.assertEqual((moved / 'IDEA.md').read_text(), 'fixture')
+
+    def test_idea_concurrent_attempts_do_not_truncate_or_report_different_content_saved(self):
+        from concurrent.futures import ThreadPoolExecutor
+        project = self.base / 'project'
+        project.mkdir()
+        listing = self.post(path=str(project)).json()
+        body = {'path': str(project), 'root_id': listing['root_id'],
+                'directory_id': listing['directory_id'], 'runtime_id': listing['runtime_id'],
+                'project_id':'fixture-id', 'owner':'fixture-owner'}
+        contents = ['a' * 60000, 'b' * 60000]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda text: self.client.post('/folders/idea', json={**body, 'content':text}), contents))
+        self.assertEqual(sorted(r.status_code for r in results), [200, 409])
+        self.assertEqual((project / 'IDEA.md').read_text(), contents[[r.status_code for r in results].index(200)])
+
     def test_explicit_external_directory_is_browsable(self):
         projects = self.base / 'Documents' / 'Projects'
         projects.mkdir(parents=True)

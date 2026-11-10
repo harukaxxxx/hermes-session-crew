@@ -13,7 +13,7 @@ SessionCrew is a Hermes Desktop plugin that lets you view sessions from differen
 ## Features
 
 - **Browse conversations by profile**: Select an avatar to see recent sessions. Open an existing conversation or start one in Home or a related project.
-- **View and create projects**: List projects associated with the selected profile's sessions, browse folders on the gateway, create folders, and add projects.
+- **View and create projects**: List projects associated with the selected profile's sessions, browse folders on the gateway, create folders, and add projects. Nonblank project ideas are saved as `IDEA.md` in the primary folder after creation, without overwriting an existing file.
 - **Observe status**: See available statuses such as working, waiting, or offline; the status is unknown when there isn't enough data. The activity count beside an avatar reflects only what has been observed, not a complete count of all running work.
 - **Completion reminders**: A ✋ appears when newly completed work is observed. Open the conversation or use “Mark all as read” to acknowledge it. This is not a complete unread notification system: completions during interruptions or from incomplete sources may be missed. “Mark all as read” acknowledges known unread completions for the selected profile from verifiable sources in the current connection, including sessions not yet loaded in the list; it does not mark other profiles as read.
 - **Personalize the display**: Edit short phrases for each status and control visible profiles, offline profiles, and cron conversations in settings. The interface is available in English and Traditional Chinese; Desktop versions without translation API support fall back to English.
@@ -45,7 +45,8 @@ If creating a conversation reports a failure, check the native session list firs
 - Status and activity counts are limited observations; an unknown status or no observed activity does not mean there is no work.
 - The conversation list is not a complete chronological ordering across sources and is subject to backend return limits and permissions.
 - Completion reminders are not a replayable event log; completions may be missed when a source is truncated or unreadable, or when the connection is interrupted. When ⚠️ indicates a source error, you can retry manually.
-- Folder operations when adding a project modify the gateway filesystem. If the result is unclear, check the actual state before retrying; do not retry blindly. Model-generated ideas are not written to `IDEA.md`.
+- Folder operations and idea saving modify the gateway filesystem. Ideas are limited to 65,536 UTF-8 bytes; an existing `IDEA.md` is never overwritten. Identical-content retries can confirm a save; a different existing file or an uncertain result leaves the text available for copying or an idea-only retry. Check the actual file before retrying. A busy directory returns an error rather than waiting.
+- Idea writes check runtime and directory identities, reject symlinks, hardlinks, common credential directories and the Hermes management root, and read back the file. These checks are not a sandbox: other processes can move directories or change files, and the lock only coordinates cooperating writers. The backend echoes the project ID and owner but does not independently authenticate project ownership. Owner RPC and REST filesystem routing, including connection changes, remain unverified live; a request already sent can race a scope change. If creation finishes after a connection change, the dialog preserves the known project and text without saving across scopes.
 
 ## Development
 
