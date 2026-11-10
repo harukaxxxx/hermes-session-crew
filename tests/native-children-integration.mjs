@@ -26,7 +26,7 @@ try{
  await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())));await until(()=>saved['completion-snapshot-v2']?.coverage)
  assert.equal((await request('metadata-children')).created,true)
  await React.act(async()=>{await client.refetchQueries({queryKey:['profile-rail','completion-snapshot']})});await until(()=>document.querySelectorAll('[data-child-shadow]').length===2)
- const a=payload.profiles.find(p=>p.profile==='alpha').activity;assert.equal(a.coverage,'unavailable');assert.deepEqual(new Set(a.child_metadata.children.map(c=>c.kind)),new Set(['queued','recent']));assert.equal(a.child_metadata.presentation_count,2);assert.equal(document.querySelector('[data-running-count]'),null);assert.match(document.querySelector('.profile-rail-hit').getAttribute('aria-label'),/非執行證明/)
+ const a=payload.profiles.find(p=>p.profile==='alpha').activity;assert.equal(a.coverage,'unavailable');assert.deepEqual(new Set(a.child_metadata.children.map(c=>c.kind)),new Set(['queued','recent']));assert.equal(a.child_metadata.presentation_count,2);assert.equal(document.querySelector('[data-running-count]'),null);assert.match(document.querySelector('.profile-rail-hit').getAttribute('aria-label'),/not proof of execution/)
  assert.equal((await request('end-metadata-children')).ended,true)
  await React.act(async()=>{await client.refetchQueries({queryKey:['profile-rail','completion-snapshot']})});await until(()=>document.querySelectorAll('[data-child-shadow]').length===0)
  assert.equal(payload.profiles.find(p=>p.profile==='alpha').activity.child_metadata.presentation_count,0)

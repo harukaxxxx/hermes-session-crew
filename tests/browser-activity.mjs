@@ -20,5 +20,10 @@ try {
  await page.screenshot({path:'evidence/activity-controlled-selected.png'})
  await page.evaluate(async()=>{window.fixtureSnapshot.profiles[0].activity.coverage='unavailable';await window.refreshFixtureSnapshot()})
  await page.waitForFunction(()=>!document.querySelector('[data-running-count]')&&!document.querySelector('[data-child-shadow]'))
+ await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office&gallery&snapshot&locale=en')
+ await page.waitForFunction(()=>window.fixtureStorage?.['completion-snapshot-v2']?.coverage)
+ await page.evaluate(async()=>{window.fixtureSnapshot.profiles[0].activity={version:1,coverage:'observed',observed_active_count:2,observed_child_active:true,observed_child_count:2,observed_at:Date.now()/1000,unknown_reasons:['bounded_observation'],definition:'native active-turn lease'};await window.refreshFixtureSnapshot()})
+ await page.locator('[data-running-count]').first().waitFor()
+ assert.match(await page.locator('.profile-rail-hit').first().getAttribute('aria-label'),/Observed 2 active turns; only verifiable native active-turn leases are covered\. Work may be missing; this is not all work\./)
  console.log('PASS controlled Chromium snapshot → x2 + child + ✋; bounds, accessible scope, no visible debug, unknown')
 } finally {await browser.close()}

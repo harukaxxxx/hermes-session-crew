@@ -17,7 +17,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 try{
  const page=await browser.newPage({viewport:{width:760,height:480},deviceScaleFactor:1})
  await page.goto(pathToFileURL(html).href)
- const cron=page.getByRole('switch',{name:'顯示 Cron 工作階段'}),offline=page.getByRole('switch',{name:'隱藏離線設定檔'}),alpha=page.getByRole('button',{name:'alpha',exact:true})
+ const cron=page.getByRole('switch',{name:'Show Cron sessions'}),offline=page.getByRole('switch',{name:'Hide offline profiles'}),alpha=page.getByRole('button',{name:'alpha',exact:true})
  await alpha.waitFor(); await page.waitForFunction(()=>window.fixture.preferences.get().ready)
  assert.equal(await cron.getAttribute('aria-checked'),'true');assert.equal(await offline.getAttribute('aria-checked'),'false');assert.equal(await page.getByRole('button',{name:'default',exact:true}).getAttribute('aria-pressed'),'false')
  await cron.focus();await page.keyboard.press('Space');await page.waitForFunction(()=>window.fixture.storage.value.showCron===false);assert.equal(await cron.getAttribute('aria-checked'),'false')

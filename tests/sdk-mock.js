@@ -10,6 +10,13 @@ export const queryClient = new QueryClient({defaultOptions:{queries:{retry:false
 export const useGatewayActivationEpoch=()=>1
 export const gatewayActivationEpoch=()=>1
 import {useSyncExternalStore} from 'react'
+// Existing visual baselines are Traditional Chinese. Tests can opt into the
+// plugin's English default with ?locale=en; use the public SDK i18n contract.
+const fixtureLocale=new URLSearchParams(location.search).get('locale')||'zh-hant'
+let fixtureMessages={}
+const translate=(key,...args)=>{const get=locale=>key.split('.').reduce((node,part)=>node?.[part],fixtureMessages[locale]);const value=get(fixtureLocale)??get('en');return typeof value==='function'?value(...args):typeof value==='string'?value:key}
+export const fixtureI18n={register:messages=>{fixtureMessages=messages},t:translate}
+export const usePluginI18n=()=>translate
 const atom=value=>{const listeners=new Set();return {get:()=>value,set:v=>{value=v;for(const f of listeners)f()},subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}}}
 const profileAtom=atom(new URLSearchParams(location.search).has('snapshot')?'default':'Aster');window.fixtureSetProfile=v=>profileAtom.set(v)
 const listeners=new Map();window.emitFixtureGatewayEvent=event=>listeners.get(event.type)?.(event)

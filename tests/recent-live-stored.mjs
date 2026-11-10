@@ -16,7 +16,7 @@ assert.equal(result.rows[1].title,'Live duplicate')
 assert.deepEqual(calls.map(x=>x[2].scope).sort(),['live','stored'])
 assert.ok(calls.every(x=>x[0]===route&&x[1]==='session.list'))
 host.requestProfile=async(r,m,p)=>p.scope==='stored'?{scope:'stored',sessions:[]}:{error:{message:'failed'}}
-await assert.rejects(()=>mod.namespace.recentData({name:'alpha',connectionId:'conn',route}),/即時工作階段/)
+await assert.rejects(()=>mod.namespace.recentData({name:'alpha',connectionId:'conn',route}),/Unsupported live session response format/)
 host.requestProfile=async(r,m,p)=>p.scope==='live'?{scope:'live',sessions:Array.from({length:200},(_,i)=>({id:'live'+i}))}:{scope:'stored',sessions:[{id:'old'}]}
 assert.equal((await mod.namespace.recentData({name:'alpha',connectionId:'conn',route})).rows.length,200)
 console.log('PASS owner-scoped canonical live + stored merge')

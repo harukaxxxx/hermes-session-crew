@@ -21,8 +21,8 @@ async function wait(fn){for(let i=0;i<30&&!fn();i++)await React.act(async()=>new
 await update();await wait(()=>document.body.textContent.includes('Scheduled')&&document.body.textContent.includes('beta'))
 assert.equal(prefs.get().hideOffline,false);assert.equal(prefs.get().showCron,true);assert.deepEqual(prefs.get().hiddenProfiles,[])
 async function change(label){const el=[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')===label||x.textContent===label);assert.ok(el,label);assert.ok(el.getAttribute('role')==='switch'||el.hasAttribute('aria-pressed'),label+' exposes state');await React.act(async()=>{el.click();await new Promise(r=>setTimeout(r,10))});await update()}
-await change('顯示 Cron 工作階段');assert.doesNotMatch(document.body.textContent,/Scheduled/);assert.match(document.body.textContent,/cron-like title/);assert.match(document.body.textContent,/Unknown source/)
-await change('beta');await change('隱藏離線設定檔');assert.deepEqual(saved,{hideOffline:true,showCron:false,hiddenProfiles:['beta']})
+await change('Show Cron sessions');assert.doesNotMatch(document.body.textContent,/Scheduled/);assert.match(document.body.textContent,/cron-like title/);assert.match(document.body.textContent,/Unknown source/)
+await change('beta');await change('Hide offline profiles');assert.deepEqual(saved,{hideOffline:true,showCron:false,hiddenProfiles:['beta']})
 prefs=createPreferences(storage);await update();await wait(()=>prefs.get().ready);assert.deepEqual(prefs.get().hiddenProfiles,['beta']);assert.equal(prefs.get().showCron,false);assert.ok(!prefs.get().hiddenProfiles.includes('new'))
-await change('顯示 Cron 工作階段');assert.match(document.body.textContent,/Scheduled/)
+await change('Show Cron sessions');assert.match(document.body.textContent,/Scheduled/)
 await React.act(async()=>root.unmount());client.clear();console.log('PASS display settings, durable reload, conservative cron source filtering and unknown/offline')

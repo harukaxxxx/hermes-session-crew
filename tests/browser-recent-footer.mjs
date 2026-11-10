@@ -8,7 +8,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 try{
  const page=await browser.newPage({viewport:{width:900,height:500}})
  await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href)
- await page.getByRole('button',{name:'Aster · state unknown'}).click()
+ await page.getByRole('button',{name:'Aster · 狀態 未知'}).click()
  const more=page.locator('[data-recent-more]'),all=page.locator('[data-completion-read-all]')
  await more.waitFor()
  assert.equal(await more.textContent(),'載入更多')
@@ -22,5 +22,10 @@ try{
  assert.ok(geometry.rightDelta<1&&geometry.sameRow<1&&geometry.separate,JSON.stringify(geometry))
  while(await more.count())await more.click()
  assert.ok(await all.isVisible(),'mark all remains visible after the last page')
+ await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?locale=en')
+ await page.getByRole('button',{name:'Aster · state unknown'}).click()
+ await page.locator('[data-recent-more]').waitFor()
+ assert.equal(await page.locator('[data-recent-more]').textContent(),'Load more')
+ assert.equal(await page.locator('[data-completion-read-all]').textContent(),'Mark all read')
  console.log('PASS centered load-more and right-aligned persistent mark-all footer')
 }finally{await browser.close()}

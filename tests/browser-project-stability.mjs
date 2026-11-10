@@ -10,7 +10,7 @@ try {
   const page=await browser.newPage({viewport:{width:900,height},reducedMotion:'reduce'})
   await page.addInitScript(()=>{window.fixtureProjects=[{id:'p',label:'Project',path:'/fixture',sessionIds:['id0'],repos:[]}]})
   await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office&gallery')
-  await page.getByRole('button',{name:/^Aster · state/}).click()
+  await page.getByRole('button',{name:/^Aster · 狀態/}).click()
   await page.waitForSelector('[data-recent-row]')
   const main=page.locator('[data-slot="popover-content"]').first()
   const measure=()=>main.evaluate(e=>{const rect=x=>{const r=x.getBoundingClientRect();return [r.x,r.y,r.width,r.height]};const s=getComputedStyle(e);return {main:rect(e),padding:s.padding,header:rect(e.querySelector('[data-panel-avatar]').parentElement),row:rect(e.querySelector('[data-recent-row]')),footer:rect([...e.querySelectorAll('button')].find(x=>x.textContent.includes('快速新增')).parentElement)}})

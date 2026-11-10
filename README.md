@@ -4,11 +4,23 @@ SessionCrew 是 Hermes Desktop 插件，以類似 Bots 的 profile 清單管理�
 
 Repository：<https://github.com/harukaxxxx/hermes-session-crew>。建議 checkout 目錄名稱為 `hermes-session-crew`，可置於任意工作目錄；本機既有部署可透過舊 `profile-rail` 路徑的相容連結繼續使用。
 
+## 語言
+
+Desktop 介面使用插件自有的 English（預設及其他語言的 fallback）與繁體中文翻譯，透過公開 `ctx.i18n.register` 和 `usePluginI18n` 跟隨 Desktop 的顯示語言；上游將 `zh-TW` 正規化為 `zh-hant`。變更語言後不必重新開啟面板，使用者自訂短句、名稱、模型產生內容及外部錯誤訊息不會由插件翻譯。需要提供上述公開 i18n API 的 Desktop 版本；缺少 API 時顯示英文。後端／SDK 原始錯誤訊息可能仍是其他語言，不提供全應用程式語言包。
+
+翻譯目錄位於單一 ESM 入口 `desktop/plugin.js`，English 和 `zh-hant` 依 session、project、folder、status 等語意分組；變數由 SDK 支援的 positional interpolator 函式組成完整訊息，而非串接翻譯片段。沒有公開 i18n API 時，插件以相同的巢狀 key／函式規則回退英文。測試所用 Desktop checkout 的 `apps/desktop/src/contrib/runtime-loader.ts` 僅允許 SDK／React imports，並拒絕無法由 blob module 解析的相對路徑，因此目錄保留在單檔入口。
+
+`HERMES_CHECKOUT=/absolute/path/to/hermes-agent node --experimental-vm-modules tests/localization.mjs` 使用模擬 SDK 和 React 測試語言目錄 key parity、插值、語言切換、英文 fallback、快取標籤與錯誤及自訂短句；不是實際 Desktop 或 backend live 驗收。歷史截圖 fixture 明確使用繁中；英文由語言測試另外驗證。
+
 ## 顯示設定（受控測試；尚未 live 驗收）
 
 Desktop **Settings → Plugins → SessionCrew** 可隱藏 offline profiles、逐一選擇可見 profile，以及控制泡泡內 cron sessions。預設所有 profile 可見、offline 可見、cron 可見；新 profile 預設可見。僅確定為 offline 才依離線選項隱藏，狀態 unknown 不隱藏。設定寫入公開 `ctx.storage` 的 `hermes.plugin.profile-rail.display-settings-v1`，在此 client 的 plugin storage 保存，所有連線共用（同名 profile 共用可見性）；不是 gateway profile 設定、不跨裝置同步。寫入讀回成功後立即套用；失敗時顯示錯誤。需要支援公開 `ctx.registerSettingsPage` 的 Desktop 版本，舊版不提供該頁。
 
 Cron 過濾只認 `session.list` 的結構化 `source === 'cron'`；缺少來源的列保留，不從 session 標題或 ID 猜測。這表示來源缺失或 backend 不回傳的 cron 仍可能顯示。使用者已取消額外顯示 `⏰<cron job 名稱>` 的需求，因此不實作此功能；不同版本的實際 feed 與認證路由尚未 live 驗證。
+
+語言修改前的受控 runner：Node 22.23.1、Hermes checkout tracked HEAD `2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19`，68/68 指令通過，包含 `tests/display-settings.mjs` 與當時的 mock／Chromium 回歸；當時 `desktop/plugin.js` SHA-256 `5d02c2faaa340eb55491b19b4ec6bdebc4cc81156af8d10ebb26882578e9b469`。這是歷史結果，並非目前程式的測試結果。測試使用合成資料，不是實際 Desktop、gateway、storage 或認證驗收；官方 validator（可能安裝依賴）和官方審查未執行。
+
+本次語言目錄重構的受控 runner：Node 22.23.1、上述 Hermes checkout，**70/70 指令通過**；`desktop/plugin.js` SHA-256 `93d4813a8eb220d624dc8714725e4249c1df0b9b0bb21c1fdcfb0e735bba9455`。完整紀錄在本機 scratch 的 `profile-rail-suite-ByRuN3/results.json`（scratch 可能清理）。語言修改後更早的 42/70 失敗執行屬歷史結果，不代表本版。這些均不是 live Desktop／backend 驗收、官方 validator 或官方審查。
 
 歷史品牌名為 **Profile Rail**。為維持既有安裝和資料相容，插件 ID、namespace、storage keys、API 路徑及 loader 等識別碼仍使用 `profile-rail`，不是顯示品牌。歷史紀錄保留原名原文。
 

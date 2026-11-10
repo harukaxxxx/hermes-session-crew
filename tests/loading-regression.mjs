@@ -18,7 +18,7 @@ routesHandler=async()=>descriptors
 handler=async(route,method)=>method==='session.list'?{sessions:[{id:'1',title:route.profile+' session'}]}:new Promise(r=>treeResolves.push(r))
 await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
 await until(()=>document.querySelectorAll('.profile-rail-hit').length===2,'roster');await click('Alpha');await until(()=>document.body.textContent.includes('alpha session'),'sessions despite pending projects')
-assert.match(document.body.textContent,/專案載入中/);assert.deepEqual(calls[0][0],descriptors[0]);assert.equal(calls[0][3],30000);assert.deepEqual(calls[0][4],{spawnPriority:'foreground'})
+assert.match(document.body.textContent,/Loading projects/);assert.deepEqual(calls[0][0],descriptors[0]);assert.equal(calls[0][3],30000);assert.deepEqual(calls[0][4],{spawnPriority:'foreground'})
 await click('Beta');await until(()=>document.body.textContent.includes('beta session'),'owner switch');assert.doesNotMatch(document.body.textContent,/alpha session/);assert.ok(calls.some(c=>c[0]===descriptors[1]));treeResolves.forEach(resolve=>resolve({projects:[]}))
 await React.act(async()=>root.unmount());client.clear()
 console.log('PASS independent session/project queries, foreground complete owner route and switch')

@@ -13,7 +13,7 @@ try {
   await page.addStyleTag({path:path.resolve('tests/sdk-css/styles.css')})
   // Fixture palette: real SDK CSS, synthetic theme tokens (not a live host).
   await page.addStyleTag({content:':root{--ui-base:#eeeaf1;--ui-bg-editor:#292a30;--ui-chat-bubble-background:#292a30;--stroke-nous:#575761;--ui-text-primary:#eeeaf1;--ui-text-tertiary:#aaa6af;--ui-text-quaternary:#9a96a0;--conversation-text-font-size:14px;--conversation-caption-font-size:12px;--conversation-caption-line-height:1.4;--z-modal:100;--z-modal-backdrop:99;--foreground:#eeeaf1;--primary:#a7b9de}'} )
-  await page.getByRole('button',{name:'Aster · state working'}).click();await page.waitForSelector('[data-recent-row]')
+  await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]')
   await page.getByRole('button',{name:'▦ 開啟專案'}).click();await page.getByRole('button',{name:'新增專案'}).click()
   const dialog=page.locator('[data-slot="dialog-content"]');await page.getByRole('heading',{name:'新增專案（Aster）'}).waitFor()
   const info=await dialog.evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el),body=el.querySelector('[data-slot=dialog-header]').parentElement;return {x:r.x,y:r.y,w:r.width,h:r.height,position:s.position,overflow:getComputedStyle(body).overflowY,scrollHeight:body.scrollHeight,clientHeight:body.clientHeight}})

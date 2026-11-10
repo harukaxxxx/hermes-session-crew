@@ -11,7 +11,7 @@ try {
   const page=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
   await page.addInitScript(n=>{window.fixtureProjects=Array.from({length:n},(_,i)=>({id:'p'+i,label:'Project '+i+' '+('long name '.repeat(12)),path:'/fixture/project'+i,sessionIds:['id0'],repos:[],icon:i===0?'rocket':null,isAuto:i===1,previewSessions:i===0?[{cwd:'/fixture/project0',git_branch:'feature/fixture-very-long-branch-name-0123456789'}]:[]}))},count);
   await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office');await page.addStyleTag({url:codiconCss});
-  await page.getByRole('button',{name:'Aster · state working'}).click();await page.waitForSelector('[data-recent-row]');await page.getByRole('button',{name:'▦ 開啟專案'}).click();
+  await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]');await page.getByRole('button',{name:'▦ 開啟專案'}).click();
   const dialogs=page.locator('[data-slot="popover-content"]'), main=dialogs.first(), sub=dialogs.last(),rows=sub.locator('[data-project-row]'),list=sub.locator('[data-project-list]');
   await rows.first().waitFor();assert.equal(await rows.count(),count);assert.equal(await sub.getByRole('button',{name:'新增專案'}).isDisabled(),false);
   assert.equal(await rows.first().locator('[data-project-icon]').getAttribute('data-project-icon'),'rocket');assert.equal(await rows.nth(1).locator('[data-project-icon]').getAttribute('data-project-icon'),'repo');assert.equal(await rows.first().locator('.codicon-rocket').count(),1);assert.equal(await rows.nth(1).locator('.codicon-repo').count(),1);

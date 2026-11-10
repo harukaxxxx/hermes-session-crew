@@ -27,7 +27,7 @@ try{
  await React.act(async()=>{await client.refetchQueries({queryKey:['profile-rail','completion-snapshot']})});await until(()=>Boolean(document.querySelector('[data-running-count]')))
  assert.equal(document.querySelector('[data-running-count]').textContent,'x2');assert.equal(document.querySelectorAll('[data-child-shadow]').length,3)
  for(const [release,end,shadows] of [['release-child','end-child',2],['release-child2','end-child2',1]]){assert.equal((await request(release)).released,true);await React.act(async()=>{await client.refetchQueries({queryKey:['profile-rail','completion-snapshot']})});assert.equal(document.querySelectorAll('[data-child-shadow]').length,shadows+1,'unleased recent child remains metadata, not running proof');assert.equal((await request(end)).ended,true);await React.act(async()=>{await client.refetchQueries({queryKey:['profile-rail','completion-snapshot']})});await until(()=>document.querySelectorAll('[data-child-shadow]').length===shadows);assert.equal(document.querySelector('[data-running-count]').textContent,'x2')}
- assert.match(document.querySelector('[data-running-count]').getAttribute('title'),/已觀察/)
+ assert.match(document.querySelector('[data-running-count]').getAttribute('title'),/Observed/)
  console.log('PASS native lease → FastAPI → React Query xN and child')
 }finally{
  if(root)await React.act(async()=>root.unmount());client?.clear();child.stdin.write(JSON.stringify('quit')+'\n');child.stdin.end();await new Promise(resolve=>{const timer=setTimeout(()=>{child.kill();resolve()},3000);child.once('exit',()=>{clearTimeout(timer);resolve()})});lines.close()

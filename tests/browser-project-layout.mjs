@@ -9,7 +9,7 @@ try {
  for(const {width,height,count,owner} of [{width:900,height:700,count:3,owner:'Aster'},{width:900,height:300,count:12,owner:'Profile 10'},{width:280,height:430,count:12,owner:'Aster'}]) {
   const page=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
   await page.addInitScript(n=>{window.fixtureProjects=Array.from({length:n},(_,i)=>({id:'p'+i,label:'Project '+i+' '+('very long name '.repeat(12)),path:'/fixture/project'+i,sessionIds:['id0'],repos:[]}))},count);
-  await page.goto(url);const avatar=page.getByRole('button',{name:new RegExp('^'+owner+' · state')});await avatar.scrollIntoViewIfNeeded();await avatar.click();await page.waitForSelector('[data-recent-row]');await page.getByRole('button',{name:'▦ 開啟專案'}).click();
+  await page.goto(url);const avatar=page.getByRole('button',{name:new RegExp('^'+owner+' · 狀態')});await avatar.scrollIntoViewIfNeeded();await avatar.click();await page.waitForSelector('[data-recent-row]');await page.getByRole('button',{name:'▦ 開啟專案'}).click();
   const dialogs=page.locator('[data-slot="popover-content"]'),main=dialogs.first(),sub=dialogs.last();await sub.getByRole('button',{name:/Project 0 /}).waitFor();
   console.log('initial bounds',width,height,await dialogs.evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height,r.bottom]})));
   await page.waitForFunction(()=>{const [a,b]=document.querySelectorAll('[data-slot="popover-content"]');if(!a||!b)return false;const x=a.getBoundingClientRect(),y=b.getBoundingClientRect();return y.top>=0&&y.bottom<=innerHeight&&(y.bottom<=x.top||y.top>=x.bottom||y.left>=x.right||y.right<=x.left)},null,{timeout:3000});

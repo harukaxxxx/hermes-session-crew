@@ -13,6 +13,6 @@ try {
  const bounds=await label.evaluate(e=>{const a=e.getBoundingClientRect(),b=e.parentElement.getBoundingClientRect();return a.width>0&&a.left>=b.left&&a.right<=b.right});assert.ok(bounds,'status text fits bubble');
  assert.equal(await page.locator('[data-working-bubble]').count(),1,'idle avatar has no working bubble');
  await page.screenshot({path:'evidence/floating-text.png'});
- await page.getByRole('button',{name:'Aster · state working'}).click();assert.equal(await bubble.count(),0,'selected avatar hides floating bubble');
+ await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();assert.equal(await bubble.count(),0,'selected avatar hides floating bubble');
  console.log('PASS floating working face and visible status label, idle and selected exclusion');
 } finally {await browser.close()}
