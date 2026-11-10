@@ -3,5 +3,10 @@ version: "0.1.0"
 description: "SessionCrew: session management with profile-authorized metadata, backend folder browsing, creation, and non-overwriting IDEA.md writes (candidate; live acceptance incomplete)."
 author: "SessionCrew contributors"
 license: MIT
+requires_hermes: ">=0.23.0"
+provides_tools: []
+provides_hooks: []
+provides_middleware: []
+requires_env: []
 python_dependencies:
   - "ruamel.yaml>=0.18.16,<0.19"

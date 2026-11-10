@@ -20,7 +20,7 @@ SessionCrew is a Hermes Desktop plugin that lets you view sessions from differen
 
 ## Installation and requirements
 
-SessionCrew includes a Desktop interface and its own Python backend; both are required. The backend needs the dependency `ruamel.yaml`, listed in [`plugin.yaml`](plugin.yaml), and a Hermes environment that provides the required public plugin APIs.
+SessionCrew includes a Desktop interface and its own Python backend; both are required. The backend needs the dependency `ruamel.yaml`, listed in [`plugin.yaml`](plugin.yaml), and a Hermes environment that provides the required public plugin APIs. The controlled-tested minimum is Hermes 0.23.0 (`requires_hermes: >=0.23.0`); controlled compatibility and owner-routing tests do not establish live routing acceptance. Catalog admission remains subject to official CI and maintainer review.
 
 Follow the [Hermes plugin installation instructions](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins) to review and install the plugin package in this repository. After installation, enable the SessionCrew interface under Desktop **Capabilities → Plugins**, and enable the plugin's backend separately for each profile that needs to provide data. Enabling the interface alone does not provide backend data.
 
@@ -38,6 +38,7 @@ If creating a conversation reports a failure, check the native session list firs
 - For authorized profiles, the backend reads profile settings, status, and session metadata from the Hermes data root to display names, statuses, and completion reminders. Completion snapshots do not read conversation message content; conversation and project lists are obtained through Hermes interfaces.
 - The folder picker starts at the gateway's Hermes data root, but can browse other absolute paths accessible to the process and create folders in writable locations. It exposes folder names and is not a sandbox limited to the Hermes root; it does not read file contents or follow symbolic links. Only POSIX paths are currently implemented.
 - Display settings, phrases, and completion reminder records are stored in the current client's plugin storage and do not automatically sync across devices. Switching connections or reloading establishes a new completion observation baseline; completions during interruptions are not backfilled.
+- On Linux, the backend reads `/proc/self/ns/pid` and may inspect process liveness and start times to assess lease status; unavailable information is treated as unknown. On POSIX, `dashboard/waiting_status.py` may run `ps` as a subprocess (`subprocess.run(['ps', '-o', 'state=', '-p', str(pid)], ...)`, with Python's default `shell=False`) for a best-effort zombie check when its earlier probes are unavailable; this does not invoke a shell.
 - When generating project ideas, the project name is sent to the selected profile's model; network and data handling depend on that profile's model provider settings. The plugin does not itself read credentials, execute shell commands, open a separate HTTP listener, update itself, or collect telemetry. Hermes itself may start profile plugin-host subprocesses on demand.
 
 ## Limitations
@@ -51,6 +52,8 @@ If creating a conversation reports a failure, check the native session list firs
 ## Development
 
 The Desktop entry point is [`desktop/plugin.js`](desktop/plugin.js), and the backend is [`dashboard/plugin_api.py`](dashboard/plugin_api.py). The controlled test entry point is [`tests/run-controlled.mjs`](tests/run-controlled.mjs). It requires an existing Hermes checkout, JavaScript dependencies, a Python environment, Chrome, and a scratch directory outside the repo. Set `HERMES_CHECKOUT`, `CHROME_PATH`, and `RAIL_TEST_SCRATCH`, then run `node tests/run-controlled.mjs` with Node 22.
+
+Syntax and mock tests, catalog validation, live Desktop/backend acceptance, and official catalog review are separate gates. Passing one does not establish the others. The current candidate's live routing and Desktop/backend acceptance and official review remain incomplete; review the validator's security and Desktop-surface warnings before submission.
 
 ## License
 

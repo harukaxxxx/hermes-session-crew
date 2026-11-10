@@ -20,7 +20,7 @@ SessionCrew 是一個 Hermes Desktop 插件，讓你在一個側邊面板查看�
 
 ## 安裝與需求
 
-SessionCrew 包含 Desktop 介面與自己的 Python backend，兩者都需要。backend 需要 [`plugin.yaml`](plugin.yaml) 列出的 `ruamel.yaml` 依賴，以及提供所需公開插件 API 的 Hermes 環境。
+SessionCrew 包含 Desktop 介面與自己的 Python backend，兩者都需要。backend 需要 [`plugin.yaml`](plugin.yaml) 列出的 `ruamel.yaml` 依賴，以及提供所需公開插件 API 的 Hermes 環境。受控測試的最低版本為 Hermes 0.23.0（`requires_hermes: >=0.23.0`）；受控相容與 owner 路由測試不代表已完成 live 路由驗收。Catalog 收錄仍須通過官方 CI 與維護者審查。
 
 請參照 [Hermes 插件安裝說明](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins)，檢視並安裝本倉庫的插件套件。安裝後需在 Desktop **Capabilities → Plugins** 啟用 SessionCrew 介面，並在需要提供資料的各 profile 分別啟用本插件的 backend；只啟用介面不足以提供 backend 資料。
 
@@ -38,6 +38,7 @@ SessionCrew 包含 Desktop 介面與自己的 Python backend，兩者都需要�
 - backend 會依已授權的 profile 讀取 Hermes 資料根中的 profile 設定、狀態與工作階段中繼資料，以顯示名稱、狀態和完成提醒。完成快照不讀取對話訊息內容；對話與專案清單則透過 Hermes 的介面取得。
 - 資料夾選擇器從 gateway 的 Hermes 資料根開始，但可以瀏覽該程序有權存取的其他絕對路徑，並在可寫入位置建立資料夾。它會揭露資料夾名稱，不是限定於 Hermes 根目錄的沙箱；不讀取檔案內容、不跟隨 symbolic link。目前僅實作 POSIX 路徑。
 - 顯示設定、短句與完成提醒紀錄保存在目前 client 的插件儲存空間，不會自動跨裝置同步。連線切換或重新載入後會重新建立完成觀察基準，不回補中斷期間的完成。
+- 在 Linux 上，backend 會讀取 `/proc/self/ns/pid`，並可能查詢程序存活狀態與啟動時間，以判斷 lease 狀態；資訊不可用時視為未知。在 POSIX 系統上，`dashboard/waiting_status.py` 的較早探測不可用時，可能以子行程執行 `ps`（`subprocess.run(['ps', '-o', 'state=', '-p', str(pid)], ...)`，採 Python 預設 `shell=False`），盡力檢查 zombie 狀態；此操作不啟動 shell。
 - 使用專案點子生成功能時，專案名稱會送至所選 profile 的模型；網路與資料處理取決於該 profile 的模型供應商設定。插件不自行讀取憑證、不執行 shell、不另開 HTTP listener、不自我更新，也沒有遙測。Hermes 本身可能按需啟動 profile plugin-host 子行程。
 
 ## 限制
@@ -51,6 +52,8 @@ SessionCrew 包含 Desktop 介面與自己的 Python backend，兩者都需要�
 ## 開發
 
 Desktop 入口是 [`desktop/plugin.js`](desktop/plugin.js)，backend 是 [`dashboard/plugin_api.py`](dashboard/plugin_api.py)。受控測試入口為 [`tests/run-controlled.mjs`](tests/run-controlled.mjs)：需要既有 Hermes checkout、JavaScript 依賴、Python 環境、Chrome，以及 repo 外的 scratch 目錄。設定 `HERMES_CHECKOUT`、`CHROME_PATH` 和 `RAIL_TEST_SCRATCH` 後，以 Node 22 執行 `node tests/run-controlled.mjs`。
+
+語法與模擬測試、catalog validator、真實 Desktop／backend 驗收及官方 catalog 審查是分開的關卡，任一項通過都不能代表其他項通過。此候選版本的 live 路由與 Desktop／backend 驗收及官方審查尚未完成；提交前須審查 validator 的安全與 Desktop surface 警告。
 
 ## 授權
 
