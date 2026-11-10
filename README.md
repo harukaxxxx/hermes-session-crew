@@ -95,7 +95,7 @@ Multiplexer ownership 另以原生 `multiplexer_liveness_for_profile` 判斷，�
 
 Ledger 是本 client 的 plugin storage，按 connection、資料集 source、database、owner、stored session ID、admission ID 隔離；server epoch 變更先重建觀察基準，不把歷史亮成新完成。同一資料集、同一資料庫且仍可驗證的既有未讀與確認狀態保留。成功開啟列只確認開始開啟時的該列 watermark，期間的新完成和其他 owner 留下。寫入後會讀回核對；不符、格式損壞或容量上限會隱藏提醒並顯示錯誤。全量 baseline 的 metadata coverage 也寫入 storage，但重新載入、錯誤或重新連接後先重新建基準，**不把中斷期間完成當新事件回補**。資料庫替換、記錄消失或 watermark 倒退會隔離不確定來源；截斷或不可用 profile 不顯示其 badge，且有 `!` 錯誤提示。這是保守防誤亮，不是無遺漏 replay。Native SDK 的 `ackStoredSessionId(id, profileHint)` 先按 ID 找 loaded row，同 ID 跨 owner 時可能忽略 hint；本插件不直接呼叫該 mutator，不能宣稱與 core unread 同步。
 
-「全部已讀」確認點擊時目前連線、資料集及可驗證 coverage 內所有 profile 已知的未讀完成，與所選 profile 或已載入的 session 列無關；不可用或截斷的來源不在範圍內。點擊時固定事件 keys，非同步寫入期間新到的完成仍未讀。沿用序列化寫入與持久讀回核對；來源未就緒時按鈕停用，寫入失敗顯示錯誤而不假稱成功。
+「全部已讀」只確認點擊時所選 profile 在目前連線、資料集及可驗證 coverage 內已知的未讀完成，不受 session 列是否載入限制；其他 profile 與不可用或截斷的來源不在範圍內。點擊時固定 owner 和事件 keys，非同步寫入期間新到的完成仍未讀，切換所選 profile 不改變該次確認範圍。沿用序列化寫入與持久讀回核對；來源未就緒時按鈕停用，寫入失敗顯示錯誤而不假稱成功。
 
 `dashboard/plugin_api.py` 為 SessionCrew 自有唯讀 metadata snapshot；default 和各 named profile 須分別由 Hermes 原生插件 consent 啟用，請求使用目前連線／profile 的 `ctx.rest`。每個獲授權的 runtime 按需讀取由 `get_default_hermes_root()` 決定的共同資料根，並限制 runtime home 必須屬於該根目錄的有效 profile inventory；不接受呼叫者指定資料路徑。`source_root: default` 描述資料根，並非呼叫者 profile。另一個連線使用該連線自己的資料根；沒有 consent 或來源不可用時顯示未知並可手動重試，不回退讀本機。Native Hermes 對 secondary profile 可能按需啟動既有 profile plugin-host 子行程；插件本身不另開 HTTP listener 或服務，也未重啟 gateway。
 
