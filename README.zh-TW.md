@@ -1,6 +1,12 @@
-# SessionCrew
+<p align="center"><img src="assets/sessioncrew-hero.png" width="100%" alt="復古編輯插畫：團隊整理不同 profile 的對話"></p>
 
-[English](README.md) | **繁體中文**
+<h1 align="center">SessionCrew</h1>
+
+<p align="center"><strong>多個 profile，各自的對話，一處掌握。</strong></p>
+
+<p align="center"><a href="README.md">English</a> | <strong>繁體中文</strong></p>
+
+<p align="center"><a href="#功能">功能</a> · <a href="#安裝與需求">安裝</a> · <a href="#基本使用">使用</a></p>
 
 SessionCrew 是一個 Hermes Desktop 插件，讓你在一個側邊面板查看不同 profile 的工作階段。選取頭像後，就能開啟該 profile 的對話、建立新對話，或查看與它有關的專案。適合同時使用多個 Hermes profile、不想反覆切換清單的人。
 

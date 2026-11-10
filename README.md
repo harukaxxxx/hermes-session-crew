@@ -1,6 +1,12 @@
-# SessionCrew
+<p align="center"><img src="assets/sessioncrew-hero.png" width="100%" alt="Vintage editorial illustration of a crew organizing conversations across profiles"></p>
 
-**English** | [繁體中文](README.zh-TW.md)
+<h1 align="center">SessionCrew</h1>
+
+<p align="center"><strong>Your profiles. Their sessions. One place.</strong></p>
+
+<p align="center"><strong>English</strong> | <a href="README.zh-TW.md">繁體中文</a></p>
+
+<p align="center"><a href="#features">Features</a> · <a href="#installation-and-requirements">Installation</a> · <a href="#basic-usage">Usage</a></p>
 
 SessionCrew is a Hermes Desktop plugin that lets you view sessions from different profiles in one side panel. Select an avatar to open that profile's conversations, start a new conversation, or see its related projects. It's useful when you work with multiple Hermes profiles and don't want to keep switching between lists.
 
