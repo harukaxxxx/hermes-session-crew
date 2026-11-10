@@ -12,11 +12,11 @@ export const gatewayActivationEpoch=()=>1
 import {useSyncExternalStore} from 'react'
 // Existing visual baselines are Traditional Chinese. Tests can opt into the
 // plugin's English default with ?locale=en; use the public SDK i18n contract.
-const fixtureLocale=new URLSearchParams(location.search).get('locale')||'zh-hant'
+let fixtureLocale=new URLSearchParams(location.search).get('locale')||'zh-hant';const localeListeners=new Set();window.fixtureSetLocale=value=>{fixtureLocale=value;for(const notify of localeListeners)notify()}
 let fixtureMessages={}
 const translate=(key,...args)=>{const get=locale=>key.split('.').reduce((node,part)=>node?.[part],fixtureMessages[locale]);const value=get(fixtureLocale)??get('en');return typeof value==='function'?value(...args):typeof value==='string'?value:key}
 export const fixtureI18n={register:messages=>{fixtureMessages=messages},t:translate}
-export const usePluginI18n=()=>translate
+export const usePluginI18n=()=>{const locale=useSyncExternalStore(fn=>{localeListeners.add(fn);return()=>localeListeners.delete(fn)},()=>fixtureLocale);return (key,...args)=>{const get=l=>key.split('.').reduce((node,part)=>node?.[part],fixtureMessages[l]);const value=get(locale)??get('en');return typeof value==='function'?value(...args):typeof value==='string'?value:key}}
 const atom=value=>{const listeners=new Set();return {get:()=>value,set:v=>{value=v;for(const f of listeners)f()},subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}}}
 const profileAtom=atom(new URLSearchParams(location.search).has('snapshot')?'default':'Aster');window.fixtureSetProfile=v=>profileAtom.set(v)
 const listeners=new Map();window.emitFixtureGatewayEvent=event=>listeners.get(event.type)?.(event)

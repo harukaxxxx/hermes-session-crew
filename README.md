@@ -34,7 +34,7 @@ Cron 過濾只認 `session.list` 的結構化 `source === 'cron'`；缺少來源
 
 ## 授權
 
-SessionCrew 自有程式碼依 [MIT License](LICENSE) 授權。第三方程式碼的通知及條款分別見 [`dashboard/OFFICE-LICENSE`](dashboard/OFFICE-LICENSE) 與 [`desktop/HERMES-REMOTE-PICKER-LICENSE`](desktop/HERMES-REMOTE-PICKER-LICENSE)。
+SessionCrew 自有程式碼依 [MIT License](LICENSE) 授權。第三方程式碼的通知及條款分別見 [`dashboard/OFFICE-LICENSE`](dashboard/OFFICE-LICENSE)、[`desktop/HERMES-REMOTE-PICKER-LICENSE`](desktop/HERMES-REMOTE-PICKER-LICENSE) 與 [`desktop/HERMES-SPINNER-LICENSE`](desktop/HERMES-SPINNER-LICENSE)。
 
 ## 新建專案：gateway 資料夾瀏覽（受控 candidate）
 
@@ -128,6 +128,7 @@ app-level standalone loader `~/.hermes/desktop-plugins/profile-rail` 指向本�
 - 保持 rail 可捲動且最後一個頭像可達；使用宿主 theme tokens、保留層次與幾何，不複製模擬宿主 CSS。原型的 idle／offline／unknown 頭像部分收進邊緣、hover／focus／選中展開是設計參考，與現行呈現的差異須明確記錄，不視為已通過。
 - 氣泡箭頭應跟隨所選頭像，列表更新、重排、捲動及 resize 後仍對準；接近圓角安全區或離開 rail 時關閉。短畫面優先縮清單而非藏起 footer；長名稱與短句不得拉寬氣泡或擠走 footer。兩層浮窗的 Escape、鍵盤操作和 reduced motion 需一併檢查。
 - working 小氣泡為視覺提示，不攔截點擊；同一頭像的大氣泡開啟時隱藏，文字保持可讀。不得在缺少真實狀態來源時展示假 working；不加入彩色狀態點、recent 標題或「未讀完成」文字標籤。正式介面不包含原型的狀態切換或模擬完成控制。
+- 小氣泡顏文字及思考詞為插件內附、標示來源的 Hermes 預設素材；各連線與 profile 獨立選擇和更新，可能偶然相同。繁中詞庫包含上游英中混合詞，其他語言回退英文；reduced motion 固定顯示。這些是裝飾，並非實際執行中的原生詞句或活動內容，也不自動同步 skin。
 - 顯示名稱與穩定 owner-qualified 身分分離；project membership 必須有 owner session 關聯依據。✋ 與狀態分離，不能從 idle 推論完成，也不能以 Office recent 推論 running；實際 coverage、逐筆確認及全部已讀範圍以上文現行限制為準。短句可由使用者自行撰寫，不自動讀取或同步 SOUL。
 - 驗收應涵蓋正常及短畫面、頂／中／底頭像、初始與展開列表、雙向捲動、hover／focus、箭頭安全區及長文字；footer 和專案選項需實際 hit-test 與點擊，不只確認 DOM 存在。另以真實資料驗證身分、頭像、owner route、連線／重連、project cwd、Home 語意及確認範圍；受控測試、實際 Desktop／backend live 與官方審查分開記錄，清單本身不是通過證據。
 
