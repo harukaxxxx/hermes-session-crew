@@ -19,6 +19,7 @@ await mkdir(path.join(run,'evidence'));await mkdir(path.join(run,'home'));await 
 const mock='recent-live-stored recent-order-refresh roster recent-name-red owner-recent loading-regression sdk-route-contract status-quote actions actions-switch office-cache completion native-snapshot-integration native-activity-integration root-transport-contract snapshot-switch snapshot-owner snapshot-gap snapshot-errors snapshot-malformed snapshot-missing-owner snapshot-integration catchup-quarantine status-own status-http-integration status-late-response status-quotes-state native-children-integration owner-project-dialog project-dialog-create focused-completion-regression'.split(' ')
 const browser='browser-project-list browser-stack-centering browser-children-metadata browser-quotes-persistence browser-standalone-screenshot browser-actions browser-working browser-working-pixels browser-status-token browser-completion browser-quote-ascii browser-primary-anchor browser-recent browser-floating-geometry browser-offline-avatar browser-activity browser-project-layout browser-owner-project-dialog browser-rail-visual review-owner-dialog browser-dialog-visual browser-folder-ui browser-folder-integration browser-original-folder folder-comparison'.split(' ')
 mock.push('session-hand-regression')
+mock.push('mark-all-source-switch')
 mock.push('display-settings')
 mock.push('localization')
 mock.push('request-priority')
