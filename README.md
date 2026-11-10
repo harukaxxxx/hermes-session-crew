@@ -60,7 +60,11 @@ Dialog 使用插件自己的 `POST /folders` 經 `ctx.rest` 在目前 gateway �
 
 REST 的目的地由宿主當前 connection/profile 決定，並非 owner 指定：Dialog 凍結 owner route 和目前 scope，僅在 active connection、owner route connection、公開 activation epoch 一致時啟用，變更時清除選擇並拒絕送出；無法確認時停用。不跨連線推定同機，不傳無效 selector 或切換 profile。尚未驗證真實部署中的 route/epoch 與 REST scope 全生命週期，特別是 secondary gateway 切換；不得據 fixture 宣稱其安全或可用。這個 candidate 目前只接受 POSIX 形式的根路徑；Windows 尚未驗證。失敗不回退本機或手動路徑。
 
-建立使用捕捉的完整 owner route、`use:false`；已知 ID 後刷新失敗只能重試刷新。未知寫入結果的防護只在記憶體，重載或卸載會消失。點子可生成，但**不會寫入 IDEA.md**；使用該操作時，專案名稱會送至所選 profile 的 LLM，外部網路與資料處理遵循該 profile 的模型供應商設定。受控測試不建立真專案、session，不呼叫 LLM。插件不自行讀取憑證、不另啟 listener、不執行 shell、不自我更新，也沒有遙測。
+儲存請求攜帶建立回傳的 project ID 與捕捉的 owner，backend 僅回顯這些欄位，不獨立查詢或認證 project 所屬關係；同一 connection 的 owner RPC 與 REST 實際指向同一檔案系統仍依宿主路由契約，未以 fixture 證實 live 拓撲。
+
+點子寫入的檔案操作在受管理 threadpool 執行；目錄鎖忙碌時立即回 409，須重試。建立期間連線變更且仍顯示 dialog 時，已知專案 ID 和文字會保留並警告點子未儲存，不會跨 scope 儲存或重新建立。
+
+建立使用捕捉的完整 owner route、`use:false`；成功取得 ID 後，非空白點子由插件自己的 backend 在所選主要資料夾建立 `IDEA.md`，保留輸入文字，不覆寫既有檔案。相同內容重試可確認；不同內容、寫入失敗或結果未知會警告並保留文字，重試只存點子而不再建立專案；刷新失敗也只重試刷新。文字上限為 UTF-8 65536 bytes。路徑、目錄及 runtime identity 經檢查，拒絕 symlink、hardlink、部分常見憑證目錄及 Hermes 管理根目錄；檔案寫入後讀回確認。這仍是 OS 權限範圍內的寫入，並非完整沙箱：其他程序可以並行移動目錄或修改檔案，檢查不能保證未來狀態，鎖只約束配合使用該鎖的程序；scope 改變與已送出請求之間亦有宿主競態。失敗結果不一定表示檔案不存在，重試前應檢查。未知建立結果的防護只在記憶體，重載或卸載會消失。使用點子生成時，專案名稱會送至所選 profile 的 LLM，外部網路與資料處理遵循該 profile 的模型供應商設定。受控測試只使用 synthetic project 回應及 fixture 目錄，不建立真專案、session，不呼叫 LLM；Chromium → 插件 FastAPI → fixture 磁碟讀回並非 live 驗收。插件不自行讀取憑證、不另啟 listener、不執行 shell、不自我更新，也沒有遙測。
 
 在隔離 candidate 根目錄、已有 Hermes checkout／依賴和 Chrome 時執行（不安裝或啟動 gateway）：
 

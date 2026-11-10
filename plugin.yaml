@@ -1,6 +1,6 @@
 name: profile-rail
 version: "0.1.0"
-description: "SessionCrew: bot-style session management with profile-authorized metadata and backend filesystem browsing and folder creation endpoints (candidate; live acceptance incomplete)."
+description: "SessionCrew: session management with profile-authorized metadata, backend folder browsing, creation, and non-overwriting IDEA.md writes (candidate; live acceptance incomplete)."
 author: "SessionCrew contributors"
 license: MIT
 python_dependencies:
