@@ -350,8 +350,8 @@ def _count_live_subagent_sessions() -> int:
     return int(row[0] or 0) if row else 0
 
 
-def _shared_host_observed_idle(profile: str, pid: int, runtime: dict, liveness: Any) -> bool:
-    """A fresh host-wide zero is a bounded observation, not universal inactivity."""
+def _shared_host_snapshot_valid(profile: str, pid: int, runtime: dict, liveness: Any) -> bool:
+    """Validate host identity and freshness without attributing work to an owner."""
     try:
         from datetime import datetime
         from gateway.status import get_process_start_time, start_time_fingerprints_match, runtime_status_is_stale
@@ -362,7 +362,7 @@ def _shared_host_observed_idle(profile: str, pid: int, runtime: dict, liveness: 
         served = runtime.get('served_profiles')
         if (recorded_pid != pid or isinstance(recorded_pid, bool)
                 or not isinstance(recorded_start, int) or isinstance(recorded_start, bool)
-                or recorded_start <= 0 or type(active) is not int or active != 0
+                or recorded_start <= 0 or type(active) is not int or active < 0
                 or runtime.get('gateway_state') != 'running'
                 or not isinstance(served, list) or profile not in served
                 or getattr(liveness, 'probe_error', False)
@@ -468,9 +468,15 @@ def _read_profile_base(
                 entry["state"] = "unknown"
                 entry["idle_since"] = entry.get("last_session_activity")
                 if (entry.get('stats_available') is True
-                        and _shared_host_observed_idle(profile, served[0], served[1], liveness)):
-                    entry['state'] = 'idle'
-                    entry['status_observation'] = 'fresh_shared_gateway_zero_observed_work'
+                        and _shared_host_snapshot_valid(profile, served[0], served[1], liveness)):
+                    if served[1]['active_agents'] == 0:
+                        entry['state'] = 'idle'
+                        entry['status_observation'] = 'fresh_shared_gateway_zero_observed_work'
+                    else:
+                        entry['state'] = 'online_unobserved'
+                        entry['busy'] = None
+                        entry['idle_since'] = None
+                        entry['status_observation'] = 'fresh_shared_gateway_no_observed_owner_work'
             return entry
     except Exception:
         # Ownership is unavailable, not evidence of either offline or idle.

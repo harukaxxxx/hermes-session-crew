@@ -89,6 +89,7 @@ const messages = {
       thinkingWords: "pondering,contemplating,musing,cogitating,ruminating,deliberating,mulling,reflecting,processing,reasoning,analyzing,computing,synthesizing,formulating,brainstorming",
       offlineQuote: "Offline for now; see you later.",
       idleQuote: "I'm here whenever you need me.",
+      onlineUnobservedQuote: "Online; no activity observed for this profile.",
       workingQuote: "Focusing on the task at hand.",
       quote: "Status quote",
       unknownQuote: "Not enough status information yet.",
@@ -99,6 +100,7 @@ const messages = {
       working: "working",
       waiting: "waiting",
       idle: "idle",
+      onlineUnobserved: "online · no activity observed",
       offline: "offline",
       unknown: "unknown",
       label: value => `Status: ${value}`,
@@ -266,6 +268,7 @@ const messages = {
       thinkingWords: "pondering,contemplating,musing,cogitating,ruminating,deliberating,mulling,reflecting,processing,reasoning,analyzing,computing,synthesizing,formulating,brainstorming,思考,琢磨,沉思,推敲,斟酌,盤算,反思,處理,推理,分析,運算,整合,構思,腦力激盪",
       offlineQuote: "暫時不在線，稍後再見。",
       idleQuote: "有需要時，隨時可以找我。",
+      onlineUnobservedQuote: "在線，尚未觀察到此設定檔的活動。",
       workingQuote: "正在專心整理眼前的事情。",
       quote: "狀態短句",
       unknownQuote: "目前還沒有足夠的狀態資訊。",
@@ -276,6 +279,7 @@ const messages = {
       working: "工作中",
       waiting: "等待中",
       idle: "閒置",
+      onlineUnobserved: "在線・未觀察到活動",
       offline: "離線",
       unknown: "未知",
       label: value => `狀態：${value}`,
@@ -565,7 +569,7 @@ function statusText(value){
  const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text)].map(x=>x.segment):Array.from(text.matchAll(/(?:\P{Mark}\p{Mark}*|\p{Mark}+)(?:\uFE0F|[\u{1F3FB}-\u{1F3FF}])?(?:\u200D(?:\P{Mark}\p{Mark}*)(?:\uFE0F|[\u{1F3FB}-\u{1F3FF}])?)*/gu),x=>x[0])
  return parts.slice(0,28).join('')
 }
-const quoteDefaults={working:'status.workingQuote',waiting:'status.waitingQuote',idle:'status.idleQuote',offline:'status.offlineQuote',unknown:'status.unknownQuote'}
+const quoteDefaults={working:'status.workingQuote',waiting:'status.waitingQuote',idle:'status.idleQuote',online_unobserved:'status.onlineUnobservedQuote',offline:'status.offlineQuote',unknown:'status.unknownQuote'}
 const quoteQueues=new WeakMap()
 function queueQuote(storage,key,task){
  let queues=quoteQueues.get(storage);if(!queues){queues=new Map();quoteQueues.set(storage,queues)}
@@ -586,7 +590,7 @@ function StatusQuoteEntry({storage,ownerKey,state}){
  const quoteRef=useRef(null),[preview,setPreview]=useState(value)
  useEffect(()=>{const el=quoteRef.current;if(!el)return;const fit=()=>{const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');if(!ctx){setPreview(value);return}const css=getComputedStyle(el);ctx.font=`${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(value)].map(x=>x.segment):Array.from(value);let next=value;if(ctx.measureText(next).width>el.clientWidth){while(parts.length&&ctx.measureText(parts.join('')+'...').width>el.clientWidth)parts.pop();next=parts.join('')+'...'}setPreview(next)};if(typeof ResizeObserver==='function'){const observer=new ResizeObserver(fit);observer.observe(el);fit();return()=>observer.disconnect()}setPreview(value)},[value])
  async function save(){if(lock.current||!ready)return;lock.current=true;setBusy(true);try{if(typeof storage?.set!=='function'||typeof storage?.get!=='function')throw Error();const clean=statusText(draft);await queueQuote(storage,key,async()=>{await storage.set(key,clean);const confirmed=await storage.get(key);if(confirmed!==clean)throw Error()});if(alive.current){setText(clean);setEditing(false);setError('')}}catch{if(alive.current)setError({message:()=>tr('status.saveFailed')})}finally{lock.current=false;if(alive.current)setBusy(false)}}
- return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0},children:[jsx('button',{ref:quoteRef,'data-status-quote':true,type:'button',onClick:()=>setExpanded(x=>!x),title:value,'aria-label':tr('status.label',value),style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',cursor:'pointer'},children:preview}),jsx('button',{'data-status-edit':true,type:'button',disabled:!ready||busy,onClick:()=>{setDraft(text);setEditing(x=>!x)},style:{...s.button,border:0,padding:4},'aria-label':tr('status.editQuote'),children:'✎'})]}),expanded?jsx('div',{'data-status-full':true,tabIndex:0,style:{whiteSpace:'nowrap',overflowX:'auto',maxWidth:'100%',color:'var(--ui-text-secondary)',fontSize:12},children:value}):null,editing?jsxs('div',{children:[jsx('span',{children:tr('status.editLocal',tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',offline:'status.offline',unknown:'status.unknown'}[state]))}),jsx('input',{'data-status-input':true,disabled:busy,value:draft,onChange:e=>setDraft(e.target.value),maxLength:512,'aria-label':tr('status.quote'),style:{maxWidth:'100%',boxSizing:'border-box'}}),jsx('button',{'data-status-save':true,type:'button',onClick:save,children:tr('common.save')})]}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
+ return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0},children:[jsx('button',{ref:quoteRef,'data-status-quote':true,type:'button',onClick:()=>setExpanded(x=>!x),title:value,'aria-label':tr('status.label',value),style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',cursor:'pointer'},children:preview}),jsx('button',{'data-status-edit':true,type:'button',disabled:!ready||busy,onClick:()=>{setDraft(text);setEditing(x=>!x)},style:{...s.button,border:0,padding:4},'aria-label':tr('status.editQuote'),children:'✎'})]}),expanded?jsx('div',{'data-status-full':true,tabIndex:0,style:{whiteSpace:'nowrap',overflowX:'auto',maxWidth:'100%',color:'var(--ui-text-secondary)',fontSize:12},children:value}):null,editing?jsxs('div',{children:[jsx('span',{children:tr('status.editLocal',tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[state]))}),jsx('input',{'data-status-input':true,disabled:busy,value:draft,onChange:e=>setDraft(e.target.value),maxLength:512,'aria-label':tr('status.quote'),style:{maxWidth:'100%',boxSizing:'border-box'}}),jsx('button',{'data-status-save':true,type:'button',onClick:save,children:tr('common.save')})]}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
 }
 // Profile Rail's own namespace; never depends on Office being mounted.
 const STATUS_TTL=15000
@@ -605,9 +609,9 @@ function useRailSnapshot(rest,connection,profile){
  if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data))return [[],clock]
  return [q.data,clock]
 }
-function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','unknown'].includes(row.state)?row.state:'unknown'}
-const statusOrder={working:0,waiting:1,idle:2,unknown:3,offline:4}
-const statusColor={working:'var(--ui-green, var(--ui-accent))',waiting:'var(--ui-yellow, var(--ui-accent))',idle:'var(--ui-text-secondary)',offline:'var(--ui-text-quaternary)',unknown:'var(--ui-stroke-secondary)'}
+function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
+const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
+const statusColor={working:'var(--ui-green, var(--ui-accent))',waiting:'var(--ui-yellow, var(--ui-accent))',idle:'var(--ui-text-secondary)',online_unobserved:'var(--ui-text-secondary)',offline:'var(--ui-text-quaternary)',unknown:'var(--ui-stroke-secondary)'}
 // Hermes Agent agent/display.py and locales/zh-hant.yaml, commit
 // 809bc81571e14ac604d54cb9abbc3db9568b046c; see HERMES-SPINNER-LICENSE.
 const faces=['(｡•́︿•̀｡)','(◔_◔)','(¬‿¬)','( •_•)>⌐■-■','(⌐■_■)','(´･_･`)','◉_◉','(°ロ°)','( ˘⌣˘)♡','ヽ(>∀<☆)☆','٩(๑❛ᴗ❛๑)۶','(⊙_⊙)','(¬_¬)','( ͡° ͜ʖ ͡°)','ಠ_ಠ']
@@ -836,7 +840,7 @@ function Rail({storage,rest,preferences}){
   let owner=null,phase=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
   if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(selectedRef.current===selectionKey)select(null)},children:(avatarRef,contentRef,onCloseAutoFocus)=>[
-   jsx(AvatarLayers,{avatar:p.avatar,name,color:statusColor[p.status],avatarRef,offline:p.status==='offline',unread:completion.has(p.name),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
+   jsx(AvatarLayers,{avatar:p.avatar,name,color:statusColor[p.status],avatarRef,offline:p.status==='offline',unread:completion.has(p.name),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
   jsxs(PopoverContent,{ref:contentRef,onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,position:'relative'},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{owner,ownerName:name,isCurrent,createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
  }),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,position:'absolute',top:0,right:0,zIndex:5,fontSize:9,padding:'1px 3px'},children:'!'}):null]})
 }

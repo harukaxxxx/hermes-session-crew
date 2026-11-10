@@ -65,14 +65,16 @@ def test_fresh_zero_shared_host_yields_bounded_idle_for_all_served_including_def
 
 
 @pytest.mark.parametrize('change', [
-    {'active_agents': 1}, {'active_agents': None}, {'active_agents': False},
+    {'active_agents': None}, {'active_agents': False},
     {'pid': 1111}, {'start_time': 1}, {'gateway_state': 'starting'},
     {'updated_at': (datetime.now(timezone.utc)-timedelta(minutes=5)).isoformat()},
     {'updated_at': (datetime.now(timezone.utc)+timedelta(minutes=5)).isoformat()},
     {'served_profiles': ['default', 'alpha']},
 ])
-def test_unavailable_or_ambiguous_host_never_invents_owner_idle(fleet, change):
+@pytest.mark.parametrize('host_count', [0, 1])
+def test_unavailable_or_ambiguous_host_never_invents_owner_idle(fleet, change, host_count):
     _, runtime, client, _ = fleet
+    runtime['active_agents'] = host_count
     runtime.update(change)
     result = rows(client)
     targets = ['beta'] if 'served_profiles' in change else result
@@ -90,9 +92,24 @@ def test_waiting_and_recent_work_precede_shared_zero(fleet):
     assert result['beta']['state'] == 'idle'
 
 
-def test_working_and_waiting_turn_override_idle(fleet):
+def test_busy_shared_host_reports_unobserved_owner_without_claiming_idle(fleet):
     import time
-    _, _, client, root = fleet
+    _, runtime, client, root = fleet
+    runtime['active_agents'] = 1
+    with sqlite3.connect(root / 'profiles/alpha/state.db') as db:
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?)', ('a', 'desktop', time.time(), None, 0, 0, 0, 0))
+    result = rows(client)
+    assert result['alpha']['state'] == 'working'
+    assert result['beta']['state'] == 'online_unobserved'
+    assert result['beta']['busy'] is None
+    assert result['beta']['status_observation'] == 'fresh_shared_gateway_no_observed_owner_work'
+
+
+@pytest.mark.parametrize('host_count', [0, 1])
+def test_working_and_waiting_turn_override_idle(fleet, host_count):
+    import time
+    _, runtime, client, root = fleet
+    runtime['active_agents'] = host_count
     with sqlite3.connect(root / 'profiles/alpha/state.db') as db:
         db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?)', ('a', 'desktop', time.time(), None, 0, 0, 0, 0))
         db.execute('INSERT INTO async_delegations VALUES (?,?,?,?,?,?,?)', ('running', 'pending', time.time(), os.getpid(), '123456', 'a', '{}'))
@@ -102,8 +119,10 @@ def test_working_and_waiting_turn_override_idle(fleet):
     assert 'status_observation' not in result['alpha']
 
 
-def test_missing_stats_or_conflicting_pid_do_not_become_idle(fleet, monkeypatch):
-    collector, _, client, root = fleet
+@pytest.mark.parametrize('host_count', [0, 1])
+def test_missing_stats_or_conflicting_pid_do_not_become_idle(fleet, monkeypatch, host_count):
+    collector, runtime, client, root = fleet
+    runtime['active_agents'] = host_count
     (root / 'profiles/beta/state.db').unlink()
     assert rows(client)['beta']['state'] == 'unknown'
     monkeypatch.setattr(collector, 'resolve_gateway_liveness', lambda **_: SimpleNamespace(running=True, source='pid', pid=1111, probe_error=False))
