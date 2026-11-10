@@ -22,6 +22,7 @@ mock.push('session-hand-regression')
 browser.push('browser-session-hand')
 browser.push('browser-project-stability')
 browser.push('browser-project-narrow-probe')
+browser.push('browser-floating-text')
 const commands=[['node','--check','desktop/plugin.js'],[path.join(HERMES_CHECKOUT,'.venv/bin/python'),'-I','tests/folder_backend_fixture.py'],['node','tests/live-contract.mjs'],['node','tests/popover-fixture-contract.mjs'],...mock.map(x=>['node','--experimental-vm-modules',`tests/${x}.mjs`]),['node','tests/build-sdk.mjs'],...browser.map(x=>['node',`tests/${x}.mjs`])]
 const env={...process.env,HOME:path.join(run,'home'),HERMES_HOME:path.join(run,'hermes'),HERMES_AGENT_ROOT:HERMES_CHECKOUT,TMPDIR:run,PYTHONDONTWRITEBYTECODE:'1',PYTHONNOUSERSITE:'1'}
 const sha256=createHash('sha256').update(await readFile(path.join(run,'desktop/plugin.js'))).digest('hex'),backend_sha256=createHash('sha256').update(await readFile(path.join(run,'dashboard/plugin_api.py'))).digest('hex'),results=[]
