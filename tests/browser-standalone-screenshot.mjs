@@ -9,7 +9,7 @@ try {
  await page.getByRole('button',{name:'Aster · 狀態 工作中'}).waitFor();
  await page.evaluate(()=>{
   const states=['working','waiting','idle','offline','unknown'];
-  window.officeClient.setQueryData(['profile-rail','status','fixture','Aster',1],window.fixtureProfiles.map((p,i)=>({profile:p.name,online:i%5!==3,state:states[i%5],idle_since:i%5===2?100+i:null})));
+  window.officeClient.setQueryData(['sessioncrew','status','fixture','Aster',1],window.fixtureProfiles.map((p,i)=>({profile:p.name,online:i%5!==3,state:states[i%5],idle_since:i%5===2?100+i:null})));
  });
  await page.getByRole('button',{name:'Mika · 狀態 等待中'}).waitFor();
  const rings=await page.locator('[data-state-name]').evaluateAll(es=>es.map(e=>{

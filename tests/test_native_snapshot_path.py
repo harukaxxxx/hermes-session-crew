@@ -12,7 +12,7 @@ import hermes_state_runtime as runtime
 ROOT = Path(__file__).resolve().parents[1]
 
 def test_native_writer_to_root_http_snapshot(tmp_path, monkeypatch):
-    spec = importlib.util.spec_from_file_location('profile_rail_native_api', ROOT / 'dashboard/plugin_api.py')
+    spec = importlib.util.spec_from_file_location('sessioncrew_native_api', ROOT / 'dashboard/plugin_api.py')
     assert spec and spec.loader
     api = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(api)
@@ -26,9 +26,9 @@ def test_native_writer_to_root_http_snapshot(tmp_path, monkeypatch):
         admission = runtime.admit_session_input(db, epoch=epoch, principal_id='human', session_id='parent', request_id='r1', payload={'text':'private fixture'})
         claim = runtime.claim_session_input(db, epoch=epoch, session_id='parent')
         app = FastAPI()
-        app.include_router(api.router, prefix='/api/plugins/profile-rail')
+        app.include_router(api.router, prefix='/api/plugins/sessioncrew')
         client = TestClient(app)
-        url = '/api/plugins/profile-rail/completion-snapshot'
+        url = '/api/plugins/sessioncrew/completion-snapshot'
         before = client.get(url)
         assert before.status_code == 200
         p = before.json()['profiles'][0]

@@ -1,4 +1,4 @@
-"""Profile Rail's optional profile-authorized metadata and folder API.
+"""SessionCrew's optional profile-authorized metadata and folder API.
 
 No transcript, title, prompt, tool arguments, or raw result data is selected.
 This is a bounded *snapshot*, not an ordered completion-time event log.
@@ -235,7 +235,7 @@ def _folder_operation(request):
             # Match the pre-existing endpoints' per-profile runtime boundary.
             home = get_hermes_home().resolve()
             if home not in {path.resolve() for _, path in _profile_homes(root)}:
-                raise HTTPException(status_code=403, detail='Profile Rail runtime outside profile inventory')
+                raise HTTPException(status_code=403, detail='SessionCrew runtime outside profile inventory')
             root_id = _identity(f'{root.absolute()}:{info.st_dev}:{info.st_ino}')
             runtime_id = _identity(f'{SERVER_EPOCH}:{home}')
             if requested_path is not None:
@@ -617,7 +617,7 @@ def collect_snapshot(root: Path, limit: int = MAX_ROWS):
 @lru_cache(maxsize=1)
 def _status_collector():
     import importlib.util
-    spec = importlib.util.spec_from_file_location('profile_rail_status', Path(__file__).resolve().parent / 'status.py')
+    spec = importlib.util.spec_from_file_location('sessioncrew_status', Path(__file__).resolve().parent / 'status.py')
     collector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(collector)
     return collector
@@ -629,7 +629,7 @@ def status():
     try:
         home = get_hermes_home().resolve()
         if home not in {path.resolve() for _, path in _profile_homes(root)}:
-            raise HTTPException(status_code=403, detail='Profile Rail runtime outside profile inventory')
+            raise HTTPException(status_code=403, detail='SessionCrew runtime outside profile inventory')
         return _status_collector().collect_status()
     except OSError as exc:
         raise HTTPException(status_code=503, detail='profile inventory unavailable') from exc
@@ -643,7 +643,7 @@ def snapshot():
     try:
         home = get_hermes_home().resolve()
         if home not in {path.resolve() for _, path in _profile_homes(root)}:
-            raise HTTPException(status_code=403, detail='Profile Rail runtime outside profile inventory')
+            raise HTTPException(status_code=403, detail='SessionCrew runtime outside profile inventory')
         return collect_snapshot(root)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

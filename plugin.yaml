@@ -1,4 +1,4 @@
-name: profile-rail
+name: sessioncrew
 version: "0.1.0"
 description: "SessionCrew: session management with profile-authorized metadata, backend folder browsing, creation, and non-overwriting IDEA.md writes (candidate; live acceptance incomplete)."
 author: "SessionCrew contributors"

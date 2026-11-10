@@ -16,7 +16,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 try{
  const page=await browser.newPage({viewport:{width:900,height:700}})
  let savedRequest
- await page.exposeFunction('fixtureBridge',async req=>{assert.equal(req.connectionId,'fixture');assert.equal(req.profile,'Aster');if(req.path.endsWith('/idea'))savedRequest=req;const result=await ask({...req.body,_endpoint:req.path.replace('/api/plugins/profile-rail','')});if(result.status!==200)throw Error(result.data.detail);return result.data})
+ await page.exposeFunction('fixtureBridge',async req=>{assert.equal(req.connectionId,'fixture');assert.equal(req.profile,'Aster');if(req.path.endsWith('/idea'))savedRequest=req;const result=await ask({...req.body,_endpoint:req.path.replace('/api/plugins/sessioncrew','')});if(result.status!==200)throw Error(result.data.detail);return result.data})
  await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office')
  await page.addStyleTag({path:path.resolve('tests/sdk-css/styles.css')})
  await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]')

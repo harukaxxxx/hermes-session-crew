@@ -11,7 +11,7 @@ for command in commands:
     results.append({'command':' '.join(command),'exit':p.returncode,'stdout':p.stdout.strip(),'stderr':p.stderr.strip()})
     print(('PASS ' if p.returncode==0 else 'FAIL ')+' '.join(command), flush=True)
 source=root/'desktop/plugin.js'
-loader=Path.home()/'.hermes/desktop-plugins/profile-rail/plugin.js'
+loader=Path.home()/'.hermes/desktop-plugins/sessioncrew/plugin.js'
 hash_file=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 result={'source_sha256':hash_file(source),'loader_sha256':hash_file(loader),'loader_same':hash_file(source)==hash_file(loader),'results':results,'screenshots':['evidence/status-working.png','evidence/status-quote-long.png'],'limitations':['controlled fixture, not live Office or Desktop','no session-qualified completion/unread source','full archived A visual geometry, corner-safe arrow and full short-screen matrix not verified','gradient alpha sampling and full animation/reduced-motion timing not verified','Home canonical classification and real session actions remain unverified']}
 (root/'evidence/status-visual-result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')

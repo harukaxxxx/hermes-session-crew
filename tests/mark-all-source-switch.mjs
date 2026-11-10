@@ -16,7 +16,7 @@ const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',imp
 let contribution;mod.namespace.default.register({storage,rest,register:x=>contribution=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 async function until(fn){const end=Date.now()+5000;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,5))});if(fn())return}throw Error('fixture timeout: '+document.body.textContent)}
 const render=()=>React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
-const refresh=()=>React.act(async()=>client.refetchQueries({queryKey:['profile-rail','completion-snapshot']}))
+const refresh=()=>React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']}))
 const event=(p,id)=>{p.high_water++;p.rows.push({seq:p.high_water,admission_id:id,session_id:'same',status:'terminal',outcome:'completed',generation:1})}
 const ledger=()=>saved['completion-snapshot-v2'],row=id=>ledger().rows.find(x=>JSON.parse(x.key)[4]===id)
 async function select(i){await React.act(async()=>document.querySelectorAll('.profile-rail-hit')[i].click());await until(()=>document.querySelector('[data-completion-read-all]'))}

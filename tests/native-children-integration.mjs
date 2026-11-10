@@ -25,10 +25,10 @@ try{
  const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate();let contribution;mod.namespace.default.register({storage,rest,register:c=>contribution=c});client=new QueryClient();root=createRoot(document.getElementById('root'))
  await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())));await until(()=>saved['completion-snapshot-v2']?.coverage)
  assert.equal((await request('metadata-children')).created,true)
- await React.act(async()=>{await client.refetchQueries({queryKey:['profile-rail','completion-snapshot']})});await until(()=>document.querySelectorAll('[data-child-shadow]').length===2)
+ await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']})});await until(()=>document.querySelectorAll('[data-child-shadow]').length===2)
  const a=payload.profiles.find(p=>p.profile==='alpha').activity;assert.equal(a.coverage,'unavailable');assert.deepEqual(new Set(a.child_metadata.children.map(c=>c.kind)),new Set(['queued','recent']));assert.equal(a.child_metadata.presentation_count,2);assert.equal(document.querySelector('[data-running-count]'),null);assert.match(document.querySelector('.profile-rail-hit').getAttribute('aria-label'),/not proof of execution/)
  assert.equal((await request('end-metadata-children')).ended,true)
- await React.act(async()=>{await client.refetchQueries({queryKey:['profile-rail','completion-snapshot']})});await until(()=>document.querySelectorAll('[data-child-shadow]').length===0)
+ await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']})});await until(()=>document.querySelectorAll('[data-child-shadow]').length===0)
  assert.equal(payload.profiles.find(p=>p.profile==='alpha').activity.child_metadata.presentation_count,0)
  console.log('PASS native unleased queued/recent → FastAPI → React Query shadows; ended clears')
 }finally{if(root)await React.act(async()=>root.unmount());client?.clear();child.stdin.write(JSON.stringify('quit')+'\n');child.stdin.end();await new Promise(resolve=>{const timer=setTimeout(()=>{child.kill();resolve()},3000);child.once('exit',()=>{clearTimeout(timer);resolve()})});lines.close()}

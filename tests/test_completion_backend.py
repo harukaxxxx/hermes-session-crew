@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def load():
     assert (ROOT / 'dashboard/plugin_api.py').is_file(), 'completion snapshot backend not implemented'
-    spec = importlib.util.spec_from_file_location('profile_rail_api', ROOT / 'dashboard/plugin_api.py')
+    spec = importlib.util.spec_from_file_location('sessioncrew_api', ROOT / 'dashboard/plugin_api.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -61,10 +61,10 @@ def test_snapshot_exposes_preexisting_started_to_completed_transition(tmp_path):
 def test_http_route_root_and_named_gate(monkeypatch,tmp_path):
     api=load();db(tmp_path);db(tmp_path/'profiles'/'alpha');db(tmp_path/'profiles'/'beta')
     monkeypatch.setattr(api,'get_default_hermes_root',lambda:tmp_path)
-    app=FastAPI();app.include_router(api.router,prefix='/api/plugins/profile-rail');client=TestClient(app)
+    app=FastAPI();app.include_router(api.router,prefix='/api/plugins/sessioncrew');client=TestClient(app)
     for home in (tmp_path, tmp_path/'profiles'/'alpha', tmp_path/'profiles'/'beta'):
         monkeypatch.setattr(api,'get_hermes_home',lambda:home)
-        response=client.get('/api/plugins/profile-rail/completion-snapshot')
+        response=client.get('/api/plugins/sessioncrew/completion-snapshot')
         assert response.status_code==200
         assert response.json()['profiles'][0]['rows'][0]['admission_id']=='old'
         assert response.json()['source_root']=='default'

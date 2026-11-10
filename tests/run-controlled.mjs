@@ -9,7 +9,7 @@ const {HERMES_CHECKOUT,CHROME_PATH,RAIL_TEST_SCRATCH}=process.env
 if(![HERMES_CHECKOUT,CHROME_PATH,RAIL_TEST_SCRATCH].every(x=>x&&path.isAbsolute(x)&&!/[\n\r'"\\]/.test(x)))throw Error('Set absolute HERMES_CHECKOUT, CHROME_PATH and RAIL_TEST_SCRATCH paths (without quotes/backslashes)')
 const scratch=await realpath(RAIL_TEST_SCRATCH),canonical=await realpath(source)
 if(scratch===canonical||scratch.startsWith(canonical+path.sep))throw Error('RAIL_TEST_SCRATCH must be outside the source checkout')
-const run=await mkdtemp(path.join(scratch,'profile-rail-suite-'))
+const run=await mkdtemp(path.join(scratch,'sessioncrew-suite-'))
 for(const name of ['desktop','dashboard','tests'])await cp(path.join(source,name),path.join(run,name),{recursive:true,filter:p=>!p.includes('__pycache__')&&!['sdk-bundle.js','original-folder-bundle.js','sdk-css'].includes(path.basename(p))})
 // Regression: every run starts without a reference bundle, even if the source
 // tree contains a stale generated one; build-sdk must create it from source.

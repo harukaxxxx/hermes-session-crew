@@ -19,7 +19,7 @@ try{
  for(const height of [700,400]){
   const page=await browser.newPage({viewport:{width:900,height},reducedMotion:'reduce'})
   let holdNext=false,release=null
-  await page.exposeFunction('fixtureBridge',async req=>{assert.equal(req.connectionId,'fixture');assert.equal(req.profile,'Aster');assert.equal(req.method,'POST');assert.ok(['/api/plugins/profile-rail/folders','/api/plugins/profile-rail/folders/mkdir'].includes(req.path));const res=await ask({...req.body,_endpoint:req.path.replace('/api/plugins/profile-rail','')});if(holdNext){holdNext=false;await new Promise(resolve=>release=resolve)}if(res.status!==200)throw Error(res.data.detail);return res.data})
+  await page.exposeFunction('fixtureBridge',async req=>{assert.equal(req.connectionId,'fixture');assert.equal(req.profile,'Aster');assert.equal(req.method,'POST');assert.ok(['/api/plugins/sessioncrew/folders','/api/plugins/sessioncrew/folders/mkdir'].includes(req.path));const res=await ask({...req.body,_endpoint:req.path.replace('/api/plugins/sessioncrew','')});if(holdNext){holdNext=false;await new Promise(resolve=>release=resolve)}if(res.status!==200)throw Error(res.data.detail);return res.data})
   await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office')
   await page.addStyleTag({path:path.resolve('tests/sdk-css/styles.css')})
   await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]')

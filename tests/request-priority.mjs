@@ -39,7 +39,7 @@ try{
  calls=[];await recent.queryFn();assertPriority('session.list','background')
  // Legacy fallback must retain the poll's background priority as well.
  calls=[];legacy=true;await recent.queryFn();assertPriority('session.list','background');assert.equal(calls.filter(c=>c[1]==='session.list').length,2);legacy=false
- failList=true;await React.act(async()=>client.refetchQueries({queryKey:['profile-rail','recent']}))
+ failList=true;await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','recent']}))
  await until(()=>document.body.textContent.includes('fixture unavailable'))
  failList=false;calls=[]
  await React.act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent==='Retry').click())

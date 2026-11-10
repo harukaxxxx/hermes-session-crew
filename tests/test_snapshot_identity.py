@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 def load():
-    spec = importlib.util.spec_from_file_location('profile_rail_identity_api', ROOT / 'dashboard/plugin_api.py')
+    spec = importlib.util.spec_from_file_location('sessioncrew_identity_api', ROOT / 'dashboard/plugin_api.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

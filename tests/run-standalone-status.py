@@ -21,7 +21,7 @@ commands = list(dict.fromkeys([row['command'] for row in manifest['results']] + 
 for command in commands[:-1]:
     if any(token.startswith('/') or token.split('=', 1)[-1].startswith('/') for token in shlex.split(command)):
         raise ValueError('historical command contains an absolute path; regenerate the manifest')
-scratch = Path(tempfile.mkdtemp(prefix='profile-rail-regression-',dir=scratch_root))
+scratch = Path(tempfile.mkdtemp(prefix='sessioncrew-regression-',dir=scratch_root))
 shutil.copytree(root,scratch/'repo',ignore=shutil.ignore_patterns('history','archive','__pycache__','.pytest_cache'),dirs_exist_ok=True)
 repo=scratch/'repo'
 results=[]

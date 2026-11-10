@@ -24,7 +24,7 @@ import hermes_state_runtime as rt
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-with tempfile.TemporaryDirectory(prefix='profile-rail-test-') as directory:
+with tempfile.TemporaryDirectory(prefix='sessioncrew-test-') as directory:
     root = Path(directory)
     home = root / 'profiles' / 'alpha'
     home.mkdir(parents=True)
@@ -38,14 +38,14 @@ with tempfile.TemporaryDirectory(prefix='profile-rail-test-') as directory:
         admission = rt.admit_session_input(db, epoch=epoch, principal_id='human', session_id='s-one', request_id='r1', payload={'text': 'fixture'})
         claim = rt.claim_session_input(db, epoch=epoch, session_id='s-one')
         source = Path(__file__).resolve().parents[1] / 'dashboard' / 'plugin_api.py'
-        spec = importlib.util.spec_from_file_location('profile_rail_fixture_api', source)
+        spec = importlib.util.spec_from_file_location('sessioncrew_fixture_api', source)
         assert spec and spec.loader
         api = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(api)
         api.get_default_hermes_root = lambda: root
         api.get_hermes_home = lambda: root
         app = FastAPI()
-        app.include_router(api.router, prefix='/api/plugins/profile-rail')
+        app.include_router(api.router, prefix='/api/plugins/sessioncrew')
         client = TestClient(app)
         print(json.dumps({'ready': True}), flush=True)
         holder = None
@@ -85,7 +85,7 @@ with tempfile.TemporaryDirectory(prefix='profile-rail-test-') as directory:
             elif command == 'snapshot' or isinstance(command, dict) and command.get('snapshot') in ('default', 'alpha', 'beta'):
                 selected = command.get('snapshot', 'default') if isinstance(command, dict) else 'default'
                 api.get_hermes_home = lambda: root if selected == 'default' else root / 'profiles' / selected
-                result = client.get('/api/plugins/profile-rail/completion-snapshot')
+                result = client.get('/api/plugins/sessioncrew/completion-snapshot')
                 response = {'status': result.status_code, 'body': result.json()}
             else:
                 response = {'error': 'unknown fixture command'}

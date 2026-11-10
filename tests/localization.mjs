@@ -18,7 +18,7 @@ const translate=(current,key,...args)=>{const get=locale=>key.split('.').reduce(
 const i18n={register:b=>{bundles=b},t:(key,...args)=>translate('en',key,...args)}
 const atom=value=>({get:()=>value,subscribe:()=>()=>{}})
 const host={state:{connectionId:atom('c'),profile:atom('alpha')},profiles:{list:async()=>({profiles:[{name:'alpha'}]})},openSession:async()=>{throw Error('Custom server failure')},requestProfile:async(route,method)=>method==='session.list'?{sessions:[{id:'one',title:''},{id:'two',title:'Custom title'}]}:{projects:[{isNoProject:true,sessionIds:['one']},{label:'Custom project',sessionIds:['two']}]}}
-const sdk={host,useValue:a=>a.get(),useQuery,usePluginI18n:id=>{assert.equal(id,'profile-rail');const current=React.useSyncExternalStore(subscribe,()=>locale);return (key,...args)=>translate(current,key,...args)},Popover:()=>null,PopoverContent:()=>null,PopoverTrigger:()=>null}
+const sdk={host,useValue:a=>a.get(),useQuery,usePluginI18n:id=>{assert.equal(id,'sessioncrew');const current=React.useSyncExternalStore(subscribe,()=>locale);return (key,...args)=>translate(current,key,...args)},Popover:()=>null,PopoverContent:()=>null,PopoverTrigger:()=>null}
 const element=tag=>({children,...props})=>React.createElement(tag,props,children)
 Object.assign(sdk,{Dialog:({children})=>children,DialogContent:element('section'),DialogHeader:element('header'),DialogTitle:element('h2'),DialogDescription:element('p'),DialogFooter:element('footer'),Input:props=>React.createElement('input',props),Textarea:props=>React.createElement('textarea',props),Button:element('button'),Codicon:()=>null})
 const source=await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8')

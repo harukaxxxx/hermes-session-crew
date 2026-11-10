@@ -13,7 +13,7 @@ commands += ['node tests/popover-fixture-contract.mjs', 'node tests/browser-prim
 results = []
 def digest(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
-loader = Path.home()/'.hermes/desktop-plugins/profile-rail/plugin.js'
+loader = Path.home()/'.hermes/desktop-plugins/sessioncrew/plugin.js'
 report = {'scope':'controlled test fixtures; not live Desktop or authenticated endpoint','source_sha256':digest('desktop/plugin.js'),'backend_sha256':digest('dashboard/plugin_api.py'),'loader_path':str(loader),'loader_resolved':str(loader.resolve()),'loader_sha256':digest(loader),'results':results,'limitations':['native renderer, authenticated endpoint and actual routing pending','running Python module must reload to expose observed_child_count; no restart performed','active-turn leases are bounded observations, not complete fleet counts']}
 for command in commands:
     try:

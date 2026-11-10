@@ -23,7 +23,7 @@ for command in commands:
  results.append(result)
  print(f"{result['exit']} {' '.join(command)}",flush=True)
 source=root/'desktop/plugin.js'
-loader=pathlib.Path.home()/'.hermes/desktop-plugins/profile-rail/plugin.js'
+loader=pathlib.Path.home()/'.hermes/desktop-plugins/sessioncrew/plugin.js'
 data={'scope':'controlled Chromium and mock SDK; no live renderer or real session writes','source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'loader_sha256':hashlib.sha256(loader.read_bytes()).hexdigest(),'loader_directory':str(loader.parent.resolve()),'screenshots':[f'evidence/project-layout-{s}.png' for s in ['900x700','900x300','280x430']],'known_existing_failure':'tests/focused-completion-regression.mjs (unresolved read acknowledgement)','results':results}
 (root/'evidence/project-layout-results.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
 unexpected=[r for r in results if r['exit']!=0 and 'tests/focused-completion-regression.mjs' not in r['command']]

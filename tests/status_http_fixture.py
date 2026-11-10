@@ -41,13 +41,13 @@ with tempfile.TemporaryDirectory(prefix='rail-status-fixture-') as d:
     api.get_hermes_home=lambda:root
     collector=api._status_collector();collector.HERMES_HOME=str(root);collector.read_profile_meta=lambda _: {}
     collector.resolve_gateway_liveness=lambda profile_dir,**_: SimpleNamespace(running=profile_dir != root,source='standalone')
-    app=FastAPI();app.include_router(api.router,prefix='/api/plugins/profile-rail');client=TestClient(app)
+    app=FastAPI();app.include_router(api.router,prefix='/api/plugins/sessioncrew');client=TestClient(app)
     print(json.dumps({'ready':True}),flush=True)
     for line in sys.stdin:
         command=json.loads(line)
         if command=='quit':break
         if command=='status':
-            r=client.get('/api/plugins/profile-rail/status');out={'status':r.status_code,'body':r.json()}
+            r=client.get('/api/plugins/sessioncrew/status');out={'status':r.status_code,'body':r.json()}
         elif command=='foreground':
             with sqlite3.connect(root/'profiles/beta/state.db') as db: db.execute('INSERT INTO session_turn_leases VALUES (?,?)',('b',time.time()+60))
             out={'ok':True}

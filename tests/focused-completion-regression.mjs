@@ -21,13 +21,13 @@ async function until(fn){const end=Date.now()+3000;while(Date.now()<end){await R
 try{
  await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
  await until(()=>saved['completion-snapshot-v2']?.coverage)
- status='terminal';await React.act(async()=>client.refetchQueries({queryKey:['profile-rail','completion-snapshot']}))
+ status='terminal';await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']}))
  await until(()=>saved['completion-snapshot-v2']?.rows.length===1)
  assert.equal(Boolean(document.querySelector('[data-completion-badge]')),false,'already focused session completion must not remain unread')
  console.log('PASS focused completion acknowledged')
  await React.act(async()=>{focusOwner.set({connectionId:'other',profile:'alpha'})})
  extra=[{seq:2,admission_id:'second',session_id:'same',status:'terminal',outcome:'completed',generation:1}]
- await React.act(async()=>client.refetchQueries({queryKey:['profile-rail','completion-snapshot']}))
+ await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']}))
  await until(()=>saved['completion-snapshot-v2']?.rows.length===2)
  assert.equal(saved['completion-snapshot-v2'].rows.find(x=>JSON.parse(x.key)[4]==='second').read,false,'different connection must not acknowledge')
  await React.act(async()=>{focusOwner.set({connectionId:'conn',profile:'other'})})

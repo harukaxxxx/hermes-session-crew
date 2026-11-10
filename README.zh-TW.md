@@ -22,7 +22,7 @@ SessionCrew 是一個 Hermes Desktop 插件，讓你在一個側邊面板查看�
 
 SessionCrew 包含 Desktop 介面與自己的 Python backend，兩者都需要。backend 需要 [`plugin.yaml`](plugin.yaml) 列出的 `ruamel.yaml` 依賴，以及提供所需公開插件 API 的 Hermes 環境。受控測試的最低版本為 Hermes 0.23.0（`requires_hermes: >=0.23.0`）；受控相容與 owner 路由測試不代表已完成 live 路由驗收。Catalog 收錄仍須通過官方 CI 與維護者審查。
 
-請參照 [Hermes 插件安裝說明](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins)，檢視並安裝本倉庫的插件套件。安裝後需在 Desktop **Capabilities → Plugins** 啟用 SessionCrew 介面，並在需要提供資料的各 profile 分別啟用本插件的 backend；只啟用介面不足以提供 backend 資料。
+插件 ID 為 `sessioncrew`。請參照 [Hermes 插件安裝說明](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins)，檢視並安裝本倉庫的插件套件。安裝後需在 Desktop **Capabilities → Plugins** 啟用 SessionCrew 介面，並在需要提供資料的各 profile 分別啟用本插件的 backend；只啟用介面不足以提供 backend 資料。
 
 ## 基本使用
 

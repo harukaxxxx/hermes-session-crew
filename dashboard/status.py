@@ -1,4 +1,4 @@
-"""Profile Rail status collector, adapted from Office 3D (MIT); see OFFICE-LICENSE.
+"""SessionCrew status collector, adapted from Office 3D (MIT); see OFFICE-LICENSE.
 
 Scans gateway_state.json files across Hermes profiles and returns profile
 status entries for the Office 3D visualization.
@@ -41,12 +41,12 @@ router = APIRouter()
 try:
     from hermes_constants import get_default_hermes_root
 except ImportError as exc:
-    raise RuntimeError("Profile Rail requires Hermes with get_default_hermes_root; please upgrade Hermes") from exc
+    raise RuntimeError("SessionCrew requires Hermes with get_default_hermes_root; please upgrade Hermes") from exc
 
 try:
     from gateway.status import resolve_gateway_liveness, get_running_pid_cached
 except ImportError as exc:
-    raise RuntimeError("Profile Rail requires Hermes with resolve_gateway_liveness; please upgrade Hermes") from exc
+    raise RuntimeError("SessionCrew requires Hermes with resolve_gateway_liveness; please upgrade Hermes") from exc
 
 def read_profile_meta(profile_dir: Path) -> dict:
     """Read only the presentation fields needed by Rail, safely and afresh."""

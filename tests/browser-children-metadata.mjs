@@ -19,7 +19,7 @@ try{
  const colors=()=>hit.locator('xpath=ancestor::*[@data-avatar-stack]').locator('[data-child-outline]').evaluateAll(es=>es.map(e=>e.style.boxShadow))
  await update(children);await page.waitForFunction(()=>document.querySelectorAll('[data-child-outline]').length===4)
  let c=await colors();assert.match(c[0],/--ui-green/);assert.match(c[1],/--ui-stroke-secondary/);assert.match(c[2],/--ui-yellow/);assert.match(c[3],/--ui-green/)
- await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'idle',online:false});await window.officeClient.refetchQueries({queryKey:['profile-rail','status']})});await page.waitForFunction(()=>document.querySelector('.profile-rail-hit[aria-label^="Aster ·"]')?.dataset.stateName==='offline');assert.deepEqual(await colors(),c)
+ await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'idle',online:false});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});await page.waitForFunction(()=>document.querySelector('.profile-rail-hit[aria-label^="Aster ·"]')?.dataset.stateName==='offline');assert.deepEqual(await colors(),c)
  await update([children[2],children[1],children[0],children[3]]);await page.waitForFunction(()=>document.querySelectorAll('[data-child-outline]')[1]?.style.boxShadow.includes('--ui-green'))
  c=await colors();assert.match(c[1],/--ui-green/);assert.match(c[2],/--ui-yellow/);assert.match(c[3],/--ui-stroke-secondary/)
  await update([],false);await page.waitForFunction(()=>document.querySelectorAll('[data-child-outline]').length===3)

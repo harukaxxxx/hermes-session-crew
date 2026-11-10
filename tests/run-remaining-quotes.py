@@ -4,7 +4,7 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 source=root/'desktop/plugin.js'
-loader=Path.home()/'.hermes/desktop-plugins/profile-rail/plugin.js'
+loader=Path.home()/'.hermes/desktop-plugins/sessioncrew/plugin.js'
 suite=json.loads((root/'evidence/standalone-status-result.json').read_text())
 start=digest(source)
 assert suite['source_sha256']==start and suite['passed']==suite['total']==36

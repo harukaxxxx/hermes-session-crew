@@ -22,7 +22,7 @@ SessionCrew is a Hermes Desktop plugin that lets you view sessions from differen
 
 SessionCrew includes a Desktop interface and its own Python backend; both are required. The backend needs the dependency `ruamel.yaml`, listed in [`plugin.yaml`](plugin.yaml), and a Hermes environment that provides the required public plugin APIs. The controlled-tested minimum is Hermes 0.23.0 (`requires_hermes: >=0.23.0`); controlled compatibility and owner-routing tests do not establish live routing acceptance. Catalog admission remains subject to official CI and maintainer review.
 
-Follow the [Hermes plugin installation instructions](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins) to review and install the plugin package in this repository. After installation, enable the SessionCrew interface under Desktop **Capabilities → Plugins**, and enable the plugin's backend separately for each profile that needs to provide data. Enabling the interface alone does not provide backend data.
+The plugin ID is `sessioncrew`. Follow the [Hermes plugin installation instructions](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins) to review and install the plugin package in this repository. After installation, enable the SessionCrew interface under Desktop **Capabilities → Plugins**, and enable the plugin's backend separately for each profile that needs to provide data. Enabling the interface alone does not provide backend data.
 
 ## Basic usage
 

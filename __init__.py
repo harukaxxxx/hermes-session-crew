@@ -1,4 +1,4 @@
-"""Profile Rail's agent entry point; its API is mounted separately by Hermes."""
+"""SessionCrew's agent entry point; its API is mounted separately by Hermes."""
 
 
 def register(ctx):

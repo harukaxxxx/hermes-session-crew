@@ -15,7 +15,7 @@ for cmd in commands:
  except subprocess.TimeoutExpired as exc:
   result={'command':cmd,'exit':None,'timeout':True,'output':str(exc)}
  results.append(result);print(result['exit'],' '.join(cmd),flush=True)
-source=root/'desktop/plugin.js';loader=pathlib.Path.home()/'.hermes/desktop-plugins/profile-rail/plugin.js'
+source=root/'desktop/plugin.js';loader=pathlib.Path.home()/'.hermes/desktop-plugins/sessioncrew/plugin.js'
 digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 data={'scope':'controlled real React + checkout SDK Popover/Codicon browser fixture and mocked RPC; no live renderer, real project/session writes, or backend restart','source_sha256':digest(source),'loader_sha256':digest(loader),'loader_directory':str(loader.parent.resolve()),'known_failure':'focused-completion-regression.mjs: pre-existing focused session unread acknowledgement','native_project_dialog':'blocked: no public SDK dialog dispatcher and native create captures active project context, not selected Rail owner','project_rows':'single line, no branch; 32px, up to three rows at normal height','screenshots':[str(p.relative_to(root)) for p in sorted((root/'evidence').glob('project-list-*.png'))],'results':results}
 (root/'evidence/project-list-results.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')

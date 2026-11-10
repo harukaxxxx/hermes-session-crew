@@ -51,12 +51,12 @@ await mod.link(async name => {
 })
 await mod.evaluate()
 const { pluginRest } = mod.namespace
-await pluginRest('profile-rail', '/completion-snapshot', { method: 'GET', profile: 'default', connectionId: 'source-x' })
+await pluginRest('sessioncrew', '/completion-snapshot', { method: 'GET', profile: 'default', connectionId: 'source-x' })
 activeProfile = 'worker'
-await pluginRest('profile-rail', '/completion-snapshot', { method: 'GET', profile: 'default', connectionId: 'source-x' })
+await pluginRest('sessioncrew', '/completion-snapshot', { method: 'GET', profile: 'default', connectionId: 'source-x' })
 activeConnection = 'source-b'
 activeProfile = 'default'
-await pluginRest('profile-rail', '/completion-snapshot', { method: 'GET' })
+await pluginRest('sessioncrew', '/completion-snapshot', { method: 'GET' })
 assert.deepEqual(calls.map(x => [x.connectionId, x.profile]), [['source-a','default'],['source-a','worker'],['source-b','default']])
-assert.ok(calls.every(x => x.path === '/api/plugins/profile-rail/completion-snapshot'))
+assert.ok(calls.every(x => x.path === '/api/plugins/sessioncrew/completion-snapshot'))
 console.log('PASS actual pluginRest forwards active profile and connection; extra selector options ignored')
