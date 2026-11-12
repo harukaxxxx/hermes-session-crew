@@ -15,6 +15,7 @@ SessionCrew 是一個 Hermes Desktop 插件，讓你在一個側邊面板查看�
 - **以 profile 瀏覽對話**：點選頭像查看近期工作階段；可開啟既有對話，或在 Home 與相關專案中建立對話。
 - **查看與建立專案**：列出與所選 profile 的工作階段有關的專案，也能瀏覽 gateway 上的資料夾、建立資料夾並新增專案。建立後，非空白的專案點子會儲存為主要資料夾中的 `IDEA.md`，不覆寫既有檔案。
 - **觀察狀態**：顯示可取得的工作、等待、離線等狀態；資料不足時顯示未知。頭像旁的活動數量只代表觀察到的部分，不是所有執行工作的完整計數。
+- **工作階段列狀態**：可驗證的執行中 turn 與部分背景工作顯示仿原生流動細邊，等待輸入則顯示提示點。未知不等於閒置；backend 僅比對 ID 所屬資料庫，不讀取訊息。
 - **完成提醒**：觀察到新的已完成工作時顯示 ✋，可以開啟對話或使用「全部已讀」確認。這不是完整的未讀通知：中斷期間或來源不完整的完成可能漏掉。「全部已讀」確認目前連線中可驗證來源內所選 profile 已知的未讀完成，包括清單中尚未載入的工作階段；不會將其他 profile 標記為已讀。
 - **個人化顯示**：可依狀態編輯短句，並在設定中控制可見 profile、離線 profile 與 cron 對話。介面提供英文和繁體中文；不支援翻譯 API 的 Desktop 版本會回退英文。
 
@@ -44,6 +45,7 @@ SessionCrew 包含 Desktop 介面與自己的 Python backend，兩者都需要�
 ## 限制
 
 - 狀態與活動數量是有限範圍的觀察；未知或未觀察到活動不等於沒有工作。
+- 列狀態需要連線正常、同名且唯一的 owner route，以及符合 authority 形狀的 `session.active_list`：ID 等於 `session_key`，非空 `source` 與唯一歸屬的資料庫紀錄一致。受檢查 Hermes 版本的 authority 由持久 live entry 產生此形狀；跨 profile 的舊版列表沒有 `source`，即使 fallback ID 等於 key 也不足以證明。這是版本限定的形狀檢查，並非 producer 明確認證。嚴格 inventory 遇到不支援的 profile 項目或無法讀取的資料庫即不顯示；重複 ID、source 或 owner 不符、紀錄缺失、資料過期或請求失敗亦不顯示。不推測 lineage 別名。`subagent.roster` 背景工作僅在已識別且非等待的 active 列顯示；starting 本身不是執行中。這些觀察不涵蓋所有原生狀態或背景工作，尚未 live 驗證。
 - 對話清單不是跨來源的完整時間排序，且受後端回傳數量與權限限制。
 - 完成提醒不是可重播的事件日誌；來源截斷、無法讀取或連線中斷時可能漏報。⚠️ 提示來源出錯時可手動重試。
 - 資料夾操作及點子儲存會修改 gateway 檔案系統。點子上限為 65,536 UTF-8 bytes，絕不覆寫既有的 `IDEA.md`；相同內容重試可確認儲存，不同內容或結果不明時會保留文字供複製或只重試儲存點子。重試前請先檢查實際檔案；目錄忙碌時會回報錯誤而不等待。
@@ -57,4 +59,4 @@ Desktop 入口是 [`desktop/plugin.js`](desktop/plugin.js)，backend 是 [`dashb
 
 ## 授權
 
-SessionCrew 自有程式碼依 [MIT License](LICENSE) 授權。第三方素材與程式碼的來源和條款見 [Office 授權通知](dashboard/OFFICE-LICENSE)、[Hermes 資料夾選擇器授權通知](desktop/HERMES-REMOTE-PICKER-LICENSE)及 [Hermes spinner 授權通知](desktop/HERMES-SPINNER-LICENSE)。
+SessionCrew 自有程式碼依 [MIT License](LICENSE) 授權。第三方素材與程式碼的來源和條款見 [Office 授權通知](dashboard/OFFICE-LICENSE)、[Hermes 資料夾選擇器授權通知](desktop/HERMES-REMOTE-PICKER-LICENSE)、[Hermes spinner 授權通知](desktop/HERMES-SPINNER-LICENSE)及 [Hermes 列邊框授權通知](desktop/HERMES-ARC-LICENSE)。

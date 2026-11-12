@@ -81,6 +81,11 @@ class IdeaRequest(BaseModel):
     parts: list[StrictStr] = Field(default_factory=list, max_length=0)
 
 
+class RowOwnerRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    ids: list[StrictStr] = Field(max_length=200)
+
+
 def folder_root():
     """Resolve the process's fleet root without importing private host helpers."""
     suffix = os.environ.get('HERMES_DATA_DIR_SUFFIX', '')
@@ -358,6 +363,71 @@ def _profile_homes(root: Path):
                     yield entry.name, entry
             except OSError:
                 continue
+
+
+def _row_owner_homes(root: Path):
+    """Fail closed on every unsupported entry instead of skipping a possible profile."""
+    yield 'default', root
+    profiles = root / 'profiles'
+    if profiles.is_symlink():
+        raise OSError('symlinked profile inventory')
+    try:
+        entries = sorted(profiles.iterdir(), key=lambda p: p.name)
+    except FileNotFoundError:
+        return
+    for entry in entries:
+        # Finder metadata is not a profile; never exempt a directory or link.
+        if entry.name == '.DS_Store' and not entry.is_symlink() and entry.is_file():
+            continue
+        if (entry.name == 'default' or not _PROFILE.fullmatch(entry.name)
+                or entry.is_symlink() or not entry.is_dir()):
+            raise OSError('unsupported profile inventory entry')
+        yield entry.name, entry
+
+
+def _row_owner_details(root: Path, ids: list[str]):
+    """Only unique membership in the strict inventory proves ownership."""
+    if any(not sid or len(sid) > 256 for sid in ids):
+        return {}, {}
+    try:
+        homes = list(islice(_row_owner_homes(root), MAX_PROFILES + 1))
+        if len(homes) > MAX_PROFILES:
+            return {}, {}
+        found = defaultdict(list)
+        for name, home in homes:
+            db = (home / 'state.db').resolve(strict=True)
+            if not db.is_relative_to(root.resolve()):
+                return {}, {}
+            conn = sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=1)
+            try:
+                conn.execute('PRAGMA query_only=ON')
+                for sid in ids:
+                    row = conn.execute('SELECT source FROM sessions WHERE id=? LIMIT 1', (sid,)).fetchone()
+                    if row is not None:
+                        found[sid].append((name, row[0]))
+            finally:
+                conn.close()
+        unique = {sid: values[0] for sid, values in found.items() if len(values) == 1}
+        return ({sid: value[0] for sid, value in unique.items()},
+                {sid: value[1] for sid, value in unique.items() if isinstance(value[1], str) and value[1]})
+    except (OSError, sqlite3.Error):
+        return {}, {}
+
+
+def row_owners(root: Path, ids: list[str]):
+    return _row_owner_details(root, ids)[0]
+
+
+@router.post('/row-owners')
+def row_owners_endpoint(request: RowOwnerRequest):
+    root = get_default_hermes_root()
+    try:
+        if get_hermes_home().resolve() not in {path.resolve() for _, path in _profile_homes(root)}:
+            raise HTTPException(status_code=403, detail='SessionCrew runtime outside profile inventory')
+        owners, sources = _row_owner_details(root, request.ids)
+        return {'owners': owners, 'sources': sources}
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail='profile inventory unavailable') from exc
 
 
 def _read_profile(root: Path, name: str, home: Path, limit: int):

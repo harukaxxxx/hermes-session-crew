@@ -6,6 +6,7 @@ import { jsx, jsxs } from 'react/jsx-runtime'
 // Plugin-owned copy; zh-hant is the SDK normalized ID for zh-TW.
 const messages = {
   "en": {
+    sessionActivity: { waiting: 'Waiting for input' },
     project: {
       open: "▦ Open project",
       home: "Home",
@@ -189,6 +190,7 @@ const messages = {
     },
   },
   "zh-hant": {
+    sessionActivity: { waiting: '等待輸入' },
     project: {
       open: "▦ 開啟專案",
       home: "主頁",
@@ -457,6 +459,36 @@ function RecentScroll({style,children,revision}){
  const move=e=>{if(!drag.current||!list.current)return;const el=list.current,track=el.clientHeight-metrics.height;if(track>0)el.scrollTop=drag.current.top+(e.clientY-drag.current.y)*(el.scrollHeight-el.clientHeight)/track}
  return jsxs('div',{style:{...style,overflow:'hidden',position:'relative'},children:[jsx('div',{'data-recent-list':true,ref:list,onScroll:measure,style:{height:'100%',overflowY:'auto',scrollbarWidth:'none'},children}),metrics?jsx('div',{'data-recent-scroll-cue':true,'aria-hidden':true,style:{position:'absolute',right:1,top:0,bottom:0,width:6,borderRadius:3,background:'var(--ui-stroke-secondary, #888)',opacity:.8},children:jsx('div',{'data-recent-scroll-thumb':true,onPointerDown:e=>{drag.current={y:e.clientY,top:list.current.scrollTop};e.currentTarget.setPointerCapture(e.pointerId)},onPointerMove:move,onPointerUp:()=>{drag.current=null},onPointerCancel:()=>{drag.current=null},style:{position:'absolute',top:metrics.top,height:metrics.height,width:'100%',borderRadius:3,background:'var(--ui-text-secondary, #555)',cursor:'grab',touchAction:'none'}})}):null,jsx('style',{children:'[data-recent-list]::-webkit-scrollbar{display:none}'})]})
 }
+// Adapted from Hermes Desktop styles.css, commit 2bd378e; see HERMES-ARC-LICENSE.
+const rowArcCss=`@keyframes sessioncrew-arc{to{transform:translate(-50%,-50%)}}[data-session-arc]{position:absolute;inset:0;overflow:hidden;border-radius:7px;padding:.078125rem;pointer-events:none;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}[data-session-arc]::before{content:'';position:absolute;top:0;left:0;width:240%;height:240%;background:repeating-linear-gradient(160deg,transparent 0%,transparent 18.75%,var(--dt-foreground,var(--ui-text-primary)) 25%,color-mix(in srgb,var(--dt-foreground,var(--ui-text-primary)) 45%,transparent) 31.25%,transparent 43.75%,transparent 50%);will-change:transform;animation:sessioncrew-arc 2.23s linear infinite}@media(prefers-reduced-motion:reduce){[data-session-arc]::before{animation:none}}`
+function useRowActivity(owner,rows){
+ const rest=useContext(DialogRestContext),gatewayAtom=host.state.gateway
+ const instance=useRef({scope:null,version:0,id:Math.random()})
+ const [,forceScope]=useState(0)
+ const subscribe=useCallback((atom,fn)=>{let last=atom?.get?.();return atom?.subscribe?.(()=>{const next=atom.get();if(next!==last){last=next;instance.current.version++;forceScope(n=>n+1)}fn()})||(()=>{})},[])
+ const subGateway=useCallback(fn=>subscribe(gatewayAtom,fn),[subscribe,gatewayAtom])
+ const subConnection=useCallback(fn=>subscribe(host.state.connectionId,fn),[subscribe])
+ const subProfile=useCallback(fn=>subscribe(host.state.profile,fn),[subscribe])
+ const gateway=useSyncExternalStore(subGateway,()=>gatewayAtom?.get?.()??null,()=>null)
+ const connection=useSyncExternalStore(subConnection,()=>host.state.connectionId?.get?.()??null,()=>null)
+ const profile=useSyncExternalStore(subProfile,()=>host.state.profile?.get?.()??null,()=>null)
+ const epoch=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
+ const observedScope=JSON.stringify([gateway,connection,profile,epoch]);if(instance.current.scope!==observedScope){instance.current.scope=observedScope;instance.current.version++}
+ const version=instance.current.version,route=owner?.route, ids=(rows||[]).map(r=>r.id), key=JSON.stringify([instance.current.id,version,connection,profile,epoch,owner?.name,route,ids])
+ const supported=!!owner&&!!rest&&gateway==='open'&&connection===owner.connectionId&&typeof route==='object'&&route?.connectionId===connection&&route.profile===owner.name&&route.targetProfile===owner.name
+ const q=useQuery({queryKey:['sessioncrew','row-activity',key],enabled:supported,retry:false,refetchOnWindowFocus:true,refetchInterval:10000,queryFn:async()=>{
+  const started=Date.now(),sameScope=()=>instance.current.version===version&&host.state.gateway?.get?.()==='open'&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
+  const [active,roster,ownership]=await Promise.all([requestOwner(owner,'session.active_list',{profile:route.targetProfile}),requestOwner(owner,'subagent.roster',{profile:route.targetProfile}).catch(()=>null),rest('/row-owners',{method:'POST',body:{ids},timeoutMs:10000})])
+  if(!sameScope()||!Array.isArray(active?.sessions)||!ownership?.owners||typeof ownership.owners!=='object'||Date.now()-started>20000)throw Error('activity unavailable')
+  const states=Object.create(null);for(const r of active.sessions){if(!r||typeof r.session_key!=='string'||!ids.includes(r.session_key))continue;const id=r.session_key;if(states[id]||r.id!==id||typeof r.source!=='string'||!r.source||!Object.hasOwn(ownership.sources||{},id)||ownership.sources[id]!==r.source||!Object.hasOwn(ownership.owners,id)||ownership.owners[id]!==route.targetProfile||!['working','waiting','starting','idle'].includes(r.status))states[id]='conflict';else states[id]=r.status}
+  if(Array.isArray(roster?.sessions))for(const r of roster.sessions){const id=r?.session_id;if(!ids.includes(id)||ownership.owners[id]!==route.targetProfile||!['idle','starting','working'].includes(states[id]))continue;if((Number.isFinite(r.background)&&r.background>0)||(Number.isFinite(r.subagents)&&r.subagents>0))states[id]='background'}
+  return {states,started}
+ }})
+ const [,tick]=useState(0)
+ useEffect(()=>{if(!q.data)return;const timer=setTimeout(()=>tick(n=>n+1),Math.max(0,q.data.started+20000-Date.now()));return()=>clearTimeout(timer)},[q.data])
+ useEffect(()=>{if(!supported||typeof host.onEvent!=='function')return;return host.onEvent('gateway.ready',()=>{void q.refetch()})},[supported,key])
+ return supported&&!q.isError&&q.data&&Date.now()-q.data.started<20000?q.data.states:{}
+}
 function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:true}}){
  const tr=useTranslator()
  const [count,setCount]=useState(3),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
@@ -466,6 +498,7 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
  const recentIntent=useRef(null),intentKey=JSON.stringify([...key,generation])
  const result=useQuery({queryKey:['sessioncrew','recent',...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
  const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>settings.showCron||row.source!=='cron')}}:result
+ const activity=useRowActivity(owner,q.data?.rows)
  const projectIntent=useRef(0)
  const projects=useQuery({queryKey:['sessioncrew','projects',...key,projectGeneration],queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner,retry:false})
  // Match the loaded list and footer from the first render; allow shrinking in short viewports.
@@ -478,7 +511,7 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
 
  const ellipsis={whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}
  const projectLabel=id=>projects.isError?tr('project.loadFailed'):projects.isPending?tr('project.loading'):(typeof projects.data?.labels?.[id]==='object'?tr(projects.data.labels[id].fallback):projects.data?.labels?.[id])||tr('project.uncategorized')
- return jsxs('div',{style:recentLayout,children:[jsx(RecentScroll,{style:recentList,revision:Math.min(count,q.data.rows.length),children:q.data.rows.length?q.data.rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:52,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:'9px 8px',background:'transparent',cursor:'pointer'},children:[completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),style:{position:'absolute',top:0,left:0,fontSize:10,lineHeight:1,pointerEvents:'none'},children:'✋'}):null,jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:4},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,children:'›'})]},row.id)):tr('session.empty')}),error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[count<q.data.rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setCount(n=>n+10),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
+ return jsxs('div',{style:recentLayout,children:[jsx('style',{children:rowArcCss}),jsx(RecentScroll,{style:recentList,revision:Math.min(count,q.data.rows.length),children:q.data.rows.length?q.data.rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:52,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:'9px 8px',background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{color:'var(--ui-warning, var(--ui-text-primary))'},children:'●'}):null,completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),style:{position:'absolute',top:0,left:0,fontSize:10,lineHeight:1,pointerEvents:'none'},children:'✋'}):null,jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:4},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,children:'›'})]},row.id)):tr('session.empty')}),error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[count<q.data.rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setCount(n=>n+10),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
 }
 function FolderBreadcrumbs({root,path,busy,go}){
  const tr=useTranslator()
