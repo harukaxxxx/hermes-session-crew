@@ -47,7 +47,7 @@ try {
   const style=await ring.evaluate(e=>({shadow:getComputedStyle(e).boxShadow,filter:getComputedStyle(e).filter}))
   assert.equal(style.shadow,`${i===0?'rgb(31, 138, 101)':'rgb(87, 87, 97)'} 0px 0px 0px 1px inset`);assert.equal(style.filter,'none')
  }
- assert.equal(await stack.locator('[data-completion-badge]').textContent(),'✋')
+ assert.equal(await stack.locator('[data-completion-badge]').textContent(),'●')
  assert.equal(await stack.locator('[data-running-count]').textContent(),'x2')
  const bounds=await hit.evaluate(e=>{const r=e.getBoundingClientRect(),a=e.querySelector('[data-avatar]').getBoundingClientRect();return [r.width,r.height,a.width,a.height]});assert.deepEqual(bounds,[34,34,34,34])
  await hit.hover();await hit.focus();await hit.click();await page.locator('[data-panel-avatar]').waitFor();assert.equal(await hit.getAttribute('data-selected'),'true')

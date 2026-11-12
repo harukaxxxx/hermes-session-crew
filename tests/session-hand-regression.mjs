@@ -6,12 +6,13 @@ import assert from 'node:assert/strict'
 const home=(process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT||(()=>{throw Error('Set HERMES_CHECKOUT or HERMES_AGENT_ROOT')})())
 const require=createRequire(home+'/package.json'),React=require('react'),{createRoot}=require('react-dom/client'),{JSDOM}=require('jsdom'),jsx=require('react/jsx-runtime'),{useQuery,QueryClient,QueryClientProvider}=require('@tanstack/react-query')
 const dom=new JSDOM('<div id="root"></div>',{url:'https://fixture.invalid'});globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true
-const atom=v=>({get:()=>v}),routes=['alpha','beta'].map(profile=>({connectionId:'conn',mode:'remote',profile,targetProfile:profile}))
+const atom=v=>{const listeners=new Set();return {get:()=>v,subscribe:f=>(listeners.add(f),()=>listeners.delete(f)),set:x=>{v=x;for(const f of listeners)f()}}},routes=['alpha','beta'].map(profile=>({connectionId:'conn',mode:'remote',profile,targetProfile:profile}))
+const gateway=atom('open'),active={alpha:[],beta:[]},owners={one:'alpha',two:'alpha',read:'alpha',hidden:'alpha'}
 let failOpen=false,dropWrites=false,saved={},holdWrite=null,writeEntered=null
-const host={state:{connectionId:atom('conn'),profile:atom('default')},profiles:{list:async()=>({profiles:routes.map(r=>({name:r.profile}))})},profileRoutes:async()=>routes,openSession:async()=>{if(failOpen)throw Error('open failed')},requestProfile:async(_r,m)=>m==='session.list'?{sessions:[{id:'one',title:'One'},{id:'two',title:'Two'},{id:'read',title:'Read'}]}:{projects:[]}}
+const host={state:{gateway,connectionId:atom('conn'),profile:atom('default')},profiles:{list:async()=>({profiles:routes.map(r=>({name:r.profile}))})},profileRoutes:async()=>routes,openSession:async()=>{if(failOpen)throw Error('open failed')},requestProfile:async(r,m)=>m==='session.active_list'?{sessions:structuredClone(active[r.profile])}:m==='subagent.roster'?{sessions:[]}:m==='session.list'?{sessions:[{id:'one',title:'One'},{id:'two',title:'Two'},{id:'read',title:'Read'}]}:{projects:[]}}
 const storage={get:async k=>saved[k],set:async(k,v)=>{if(holdWrite){const wait=holdWrite;holdWrite=null;writeEntered();await wait}if(!dropWrites)saved[k]=structuredClone(v)}}
 const snap={version:2,source_root:'default',source_id:'source',server_epoch:'epoch',profiles:routes.map(r=>({profile:r.profile,status:'ok',database_id:'db-'+r.profile,high_water:0,truncated:false,rows:[]}))}
-const rest=async p=>p==='/status'?[]:structuredClone(snap)
+const rest=async(p,opts)=>p==='/status'?[]:p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,owners[id]])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,'cli']))}:structuredClone(snap)
 const sdk={host,useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
 let contribution;mod.namespace.default.register({storage,rest,register:x=>contribution=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
@@ -25,7 +26,23 @@ try{
  await React.act(async()=>document.querySelectorAll('.profile-rail-hit')[1].click());await until(()=>rows().length===3)
  assert.ok(rows().every(r=>!mark(r)),'same session ids in another owner have no marker')
  await React.act(async()=>document.querySelectorAll('.profile-rail-hit')[0].click());await until(()=>rows().length===3)
- assert.equal(mark(rows()[0])?.textContent,'✋','pending session has hand');assert.equal(mark(rows()[1])?.textContent,'✋');assert.equal(mark(rows()[2]),null,'read session has no marker')
+ assert.equal(mark(rows()[0])?.textContent,'●','unread completion has dot');assert.equal(mark(rows()[1])?.textContent,'●');assert.equal(mark(rows()[2]),null,'read session has no marker')
+ const record=(id,status)=>({id,session_key:id,source:'cli',status})
+ active.alpha=[record('one','working'),record('hidden','waiting')]
+ await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']});await client.refetchQueries({queryKey:['sessioncrew','row-activity']})})
+ await until(()=>document.querySelector('[data-avatar-waiting]')&&rows()[0].querySelector('[data-session-arc]'))
+ assert.equal(mark(rows()[0]).textContent,'●','working row retains unread while an unloaded session waits')
+ owners.hidden='beta';await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}));await until(()=>!document.querySelector('[data-avatar-waiting]'))
+ assert.ok(document.querySelector('[data-completion-badge]'),'owner mismatch fails closed without affecting ledger');owners.hidden='alpha'
+ active.alpha=[record('one','waiting'),record('hidden','working')]
+ await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']});await client.refetchQueries({queryKey:['sessioncrew','row-activity']})})
+ await until(()=>document.querySelector('[data-avatar-waiting]')&&rows()[0].querySelector('[data-session-waiting]'))
+ assert.equal(document.querySelector('[data-avatar-waiting]').textContent,'✋');assert.equal(document.querySelectorAll('[data-completion-badge]').length,0,'waiting supersedes unread on same avatar')
+ assert.equal(rows()[0].querySelector('[data-session-waiting]').textContent,'✋');assert.equal(mark(rows()[0]),null,'waiting supersedes same session unread');assert.equal(mark(rows()[1]).textContent,'●','other session unread survives')
+ assert.ok(document.querySelector('.profile-rail-hit').getAttribute('aria-label').includes('Waiting for input'))
+ assert.ok(saved['completion-snapshot-v2'].rows.every(x=>!x.read),'presentation leaves ledger intact')
+ await React.act(async()=>gateway.set('closed'));await until(()=>!document.querySelector('[data-avatar-waiting]'));assert.ok(document.querySelector('[data-completion-badge]'),'disconnect fails closed without clearing unread')
+ active.alpha=[];await React.act(async()=>gateway.set('open'));await until(()=>mark(rows()[0]));
  assert.equal(rows()[0].style.position,'relative');assert.equal(mark(rows()[0]).style.position,'absolute');assert.equal(mark(rows()[0]).style.top,'0px');assert.equal(mark(rows()[0]).style.left,'0px')
  const beta=snap.profiles[1];beta.high_water=1;beta.rows=[{seq:1,admission_id:'beta-turn',session_id:'not-loaded',status:'terminal',outcome:'completed',generation:1}]
  p.high_water=3;p.rows.push({seq:3,admission_id:'alpha-hidden',session_id:'not-loaded',status:'terminal',outcome:'completed',generation:1})
