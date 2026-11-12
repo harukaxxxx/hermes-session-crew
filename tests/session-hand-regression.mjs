@@ -43,7 +43,7 @@ try{
  assert.ok(saved['completion-snapshot-v2'].rows.every(x=>!x.read),'presentation leaves ledger intact')
  await React.act(async()=>gateway.set('closed'));await until(()=>!document.querySelector('[data-avatar-waiting]'));assert.ok(document.querySelector('[data-completion-badge]'),'disconnect fails closed without clearing unread')
  active.alpha=[];await React.act(async()=>gateway.set('open'));await until(()=>mark(rows()[0]));
- assert.equal(rows()[0].style.position,'relative');assert.equal(mark(rows()[0]).style.position,'absolute');assert.equal(mark(rows()[0]).style.top,'0px');assert.equal(mark(rows()[0]).style.left,'0px')
+ assert.equal(rows()[0].style.position,'relative');assert.equal(mark(rows()[0]).style.width,'10px');assert.equal(mark(rows()[0]).style.height,'10px');assert.equal(mark(rows()[0]).parentElement.getAttribute('data-session-indicator'),'true');assert.ok(rows().every(r=>r.querySelector('[data-session-indicator]')))
  const beta=snap.profiles[1];beta.high_water=1;beta.rows=[{seq:1,admission_id:'beta-turn',session_id:'not-loaded',status:'terminal',outcome:'completed',generation:1}]
  p.high_water=3;p.rows.push({seq:3,admission_id:'alpha-hidden',session_id:'not-loaded',status:'terminal',outcome:'completed',generation:1})
  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']}));await until(()=>saved['completion-snapshot-v2'].rows.length===4)

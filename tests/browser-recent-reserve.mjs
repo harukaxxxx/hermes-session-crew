@@ -19,7 +19,8 @@ try{
  await page.addScriptTag({path:out})
  await page.evaluate(()=>{window.fixtureRequest=(_route,method)=>method==='session.list'?new Promise((resolve,reject)=>{window.resolveSessions=resolve;window.rejectSessions=reject}):Promise.resolve({projects:[]});window.mountRecent('route')})
  const list=page.locator('[data-recent-list]'),bubble=page.locator('[data-bubble]')
- const geometry=()=>page.evaluate(()=>({list:document.querySelector('[data-recent-list]').getBoundingClientRect().height,bubble:document.querySelector('[data-bubble]').getBoundingClientRect().height,footer:document.querySelector('[data-outer-footer]').getBoundingClientRect().top}))
+ // The loaded scroll viewport includes a 2px marker bleed above the 156px content reserve.
+ const geometry=()=>page.evaluate(()=>{const el=document.querySelector('[data-recent-list]');return {list:el.getBoundingClientRect().height-parseFloat(getComputedStyle(el).paddingTop),bubble:document.querySelector('[data-bubble]').getBoundingClientRect().height,footer:document.querySelector('[data-outer-footer]').getBoundingClientRect().top}})
  await list.waitFor();const route=await geometry();assert.equal(route.list,156)
  await page.evaluate(()=>window.renderRecent('route-error'));await page.getByText('route error').waitFor();assert.deepEqual(await geometry(),route)
  for(const n of [0,1,2,3,24,200]){
@@ -29,6 +30,7 @@ try{
   await page.evaluate(n=>{const resolve=window.resolveSessions;window.resolveSessions=null;resolve({sessions:Array.from({length:n},(_,i)=>({id:'id'+i,title:'Session '+i}))})},n)
   await page.waitForFunction(n=>document.querySelectorAll('[data-recent-row]').length===Math.min(3,n)&&!!document.querySelector('[data-recent-footer]'),n)
   assert.deepEqual(await geometry(),route,`loaded ${n}`)
+  assert.equal(await list.evaluate(el=>el.getBoundingClientRect().height),158,'loaded viewport includes only the 2px marker bleed')
   if(n===200)assert.equal(await bubble.getByText(/Showing at most 200 fetched items|最多顯示已取得的 200 筆/).count(),0,'no visible 200-item limit notice')
   assert.equal(await page.locator('[data-recent-scroll-cue]').count(),0,'no scrollbar cue when rows fit')
   if(n===24||n===200){const width=await page.locator('[data-recent-row]').first().evaluate(el=>el.getBoundingClientRect().width);for(const count of [13,23]){await page.locator('[data-recent-more]').click();assert.equal(await page.locator('[data-recent-row]').count(),count);assert.deepEqual(await geometry(),route,'load more preserves list and footer geometry');assert.ok(await list.evaluate(el=>el.scrollHeight>el.clientHeight));await page.locator('[data-recent-scroll-cue]').waitFor({state:'visible'});assert.equal(await page.locator('[data-recent-row]').first().evaluate(el=>el.getBoundingClientRect().width),width,'cue does not shift row width');const top=await page.locator('[data-recent-scroll-thumb]').evaluate(el=>el.getBoundingClientRect().top);await list.evaluate(el=>{el.scrollTop=el.scrollHeight});await page.waitForFunction(()=>document.querySelector('[data-recent-list]').scrollTop>0);await page.waitForFunction(t=>document.querySelector('[data-recent-scroll-thumb]').getBoundingClientRect().top>t,top);assert.ok(await page.locator('[data-completion-read-all]').isVisible())}}
