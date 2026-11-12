@@ -26,19 +26,19 @@ try{
  await React.act(async()=>document.querySelectorAll('.profile-rail-hit')[1].click());await until(()=>rows().length===3)
  assert.ok(rows().every(r=>!mark(r)),'same session ids in another owner have no marker')
  await React.act(async()=>document.querySelectorAll('.profile-rail-hit')[0].click());await until(()=>rows().length===3)
- assert.equal(mark(rows()[0])?.textContent,'●','unread completion has dot');assert.equal(mark(rows()[1])?.textContent,'●');assert.equal(mark(rows()[2]),null,'read session has no marker')
+ assert.equal(mark(rows()[0])?.textContent,'','unread completion has dot');assert.equal(mark(rows()[1])?.textContent,'');assert.equal(mark(rows()[2]),null,'read session has no marker')
  const record=(id,status)=>({id,session_key:id,source:'cli',status})
  active.alpha=[record('one','working'),record('hidden','waiting')]
  await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']});await client.refetchQueries({queryKey:['sessioncrew','row-activity']})})
  await until(()=>document.querySelector('[data-avatar-waiting]')&&rows()[0].querySelector('[data-session-arc]'))
- assert.equal(mark(rows()[0]).textContent,'●','working row retains unread while an unloaded session waits')
+ assert.equal(mark(rows()[0]).textContent,'','working row retains unread while an unloaded session waits')
  owners.hidden='beta';await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}));await until(()=>!document.querySelector('[data-avatar-waiting]'))
  assert.ok(document.querySelector('[data-completion-badge]'),'owner mismatch fails closed without affecting ledger');owners.hidden='alpha'
  active.alpha=[record('one','waiting'),record('hidden','working')]
  await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']});await client.refetchQueries({queryKey:['sessioncrew','row-activity']})})
  await until(()=>document.querySelector('[data-avatar-waiting]')&&rows()[0].querySelector('[data-session-waiting]'))
  assert.equal(document.querySelector('[data-avatar-waiting]').textContent,'✋');assert.equal(document.querySelectorAll('[data-completion-badge]').length,0,'waiting supersedes unread on same avatar')
- assert.equal(rows()[0].querySelector('[data-session-waiting]').textContent,'✋');assert.equal(mark(rows()[0]),null,'waiting supersedes same session unread');assert.equal(mark(rows()[1]).textContent,'●','other session unread survives')
+ assert.equal(rows()[0].querySelector('[data-session-waiting]').textContent,'✋');assert.equal(mark(rows()[0]),null,'waiting supersedes same session unread');assert.equal(mark(rows()[1]).textContent,'','other session unread survives')
  assert.ok(document.querySelector('.profile-rail-hit').getAttribute('aria-label').includes('Waiting for input'))
  assert.ok(saved['completion-snapshot-v2'].rows.every(x=>!x.read),'presentation leaves ledger intact')
  await React.act(async()=>gateway.set('closed'));await until(()=>!document.querySelector('[data-avatar-waiting]'));assert.ok(document.querySelector('[data-completion-badge]'),'disconnect fails closed without clearing unread')
