@@ -10,7 +10,13 @@
 - 使用公開插件 hook、註冊 API、Desktop SDK slot／route 與插件自有 backend。前端合法匯入 `@hermes/plugin-sdk`、`react`、`react/jsx-runtime`；確認實際執行版本支援所用公開 export。
 - 禁止 core／SDK patch、monkeypatch、替換或包裝核心模組與函式、修改私有表、runtime override，以及內部或未公開 imports；不以私有 bridge 或其他繞道取代缺失的公開契約。
 - 禁止查詢、監看、點擊、隱藏或改寫**宿主** DOM／markup，或注入針對宿主的 CSS、script；禁止 `eval`、`new Function`、載入遠端或 blob 腳本及修改瀏覽器／renderer 原型。插件可正常操作**自己擁有的 DOM**，但不得藉此觸及宿主內部 UI。使用公開 SDK 的 Popover 等元件不等於自行操作宿主 DOM。
-- 尊重權限與審批；不直接讀憑證檔、其他工具登入資料或繞過 Hermes 核准機制。安裝、啟用、重啟服務、發布或開 issue 均須另獲授權；既有部署紀錄不構成本次授權。
+- 尊重權限與審批；不直接讀憑證檔、其他工具登入資料或繞過 Hermes 核准機制。使用者已常設授權此專案一般插件檔案更新與公開 rescan／reload；安裝、啟用、重啟服務、發布或開 issue 均須另獲明確授權，既有部署紀錄不構成此類授權。
+
+## 此專案的開發流程
+
+- 每次開發或修復先建立新分支，再於既有、連結正式插件的 checkout 直接套用變更；先確認範圍、備份將覆寫的檔案並保留原路徑與雜湊。此常設授權僅限 SessionCrew 專案，不擴及其他插件或 profile 設定。
+- 完成相應驗證後建立本機 commit，將功能分支 fast-forward 合併至 main 並回到 main；保留分支。失敗時停留在工作分支、保全證據，不宣稱完成。
+- 不自動推送遠端、安裝依賴、啟用插件或執行會中斷服務的重啟；這些操作須各自另獲授權。
 
 ## 交付與驗證
 
