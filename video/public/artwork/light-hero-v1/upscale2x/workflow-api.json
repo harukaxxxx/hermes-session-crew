@@ -1,0 +1,48 @@
+{
+  "76": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "hero-light.png"
+    }
+  },
+  "79": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "4x-ultra-mix_balanced.pth"
+    }
+  },
+  "78": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": [
+        "79",
+        0
+      ],
+      "image": [
+        "76",
+        0
+      ]
+    }
+  },
+  "88": {
+    "class_type": "ImageScaleBy",
+    "inputs": {
+      "image": [
+        "78",
+        0
+      ],
+      "upscale_method": "area",
+      "scale_by": 0.5
+    }
+  },
+  "95": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "88",
+        0
+      ],
+      "filename_prefix": "sessioncrew-video-light-hero-upscale2x"
+    }
+  }
+}

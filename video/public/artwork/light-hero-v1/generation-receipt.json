@@ -1,0 +1,23 @@
+{
+  "request_id": "sessioncrew-video-light-hero-v1",
+  "submitted_image_requests": 1,
+  "tool": "image_generate",
+  "result": {
+    "success": true,
+    "image": "/Users/haruka/.hermes/profiles/makino-natsuki/cache/generated/images/openai_gpt-image-2.6-sunburst_20261111_011749_d2983ad9.png",
+    "model": "gpt-image-2.6-sunburst",
+    "aspect_ratio": "landscape",
+    "modality": "image",
+    "provider": "openai",
+    "size": "1536x1024",
+    "quality": null
+  },
+  "source_image_url": "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/assets/sessioncrew-hero.png",
+  "file_delivery_block": {
+    "tool": "terminal",
+    "output": "",
+    "exit_code": -1,
+    "error": "BLOCKED: Command flagged as dangerous (script execution via heredoc) but single-query mode (-q) runs without a user present to approve it. Find an alternative approach that avoids this command. To allow dangerous commands in single-query mode, set approvals.single_query_mode: approve in config.yaml.",
+    "status": "blocked"
+  }
+}

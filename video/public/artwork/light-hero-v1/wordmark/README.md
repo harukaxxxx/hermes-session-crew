@@ -1,0 +1,3 @@
+# Video wordmark
+
+`sessioncrew-original-ink.png` is derived solely from the existing project artwork `assets/sessioncrew-hero.png` (1536×1024, read-only). The original light lettering at source x≈22–616, y≈698–876 is isolated; it is not a replacement font. The extraction crops the wordmark region, thresholds mean RGB >100 for connected components, retains only the letter and dot components larger than 400 pixels, then includes their immediate neighboring antialias pixels with a 55–155 luminance alpha ramp. The surviving letter pixels are recolored #183c31 on transparency. This excludes unrelated machine/background components and preserves the letter counters. `inspection.png` shows the result at native resolution on warm paper. No source artwork is modified.

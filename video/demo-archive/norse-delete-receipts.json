@@ -1,0 +1,5 @@
+[
+  {"profile":"default","status":200,"body":{"ok":true,"session_id":"sessioncrew-demo-default","revision":2,"execution_generation":0,"operation":"delete","deleted_ids":["sessioncrew-demo-default"]},"readback_status":404,"readback":{"detail":"Session not found"}},
+  {"profile":"aria","status":200,"body":{"ok":true,"session_id":"sessioncrew-demo-aria","revision":2,"execution_generation":0,"operation":"delete","deleted_ids":["sessioncrew-demo-aria"]},"readback_status":404,"readback":{"detail":"Session not found"}},
+  {"profile":"nova","status":200,"body":{"ok":true,"session_id":"sessioncrew-demo-nova","revision":2,"execution_generation":0,"operation":"delete","deleted_ids":["sessioncrew-demo-nova"]},"readback_status":404,"readback":{"detail":"Session not found"}}
+]

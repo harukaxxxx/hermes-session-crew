@@ -1,0 +1,53 @@
+{
+  "classification": "scripted synthetic dialogue; not model execution",
+  "id": "sessioncrew-scripted-story-odin-v2",
+  "expected": {
+    "profile": "default",
+    "name": "odin",
+    "title": "Ragnarök — Awaken the Gods",
+    "messages": [
+      {
+        "role": "user",
+        "content": "The gods are still waiting for your command. Any longer, and Ragnarök will be nothing but twilight."
+      },
+      {
+        "role": "assistant",
+        "content": "Then awaken the gods. And I'll form the head!"
+      }
+    ]
+  },
+  "before": {
+    "status": 200,
+    "body": "{\"session_id\":\"sessioncrew-scripted-story-odin-v2\",\"exists\":false,\"runtime_revision\":0,\"runtime_generation\":null}"
+  },
+  "payload": {
+    "profile": "default",
+    "request_id": "import-sessioncrew-scripted-story-odin-v2",
+    "expected_revision": 0,
+    "sessions": [
+      {
+        "id": "sessioncrew-scripted-story-odin-v2",
+        "title": "Ragnarök — Awaken the Gods",
+        "source": "cli",
+        "messages": [
+          {
+            "role": "user",
+            "content": "The gods are still waiting for your command. Any longer, and Ragnarök will be nothing but twilight."
+          },
+          {
+            "role": "assistant",
+            "content": "Then awaken the gods. And I'll form the head!"
+          }
+        ]
+      }
+    ]
+  },
+  "imported": {
+    "status": 503,
+    "body": "{\"detail\":\"storage_unavailable\"}"
+  },
+  "after": {
+    "status": 200,
+    "body": "{\"session_id\":\"sessioncrew-scripted-story-odin-v2\",\"exists\":false,\"runtime_revision\":0,\"runtime_generation\":null}"
+  }
+}

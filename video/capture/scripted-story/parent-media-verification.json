@@ -1,0 +1,70 @@
+{
+  "expected": 3,
+  "collected": 3,
+  "all_decoded": true,
+  "takes": [
+    {
+      "file": "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/footage/scripted-story-take01.mp4",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "r_frame_rate": "30/1",
+            "nb_read_frames": "271"
+          }
+        ],
+        "format": {
+          "duration": "9.033333"
+        }
+      },
+      "full_decode_exit": 0,
+      "accepted_for_edit": true,
+      "scope": "Technical integrity only; scripted demo, not execution evidence or final visual acceptance"
+    },
+    {
+      "file": "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/footage/scripted-loki-take01.mp4",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "r_frame_rate": "30/1",
+            "nb_read_frames": "271"
+          }
+        ],
+        "format": {
+          "duration": "9.033333"
+        }
+      },
+      "full_decode_exit": 0,
+      "accepted_for_edit": true,
+      "scope": "Technical integrity only; scripted demo, not execution evidence or final visual acceptance"
+    },
+    {
+      "file": "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/footage/scripted-odin-take01.mp4",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1920,
+            "height": 1080,
+            "r_frame_rate": "30/1",
+            "nb_read_frames": "271"
+          }
+        ],
+        "format": {
+          "duration": "9.033333"
+        }
+      },
+      "full_decode_exit": 0,
+      "accepted_for_edit": true,
+      "scope": "Technical integrity only; scripted demo, not execution evidence or final visual acceptance"
+    }
+  ]
+}

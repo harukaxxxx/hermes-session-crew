@@ -1,0 +1,3 @@
+import {createRequire} from 'node:module';import {fileURLToPath} from 'node:url';import path from 'node:path';
+const here=path.dirname(fileURLToPath(import.meta.url));const root=process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT||path.join(process.env.HOME,'.hermes/hermes-agent');const {build}=createRequire(path.join(root,'package.json'))('esbuild');
+await build({entryPoints:[path.join(here,'entry.jsx')],outfile:path.join(here,'bundle.js'),bundle:true,format:'iife',jsx:'automatic',loader:{'.png':'dataurl'},nodePaths:[path.join(root,'node_modules')],alias:{'@hermes/plugin-sdk':path.join(here,'sdk.js'),'react':path.join(root,'node_modules/react'),'react-dom':path.join(root,'node_modules/react-dom')},define:{'process.env.NODE_ENV':'"production"'},logLevel:'info'});

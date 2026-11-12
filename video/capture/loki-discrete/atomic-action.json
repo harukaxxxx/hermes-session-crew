@@ -1,0 +1,5 @@
+{
+  "before": "http://192.168.1.100:4178/#/local-b707c99849fdb181b89b7806aa5d55a21797b3fcb0f3c8709d8fde3645043074",
+  "after": "http://192.168.1.100:4178/#/local-b707c99849fdb181b89b7806aa5d55a21797b3fcb0f3c8709d8fde3645043074",
+  "classification": "Native input and three discrete native snapshots in one viewport invocation; not continuous screencast"
+}

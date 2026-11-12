@@ -1,0 +1,6 @@
+{
+  "beforeURL": "http://192.168.1.100:4178/#/local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+  "afterURL": "http://192.168.1.100:4178/#/local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+  "markers": [],
+  "error": "native capture dimension/timestamp mismatch"
+}

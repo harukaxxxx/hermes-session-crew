@@ -1,0 +1,25 @@
+{
+  "frames": [
+    {
+      "filename": "000000.jpg",
+      "timestamp": 1794336145.354327,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000001.jpg",
+      "timestamp": 1794336150.17296,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000002.jpg",
+      "timestamp": 1794336150.184385,
+      "height": 1080,
+      "width": 1920
+    }
+  ],
+  "wallSeconds": 13.502822125000064,
+  "firstTime": 1794336145.354327,
+  "finalHold": 8.672764027160708
+}

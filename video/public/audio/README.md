@@ -1,0 +1,3 @@
+# Ending impact v4
+
+`ending-impact-v4.wav` is original procedural synthesis made for this edit, with no external recording, sample, music, or service. `synthesize-impact.py` deterministically combines a descending low sine, seeded filtered-noise thud, damped inharmonic metallic partials and a warm harmonic tail, with attack and end fades. Regenerate with `env -u PYTHONPATH -u PYTHONHOME python3 public/audio/synthesize-impact.py` from the video directory. Mono PCM 48 kHz, 16-bit, 2 s; first 100 ms silent, sample peak 0.4. It starts at 2.3 s in the ending, placing its transient at approximately 2.4 s. The exported AAC true peak measured -11.0 dBFS with FFmpeg ebur128; listening review remains outstanding.

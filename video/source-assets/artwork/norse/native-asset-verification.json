@@ -1,0 +1,144 @@
+{
+  "expected_count": 15,
+  "received_count": 0,
+  "attempted_count": 15,
+  "success_count": 0,
+  "note": "Browser IPC broke before RPC readback; the pre-existing avatar files were inspected separately and none matched the monochrome source PNGs. No verified writes; stopped per new instruction.",
+  "results": [
+    {
+      "id": "odin",
+      "profile": "default",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/odin.png",
+      "source_sha256": "ac89da8f2101f30eedfbd6a20990d4d83da80d2389a5f88b3e50b555d3110ea3",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "thor",
+      "profile": "thor",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/thor.png",
+      "source_sha256": "58380543ec084e35c33120dccbcdfe477deace4ed35709369a9cc33da141ce49",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "loki",
+      "profile": "loki",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/loki.png",
+      "source_sha256": "e6bfe730a7586ba95f837372663280ecd65b71716559b6f9139fb88f6b584fa0",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "freyja",
+      "profile": "freyja",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/freyja.png",
+      "source_sha256": "0b10de5a484fc266a1971fdf57367b19ace66d7e8215bae465467d7a07e8fba8",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "freyr",
+      "profile": "freyr",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/freyr.png",
+      "source_sha256": "b038ed88b74fadb6ceaffebc534025be0e6048a8cdead6c08dfaeab56de080a8",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "frigg",
+      "profile": "frigg",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/frigg.png",
+      "source_sha256": "0fa9d6e7ef0f8781ca677018e4b0a65f8e58594b7fba528ae8283e5d0f0ad7ae",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "tyr",
+      "profile": "tyr",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/tyr.png",
+      "source_sha256": "d8c2d59a9ecabbf7ab819912c331fb085b175cbaac397d0137f1d2892ff1967e",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "heimdall",
+      "profile": "heimdall",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/heimdall.png",
+      "source_sha256": "85431f7bddcfad560054f4a65d764a13516aff238af9c73b14a04608956f225f",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "baldr",
+      "profile": "baldr",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/baldr.png",
+      "source_sha256": "d95f975750657256aaeb1c802d03056a1667991d6a7f143fc7aeeae7da918d10",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "njord",
+      "profile": "njord",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/njord.png",
+      "source_sha256": "73c8858265de5950ddeb2c08b364aa37c882785f19de32fc1ce4ffbe65929e10",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "skadi",
+      "profile": "skadi",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/skadi.png",
+      "source_sha256": "1d903bb86561a648407660d2c27a68ab38ff8c278376058641d067163e4a2090",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "idunn",
+      "profile": "idunn",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/idunn.png",
+      "source_sha256": "060c2fe76b7757fc7f40b8ee53d5ee6a9556302de5461417b8b91496f8de6285",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "bragi",
+      "profile": "bragi",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/bragi.png",
+      "source_sha256": "5878b9f83ffee3a3eaf7a51c8c9ce0072839fa90a3806f531aa461e8b166f86d",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "sif",
+      "profile": "sif",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/sif.png",
+      "source_sha256": "293d35774e14431e5799547867f230d3cdd30e1e9dcfd53f1f8eae72c51810d2",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "id": "hel",
+      "profile": "hel",
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/hel.png",
+      "source_sha256": "125200bf42bc38b6f8afbc0de146a1f425ce9bbad16ed47abf26ba7b8749011e",
+      "served_sha256": null,
+      "success": false,
+      "error": "[Errno 32] Broken pipe"
+    }
+  ]
+}

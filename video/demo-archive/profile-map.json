@@ -1,0 +1,107 @@
+[
+  {
+    "id": "odin",
+    "name": "Odin",
+    "profile": "default",
+    "title": "Synthetic demo: Ravens and Wisdom",
+    "motif": "wisdom, one eye, ravens"
+  },
+  {
+    "id": "thor",
+    "name": "Thor",
+    "profile": "thor",
+    "title": "Synthetic demo: The Thunder Hammer",
+    "motif": "thunder, hammer"
+  },
+  {
+    "id": "loki",
+    "name": "Loki",
+    "profile": "loki",
+    "title": "Synthetic demo: A Shapeshifter’s Trick",
+    "motif": "cunning, shapeshifting"
+  },
+  {
+    "id": "freyja",
+    "name": "Freyja",
+    "profile": "freyja",
+    "title": "Synthetic demo: The Falcon Cloak",
+    "motif": "love, seidr, falcon cloak"
+  },
+  {
+    "id": "freyr",
+    "name": "Freyr",
+    "profile": "freyr",
+    "title": "Synthetic demo: The Golden Boar",
+    "motif": "fertility, golden boar"
+  },
+  {
+    "id": "frigg",
+    "name": "Frigg",
+    "profile": "frigg",
+    "title": "Synthetic demo: Threads of Foresight",
+    "motif": "foresight, weaving"
+  },
+  {
+    "id": "tyr",
+    "name": "Tyr",
+    "profile": "tyr",
+    "title": "Synthetic demo: A Courageous Oath",
+    "motif": "courage, one hand"
+  },
+  {
+    "id": "heimdall",
+    "name": "Heimdall",
+    "profile": "heimdall",
+    "title": "Synthetic demo: The Watchful Horn",
+    "motif": "watchfulness, Gjallarhorn"
+  },
+  {
+    "id": "baldr",
+    "name": "Baldr",
+    "profile": "baldr",
+    "title": "Synthetic demo: Light and Mistletoe",
+    "motif": "radiance, mistletoe"
+  },
+  {
+    "id": "njord",
+    "name": "Njord",
+    "profile": "njord",
+    "title": "Synthetic demo: Across the Sea",
+    "motif": "sea, sailing"
+  },
+  {
+    "id": "skadi",
+    "name": "Skadi",
+    "profile": "skadi",
+    "title": "Synthetic demo: The Winter Mountain",
+    "motif": "winter, mountains, bow"
+  },
+  {
+    "id": "idunn",
+    "name": "Idunn",
+    "profile": "idunn",
+    "title": "Synthetic demo: The Golden Apples",
+    "motif": "youth, golden apples"
+  },
+  {
+    "id": "bragi",
+    "name": "Bragi",
+    "profile": "bragi",
+    "title": "Synthetic demo: A Poet’s Verse",
+    "motif": "poetry, music"
+  },
+  {
+    "id": "sif",
+    "name": "Sif",
+    "profile": "sif",
+    "title": "Synthetic demo: The Golden Harvest",
+    "motif": "golden hair, harvest"
+  },
+  {
+    "id": "hel",
+    "name": "Hel",
+    "profile": "hel",
+    "title": "Synthetic demo: Beyond the Underworld",
+    "motif": "underworld, duality"
+  }
+]

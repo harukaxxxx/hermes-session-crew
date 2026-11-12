@@ -1,0 +1,37 @@
+{
+  "frames": [
+    {
+      "filename": "000000.jpg",
+      "timestamp": 1794340134.368583,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000001.jpg",
+      "timestamp": 1794340135.910949,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000002.jpg",
+      "timestamp": 1794340138.32431,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000003.jpg",
+      "timestamp": 1794340138.390888,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000004.jpg",
+      "timestamp": 1794340142.393353,
+      "height": 1080,
+      "width": 1920
+    }
+  ],
+  "wallSeconds": 8.075089457999916,
+  "finalHold": 0.05031943656131688,
+  "classification": "native quick create; no model execution"
+}

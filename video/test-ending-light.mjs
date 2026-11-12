@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import {readFileSync, statSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+
+const read = path => readFileSync(new URL(path, import.meta.url));
+const component = read('./src/BrandEndingLight.tsx').toString();
+const root = read('./src/Root.tsx').toString();
+const demo = read('./src/Demo.tsx').toString();
+assert.match(root, /id="BrandEndingLight" component=\{BrandEndingLight\} width=\{1920\} height=\{1080\} fps=\{30\} durationInFrames=\{8 \* 30\}/);
+const mainDuration = root.match(/id="SessionCrewDemo" component=\{Demo\} width=\{1920\} height=\{1080\} fps=\{30\} durationInFrames=\{(\d+) \* 30\}/);
+assert.ok(mainDuration, 'Main composition must retain 1080p at 30 fps');
+const endingSequence = demo.split('export const Demo =')[1].match(/name="Brand ending" from=\{(\d+) \* fps\} durationInFrames=\{8 \* fps\}/);
+assert.ok(endingSequence, 'Main composition must include the complete eight-second ending');
+assert.equal(Number(endingSequence[1]) + 8, Number(mainDuration[1]), 'Ending must reach the exact end of the main composition');
+assert.ok(Number(mainDuration[1]) < 90, 'Main composition must remain below 90 seconds');
+assert.match(demo, /<BrandEndingLight \/>/);
+assert.match(component, /ORIGINAL_WORDMARK_ASSET = 'artwork\/light-hero-v1\/wordmark\/sessioncrew-original-ink\.png'/);
+assert.match(component, /Interact with sessions like bots\./);
+assert.match(component, /width: 1620, height: 1080/);
+assert.match(component, /LIGHT_HERO_ASSET = 'artwork\/light-hero-v1\/upscale2x\/hero-light-2x\.png'/);
+assert.match(component, /left: 300 \+ index \* 405, top: 0, width: 405, height: 1080, overflow: 'hidden'/);
+assert.match(component, /width: 1620, height: 1080, left: -index \* 405/);
+// Feather the assembled group only after its slices have landed; masking each
+// slice would create four seams and masking early could crop their motion.
+assert.match(component, /const HeroComposite/);
+assert.match(component, /\[2\.4 \* fps, 2\.8 \* fps\]/);
+assert.match(component, /linear-gradient\(to right/);
+assert.match(component, /\[1\.86 \* fps, 2\.4 \* fps\]/);
+assert.match(component, /<Sequence from=\{2\.3 \* fps\} name="Original impact"><Audio src=\{staticFile\(IMPACT_ASSET\)\}/);
+assert.ok(statSync(new URL('./public/audio/ending-impact-v4.wav', import.meta.url)).size > 100000);
+const wordmark = read('./public/artwork/light-hero-v1/wordmark/sessioncrew-original-ink.png');
+assert.deepEqual([wordmark.readUInt32BE(16), wordmark.readUInt32BE(20)], [607, 188]);
+assert.equal((component.match(/<Piece index=/g) || []).length, 4);
+assert.doesNotMatch(component.slice(component.indexOf('const Piece'), component.indexOf('const HeroComposite')), /maskImage|maskComposite/);
+assert.doesNotMatch(component, /srcRect/);
+assert.match(component, /useCurrentFrame/);
+assert.doesNotMatch(component, /animation:|transition:/);
+assert.equal(createHash('sha256').update(read('./public/artwork/light-hero-v1/hero-light.png')).digest('hex'), '014a6a3118a932ac9404384950c2ca1364aae694008b0489fe6e16571bbbfe9a');
+const hero = read('./public/artwork/light-hero-v1/upscale2x/hero-light-2x.png');
+assert.equal(createHash('sha256').update(hero).digest('hex'), '0f624c03280078154870f899bfae1ab7b8133562896bd41bfbffdbb7c73b63d4');
+assert.deepEqual([hero.readUInt32BE(16), hero.readUInt32BE(20)], [3072, 2048]);
+for (const frame of [15, 90, 210]) assert.ok(statSync(new URL(`./stills/ending-light-${frame}.png`, import.meta.url)).size > 0);
+console.log('PASS: 8 s light ending in main and standalone, exact copy and artwork, 3:2 geometry, representative stills');

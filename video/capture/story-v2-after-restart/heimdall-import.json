@@ -1,0 +1,53 @@
+{
+  "classification": "scripted synthetic dialogue; not model execution",
+  "id": "sessioncrew-scripted-story-heimdall-v2",
+  "expected": {
+    "profile": "heimdall",
+    "name": "heimdall",
+    "title": "Nine Realms — Readiness Report",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Give us the Nine Realms progress report."
+      },
+      {
+        "role": "assistant",
+        "content": "I have checked progress across the Nine Realms. Everyone is ready — except Loki. Can someone ask him where the Rainbow Bridge acceptance report is?"
+      }
+    ]
+  },
+  "before": {
+    "status": 200,
+    "body": "{\"session_id\":\"sessioncrew-scripted-story-heimdall-v2\",\"exists\":false,\"runtime_revision\":0,\"runtime_generation\":null}"
+  },
+  "payload": {
+    "profile": "heimdall",
+    "request_id": "import-sessioncrew-scripted-story-heimdall-v2",
+    "expected_revision": 0,
+    "sessions": [
+      {
+        "id": "sessioncrew-scripted-story-heimdall-v2",
+        "title": "Nine Realms — Readiness Report",
+        "source": "cli",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Give us the Nine Realms progress report."
+          },
+          {
+            "role": "assistant",
+            "content": "I have checked progress across the Nine Realms. Everyone is ready — except Loki. Can someone ask him where the Rainbow Bridge acceptance report is?"
+          }
+        ]
+      }
+    ]
+  },
+  "imported": {
+    "status": 503,
+    "body": "{\"detail\":\"storage_unavailable\"}"
+  },
+  "after": {
+    "status": 200,
+    "body": "{\"session_id\":\"sessioncrew-scripted-story-heimdall-v2\",\"exists\":false,\"runtime_revision\":0,\"runtime_generation\":null}"
+  }
+}

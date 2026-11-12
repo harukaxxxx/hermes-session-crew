@@ -1,0 +1,151 @@
+{
+  "frames": [
+    {
+      "filename": "000000.jpg",
+      "timestamp": 1794336768.55212,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000001.jpg",
+      "timestamp": 1794336769.602179,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000002.jpg",
+      "timestamp": 1794336769.642184,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000003.jpg",
+      "timestamp": 1794336773.629299,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000004.jpg",
+      "timestamp": 1794336773.643684,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000005.jpg",
+      "timestamp": 1794336774.149356,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000006.jpg",
+      "timestamp": 1794336774.656075,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000007.jpg",
+      "timestamp": 1794336775.150842,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000008.jpg",
+      "timestamp": 1794336775.644822,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000009.jpg",
+      "timestamp": 1794336776.15035,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000010.jpg",
+      "timestamp": 1794336776.644922,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000011.jpg",
+      "timestamp": 1794336777.149701,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000012.jpg",
+      "timestamp": 1794336777.658373,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000013.jpg",
+      "timestamp": 1794336778.150532,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000014.jpg",
+      "timestamp": 1794336778.644475,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000015.jpg",
+      "timestamp": 1794336779.15114,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000016.jpg",
+      "timestamp": 1794336779.645269,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000017.jpg",
+      "timestamp": 1794336780.151794,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000018.jpg",
+      "timestamp": 1794336780.644456,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000019.jpg",
+      "timestamp": 1794336781.152086,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000020.jpg",
+      "timestamp": 1794336781.645463,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000021.jpg",
+      "timestamp": 1794336782.152186,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000022.jpg",
+      "timestamp": 1794336782.65891,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000023.jpg",
+      "timestamp": 1794336783.151107,
+      "height": 1080,
+      "width": 1920
+    }
+  ],
+  "wallSeconds": 15.076146457999945,
+  "firstTime": 1794336768.55212,
+  "finalHold": 0.4771593554914002
+}

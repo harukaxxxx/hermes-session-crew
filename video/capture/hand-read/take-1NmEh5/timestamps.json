@@ -1,0 +1,91 @@
+{
+  "frames": [
+    {
+      "filename": "000000.jpg",
+      "timestamp": 1794339809.043719,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000001.jpg",
+      "timestamp": 1794339811.086403,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000002.jpg",
+      "timestamp": 1794339812.90191,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000003.jpg",
+      "timestamp": 1794339812.994184,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000004.jpg",
+      "timestamp": 1794339813.008573,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000005.jpg",
+      "timestamp": 1794339813.501968,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000006.jpg",
+      "timestamp": 1794339813.994885,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000007.jpg",
+      "timestamp": 1794339814.502086,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000008.jpg",
+      "timestamp": 1794339814.993544,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000009.jpg",
+      "timestamp": 1794339815.501722,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000010.jpg",
+      "timestamp": 1794339815.993688,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000011.jpg",
+      "timestamp": 1794339816.502327,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000012.jpg",
+      "timestamp": 1794339816.993946,
+      "height": 1080,
+      "width": 1920
+    },
+    {
+      "filename": "000013.jpg",
+      "timestamp": 1794339817.009041,
+      "height": 1080,
+      "width": 1920
+    }
+  ],
+  "wallSeconds": 8.001922332999994,
+  "finalHold": 0.03660031533031649,
+  "classification": "native raised-hand to session navigation; synthetic reminder; prewritten dialogue"
+}

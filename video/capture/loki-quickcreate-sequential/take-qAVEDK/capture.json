@@ -1,0 +1,70 @@
+{
+  "before": "http://192.168.1.100:4178/#/local-8674e09cdd523bdfbcd3be86ff4526d334755b2feed4c544881fcd925b5024c1",
+  "after": "http://192.168.1.100:4178/#/local-a1d3a8a23d5e85c7fab5bca4bbf6fe549ecc0dda2a4652ef1ab653572c430d4b",
+  "captures": [
+    {
+      "filename": "before.png",
+      "seconds": 0.8642237090000418
+    },
+    {
+      "filename": "menu.png",
+      "seconds": 1.4835280839999905
+    },
+    {
+      "filename": "pressed.png",
+      "seconds": 1.5868492920000572
+    },
+    {
+      "filename": "created-native.png",
+      "seconds": 3.02865541700006
+    },
+    {
+      "filename": "named-closed-result.png",
+      "seconds": 9.98788037499995
+    },
+    {
+      "filename": "named-menu-result.png",
+      "seconds": 11.195917625000002
+    }
+  ],
+  "actions": [
+    {
+      "label": "Close existing menu",
+      "x": 1200,
+      "y": 800,
+      "seconds": 0.000017791999969631435
+    },
+    {
+      "label": "Open Loki menu at measured 125 percent coordinates",
+      "x": 84,
+      "y": 382,
+      "seconds": 0.8642357919999631
+    },
+    {
+      "label": "Quick create Loki",
+      "x": 254,
+      "y": 628,
+      "seconds": 1.4835347499999916
+    },
+    {
+      "label": "Show newly created Loki session",
+      "x": 84,
+      "y": 382,
+      "seconds": 9.987889375000028
+    }
+  ],
+  "added": [
+    {
+      "id": "local-a1d3a8a23d5e85c7fab5bca4bbf6fe549ecc0dda2a4652ef1ab653572c430d4b",
+      "title": null,
+      "message_count": 0
+    }
+  ],
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "deviceScaleFactor": 2
+  },
+  "uiScale": 125,
+  "classification": "Native sequential captures plus separate titled result after public PATCH/readback; no continuous-FPS or inference claim"
+}

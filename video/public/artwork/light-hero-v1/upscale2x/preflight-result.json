@@ -1,0 +1,81 @@
+{
+  "source_sha256": "014a6a3118a932ac9404384950c2ca1364aae694008b0489fe6e16571bbbfe9a",
+  "model_sha256": "e23ca000107aae95ec9b8d7d1bf150f7884f1361cd9d669bdf824d72529f0e26",
+  "queue": {
+    "queue_running": [],
+    "queue_pending": []
+  },
+  "history_dedup_match": false,
+  "system_stats": {
+    "system": {
+      "os": "darwin",
+      "ram_total": 17179869184,
+      "ram_free": 2394308608,
+      "comfyui_version": "0.33.3",
+      "required_frontend_version": "1.49.6",
+      "installed_templates_version": "0.11.44",
+      "required_templates_version": "0.11.44",
+      "comfy_package_versions": [
+        {
+          "name": "comfyui-frontend-package",
+          "installed": "1.49.6",
+          "required": "1.49.6"
+        },
+        {
+          "name": "comfyui-workflow-templates",
+          "installed": "0.11.44",
+          "required": "0.11.44"
+        },
+        {
+          "name": "comfyui-embedded-docs",
+          "installed": "0.5.9",
+          "required": "0.5.9"
+        },
+        {
+          "name": "comfy-kitchen",
+          "installed": "0.2.31",
+          "required": "0.2.31"
+        },
+        {
+          "name": "comfy-aimdo",
+          "installed": "0.4.13",
+          "required": "0.4.13"
+        }
+      ],
+      "python_version": "3.13.12 (main, Feb 12 2026, 01:06:02) [Clang 21.1.4 ]",
+      "pytorch_version": "2.12.1",
+      "embedded_python": false,
+      "deploy_environment": "local-desktop2-standalone",
+      "argv": [
+        "/Users/haruka/ComfyUI-Installs/ComfyUI/ComfyUI/main.py",
+        "--listen",
+        "127.0.0.1",
+        "--port",
+        "8188",
+        "--models-directory",
+        "/Users/haruka/ComfyUI-Shared/models",
+        "--input-directory",
+        "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/artwork/light-hero-v1/upscale2x/input",
+        "--output-directory",
+        "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/artwork/light-hero-v1/upscale2x/server-output",
+        "--user-directory",
+        "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/artwork/light-hero-v1/upscale2x/runtime-user",
+        "--temp-directory",
+        "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/artwork/light-hero-v1/upscale2x/temp",
+        "--disable-all-custom-nodes"
+      ]
+    },
+    "devices": [
+      {
+        "name": "mps",
+        "type": "mps",
+        "index": null,
+        "vram_total": 17179869184,
+        "vram_free": 2394341376,
+        "torch_vram_total": 17179869184,
+        "torch_vram_free": 2394341376
+      }
+    ]
+  },
+  "workflow_source": "/Users/haruka/Documents/Projects/resonatia-apertia-archivium/02_Albums/A001_Talune_GK67-C5288/20_Episodes/04_Sevu-Vami_GK67-C5288-R5513/04_Visuals/11_Generated-Assets/22_Youtube_Thumbnail_raw/20260811-natsuki-youtube-thumbnail-batch-02-screenprint/comfyui-evidence/be63327c-28e7-44f2-9abe-a18b925357fb.json"
+}

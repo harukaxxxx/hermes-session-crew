@@ -81,6 +81,84 @@ class IdeaRequest(BaseModel):
     parts: list[StrictStr] = Field(default_factory=list, max_length=0)
 
 
+_SCRIPTED_STAGES = ('off', 'idle', 'reminder', 'working', 'overlap', 'settled',
+                    'awakening-0', 'awakening-1', 'awakening-2', 'awakening-3',
+                    'awakening-4', 'awakening-overlap')
+
+
+class ScriptedControl(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    stage: StrictStr = Field(json_schema_extra={'enum': list(_SCRIPTED_STAGES)})
+
+
+# This deliberately targets one authorized external demo root, not any
+# arbitrary HERMES_HOME. State is bounded and process-local, never persisted.
+_SCRIPTED_ROOT = Path('/Users/haruka/SessionCrew-Demo')
+_SCRIPTED_PROFILES = ('default', 'heimdall', 'loki', 'thor', 'tyr', 'freyja', 'frigg', 'baldr')
+_scripted_stage = 'off'
+
+
+def _scripted_allowed():
+    try:
+        return (os.environ.get('SESSIONCREW_SCRIPTED_DEMO') == '1' and
+                get_default_hermes_root().resolve() == _SCRIPTED_ROOT and
+                get_hermes_home().resolve() == _SCRIPTED_ROOT)
+    except (OSError, ValueError):
+        return False
+
+
+@router.post('/scripted/control')
+def scripted_control(request: ScriptedControl):
+    global _scripted_stage
+    if not _scripted_allowed():
+        raise HTTPException(status_code=403, detail='scripted adapter unavailable')
+    if request.stage not in _SCRIPTED_STAGES:
+        raise HTTPException(status_code=422, detail='invalid stage')
+    _scripted_stage = request.stage
+    return {'source': 'synthetic', 'stage': _scripted_stage}
+
+
+def _scripted_status(stage):
+    workers = ('thor', 'tyr', 'freyja', 'frigg')
+    awakening = stage.startswith('awakening-')
+    if awakening:
+        count = 4 if stage == 'awakening-overlap' else int(stage[-1])
+        working = set(workers[:count])
+        offline = {'loki', 'baldr'} | (set(workers) - working)
+    else:
+        working = set(workers) if stage in ('working', 'overlap') else set()
+        offline = {'baldr'}
+    rows = []
+    for name in _SCRIPTED_PROFILES:
+        state = ('offline' if name in offline else
+                 'waiting' if name == 'heimdall' and stage == 'reminder' else
+                 'working' if name in working else 'idle')
+        rows.append({'profile': name, 'source': 'synthetic', 'stage': stage,
+                     'online': state != 'offline', 'state': state,
+                     'busy': state == 'working', 'idle_since': None,
+                     'scripted_unread': name == 'heimdall' and stage == 'reminder'})
+    return rows
+
+
+def _scripted_snapshot(stage):
+    profiles = []
+    for name in _SCRIPTED_PROFILES:
+        count = 3 if name == 'default' and stage in ('overlap', 'awakening-overlap') else 0
+        children = [{'id': f'scripted-child-{i}', 'kind': 'recent', 'leased': False}
+                    for i in range(count)]
+        activity = {'version': 1, 'coverage': 'observed', 'definition': 'synthetic scripted',
+                    'observed_active_count': 0, 'observed_child_active': False,
+                    'observed_child_count': count, 'observed_at': time.time(),
+                    'unknown_reasons': ['synthetic'],
+                    'child_metadata': {'availability': 'available', 'presentation_count': count,
+                                       'children': children, 'truncated': False}}
+        profiles.append({'profile': name, 'status': 'ok', 'database_id': 'synthetic-' + name,
+                         'high_water': 0, 'truncated': False, 'rows': [], 'activity': activity})
+    return {'version': 2, 'source_root': 'default', 'source_id': 'synthetic-scripted',
+            'server_epoch': SERVER_EPOCH, 'source': 'synthetic', 'stage': stage,
+            'scripted_unread_profiles': ['heimdall'] if stage == 'reminder' else [], 'profiles': profiles}
+
+
 def folder_root():
     """Resolve the process's fleet root without importing private host helpers."""
     suffix = os.environ.get('HERMES_DATA_DIR_SUFFIX', '')
@@ -630,6 +708,9 @@ def status():
         home = get_hermes_home().resolve()
         if home not in {path.resolve() for _, path in _profile_homes(root)}:
             raise HTTPException(status_code=403, detail='Profile Rail runtime outside profile inventory')
+        stage = _scripted_stage
+        if stage != 'off' and _scripted_allowed():
+            return _scripted_status(stage)
         return _status_collector().collect_status()
     except OSError as exc:
         raise HTTPException(status_code=503, detail='profile inventory unavailable') from exc
@@ -644,6 +725,9 @@ def snapshot():
         home = get_hermes_home().resolve()
         if home not in {path.resolve() for _, path in _profile_homes(root)}:
             raise HTTPException(status_code=403, detail='Profile Rail runtime outside profile inventory')
+        stage = _scripted_stage
+        if stage != 'off' and _scripted_allowed():
+            return _scripted_snapshot(stage)
         return collect_snapshot(root)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

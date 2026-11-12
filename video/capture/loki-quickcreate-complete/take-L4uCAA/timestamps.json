@@ -1,0 +1,53 @@
+{
+  "frames": [
+    {
+      "filename": "000000.jpg",
+      "timestamp": 1794341172.058886,
+      "height": 1440,
+      "width": 1920
+    },
+    {
+      "filename": "000001.jpg",
+      "timestamp": 1794341172.910328,
+      "height": 1440,
+      "width": 1920
+    },
+    {
+      "filename": "000002.jpg",
+      "timestamp": 1794341172.952259,
+      "height": 1440,
+      "width": 1920
+    },
+    {
+      "filename": "000003.jpg",
+      "timestamp": 1794341174.325774,
+      "height": 1440,
+      "width": 1920
+    },
+    {
+      "filename": "000004.jpg",
+      "timestamp": 1794341174.390485,
+      "height": 1440,
+      "width": 1920
+    }
+  ],
+  "wallSeconds": 8.349233625000052,
+  "finalHold": 6.017634627883963,
+  "markers": [
+    {
+      "action": "open_loki_menu",
+      "seconds": 0.8013456250000163
+    },
+    {
+      "action": "quick_create",
+      "seconds": 2.3011616250000078
+    }
+  ],
+  "classification": "Native Quick create UI, no inference; later titled result is a separate held capture",
+  "crop": {
+    "x": 0,
+    "y": 48,
+    "width": 1920,
+    "height": 1080
+  }
+}

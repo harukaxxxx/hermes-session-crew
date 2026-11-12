@@ -1,0 +1,63 @@
+{
+  "before": "http://192.168.1.100:4178/#/local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+  "after": "http://192.168.1.100:4178/#/local-8674e09cdd523bdfbcd3be86ff4526d334755b2feed4c544881fcd925b5024c1",
+  "captures": [
+    {
+      "filename": "before.png",
+      "seconds": 0.576917541999981
+    },
+    {
+      "filename": "odin-menu.png",
+      "seconds": 1.1375018749999872
+    },
+    {
+      "filename": "project-picker.png",
+      "seconds": 1.6999910419999797
+    },
+    {
+      "filename": "plus-pressed.png",
+      "seconds": 1.745042999999976
+    },
+    {
+      "filename": "created-native.png",
+      "seconds": 4.068663874999999
+    },
+    {
+      "filename": "named-result.png",
+      "seconds": 11.94981133299999
+    }
+  ],
+  "actions": [
+    {
+      "label": "Close any existing menu",
+      "x": 1200,
+      "y": 800,
+      "seconds": 0.000035957999993115665
+    },
+    {
+      "label": "Open Odin",
+      "x": 104,
+      "y": 104,
+      "seconds": 0.5769272919999785
+    },
+    {
+      "label": "Open project picker",
+      "x": 550,
+      "y": 414,
+      "seconds": 1.1375071669999743
+    },
+    {
+      "label": "Press existing Ragnarok row PLUS, not new-project header plus",
+      "x": 738,
+      "y": 808,
+      "seconds": 1.6999968749999825
+    },
+    {
+      "label": "Show newly created project session",
+      "x": 104,
+      "y": 104,
+      "seconds": 10.742291166999989
+    }
+  ],
+  "classification": "Sequential genuine native captures; result title set through public PATCH/readback; no continuous-FPS or inference claim"
+}

@@ -1,0 +1,70 @@
+{
+  "request_id": "sessioncrew-video-light-hero-upscale2x",
+  "prompt_id": "5fb16003-9575-4462-9f2b-1e07766fa355",
+  "status": "success",
+  "submitted_jobs": 1,
+  "workflow_api": {
+    "76": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "hero-light.png"
+      }
+    },
+    "79": {
+      "class_type": "UpscaleModelLoader",
+      "inputs": {
+        "model_name": "4x-ultra-mix_balanced.pth"
+      }
+    },
+    "78": {
+      "class_type": "ImageUpscaleWithModel",
+      "inputs": {
+        "upscale_model": [
+          "79",
+          0
+        ],
+        "image": [
+          "76",
+          0
+        ]
+      }
+    },
+    "88": {
+      "class_type": "ImageScaleBy",
+      "inputs": {
+        "image": [
+          "78",
+          0
+        ],
+        "upscale_method": "area",
+        "scale_by": 0.5
+      }
+    },
+    "95": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "88",
+          0
+        ],
+        "filename_prefix": "sessioncrew-video-light-hero-upscale2x"
+      }
+    }
+  },
+  "method": "AI super-resolution 4x-ultra-mix_balanced.pth at 4x, then area scaling 0.5; net 2x",
+  "source_sha256": "014a6a3118a932ac9404384950c2ca1364aae694008b0489fe6e16571bbbfe9a",
+  "output_sha256": "0f624c03280078154870f899bfae1ab7b8133562896bd41bfbffdbb7c73b63d4",
+  "output": "/Users/haruka/.hermes/profiles/shirogane-yuine/workspace/hermes-session-crew-demo/video/public/artwork/light-hero-v1/upscale2x/hero-light-2x.png",
+  "dimensions": [
+    3072,
+    2048
+  ],
+  "mode": "RGB",
+  "source_unchanged": true,
+  "model_sha256": "e23ca000107aae95ec9b8d7d1bf150f7884f1361cd9d669bdf824d72529f0e26",
+  "comfy_output_reference": {
+    "filename": "sessioncrew-video-light-hero-upscale2x_00001_.png",
+    "subfolder": "",
+    "type": "output"
+  }
+}

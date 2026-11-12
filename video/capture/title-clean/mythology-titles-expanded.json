@@ -1,0 +1,742 @@
+{
+  "profiles_before": [
+    {
+      "profile": "default",
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "profile": "thor",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "loki",
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "profile": "freyja",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "freyr",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "frigg",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "tyr",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "heimdall",
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "profile": "baldr",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "njord",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "skadi",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "idunn",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "bragi",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "sif",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "hel",
+      "expected": 1,
+      "actual": 1
+    }
+  ],
+  "rows": [
+    {
+      "profile": "default",
+      "id": "local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+      "oldtitle": null,
+      "targettitle": null,
+      "action": "preserve",
+      "before": {
+        "source": "gui",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "17755cde92415635f154727cfa892421c1a8153b40830915bc09729188a1bac2"
+      },
+      "readback": {
+        "title": null,
+        "source": "gui",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "17755cde92415635f154727cfa892421c1a8153b40830915bc09729188a1bac2",
+        "verified": true
+      }
+    },
+    {
+      "profile": "default",
+      "id": "local-2f67a4c81570c34603744a1f8d29d4f6b7a71a712e5e90014a64c2142568f56e",
+      "oldtitle": null,
+      "targettitle": null,
+      "action": "preserve",
+      "before": {
+        "source": "gui",
+        "cwd": "/Users/haruka",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "6850f50b412e2c94ab5e4d42aaaa768dfe95cf39bc2212ad5979af61d64bf7d3"
+      },
+      "readback": {
+        "title": null,
+        "source": "gui",
+        "cwd": "/Users/haruka",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "6850f50b412e2c94ab5e4d42aaaa768dfe95cf39bc2212ad5979af61d64bf7d3",
+        "verified": true
+      }
+    },
+    {
+      "profile": "default",
+      "id": "sessioncrew-scripted-story-odin-v1",
+      "oldtitle": "Ragnarök — Awaken the Gods",
+      "targettitle": "Ragnarök — Awaken the Gods",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3aead4872a517290ad0116a4b0bf64d6be412e6c9115b46737e5214f8f73cabf"
+      },
+      "readback": {
+        "title": "Ragnarök — Awaken the Gods",
+        "source": "cli",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3aead4872a517290ad0116a4b0bf64d6be412e6c9115b46737e5214f8f73cabf",
+        "verified": true
+      }
+    },
+    {
+      "profile": "default",
+      "id": "sessioncrew-norse-odin",
+      "oldtitle": "Two Ravens — One Inbox",
+      "targettitle": "Two Ravens — One Inbox",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "12b372e32aadbe496ed59c9b0ef4771afd519aad161fbafa2bf6d8856becc588"
+      },
+      "readback": {
+        "title": "Two Ravens — One Inbox",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "12b372e32aadbe496ed59c9b0ef4771afd519aad161fbafa2bf6d8856becc588",
+        "verified": true
+      }
+    },
+    {
+      "profile": "thor",
+      "id": "sessioncrew-norse-thor",
+      "oldtitle": "Mjölnir — Hammer the Blockers",
+      "targettitle": "Mjölnir — Hammer the Blockers",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "2a96a00867823a4bdf39ffaccea05972f543a3a0f8d93cfa424f0440604b5b23"
+      },
+      "readback": {
+        "title": "Mjölnir — Hammer the Blockers",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "2a96a00867823a4bdf39ffaccea05972f543a3a0f8d93cfa424f0440604b5b23",
+        "verified": true
+      }
+    },
+    {
+      "profile": "loki",
+      "id": "sessioncrew-scripted-story-loki-v1",
+      "oldtitle": "Rainbow Bridge — Missing Approval",
+      "targettitle": "Rainbow Bridge — Missing Approval",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "97c641b72781d8e8634945970c2eef83eac080aecb088dd3fc3e60cbd9816e63"
+      },
+      "readback": {
+        "title": "Rainbow Bridge — Missing Approval",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "97c641b72781d8e8634945970c2eef83eac080aecb088dd3fc3e60cbd9816e63",
+        "verified": true
+      }
+    },
+    {
+      "profile": "loki",
+      "id": "sessioncrew-norse-loki",
+      "oldtitle": "Shapeshift — Approval Pending",
+      "targettitle": "Shapeshift — Approval Pending",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "db5936317377dccebf0f070d5c5b916be16f81aebb17f4cf8e662ea9624fa4fd"
+      },
+      "readback": {
+        "title": "Shapeshift — Approval Pending",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "db5936317377dccebf0f070d5c5b916be16f81aebb17f4cf8e662ea9624fa4fd",
+        "verified": true
+      }
+    },
+    {
+      "profile": "freyja",
+      "id": "sessioncrew-norse-freyja",
+      "oldtitle": "Falcon Cloak — Flying Review",
+      "targettitle": "Falcon Cloak — Flying Review",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "533079d5b94e459e2e92062174f6d6c046713eda4d964ae76bb89d58b2219347"
+      },
+      "readback": {
+        "title": "Falcon Cloak — Flying Review",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "533079d5b94e459e2e92062174f6d6c046713eda4d964ae76bb89d58b2219347",
+        "verified": true
+      }
+    },
+    {
+      "profile": "freyr",
+      "id": "sessioncrew-norse-freyr",
+      "oldtitle": "Synthetic demo: The Golden Boar",
+      "targettitle": "Golden Boar — Harvest Ready",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "1c2b7ab00896af56533c59234281d59f02e037dfd46d8955a767217eb708224e"
+      },
+      "readback": {
+        "title": "Golden Boar — Harvest Ready",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "1c2b7ab00896af56533c59234281d59f02e037dfd46d8955a767217eb708224e",
+        "verified": true
+      }
+    },
+    {
+      "profile": "frigg",
+      "id": "sessioncrew-norse-frigg",
+      "oldtitle": "Foresight — Spoiler Alert",
+      "targettitle": "Foresight — Spoiler Alert",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3297239ae98ab3ae6b9839c16063829934bfbad43e42ce92feb840d32aeb74a6"
+      },
+      "readback": {
+        "title": "Foresight — Spoiler Alert",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3297239ae98ab3ae6b9839c16063829934bfbad43e42ce92feb840d32aeb74a6",
+        "verified": true
+      }
+    },
+    {
+      "profile": "tyr",
+      "id": "sessioncrew-norse-tyr",
+      "oldtitle": "Gleipnir — Pledge a Hand",
+      "targettitle": "Gleipnir — Pledge a Hand",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "180f12f21413c059bddbf8956b140929ad42745c81baf6cf852a83b03442c190"
+      },
+      "readback": {
+        "title": "Gleipnir — Pledge a Hand",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "180f12f21413c059bddbf8956b140929ad42745c81baf6cf852a83b03442c190",
+        "verified": true
+      }
+    },
+    {
+      "profile": "heimdall",
+      "id": "sessioncrew-scripted-story-heimdall-v1",
+      "oldtitle": "Nine Realms — Readiness Report",
+      "targettitle": "Nine Realms — Readiness Report",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3ff74204d983c1f2d4eabd28b738f3038c1f5daebc78d4fdb925156474ac5eeb"
+      },
+      "readback": {
+        "title": "Nine Realms — Readiness Report",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3ff74204d983c1f2d4eabd28b738f3038c1f5daebc78d4fdb925156474ac5eeb",
+        "verified": true
+      }
+    },
+    {
+      "profile": "heimdall",
+      "id": "sessioncrew-norse-heimdall",
+      "oldtitle": "Gjallarhorn — Final Call",
+      "targettitle": "Gjallarhorn — Final Call",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "fc7283ce0e3e300f16912757ab6e46e84de014644060354a70aaf49c1e6a3d19"
+      },
+      "readback": {
+        "title": "Gjallarhorn — Final Call",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "fc7283ce0e3e300f16912757ab6e46e84de014644060354a70aaf49c1e6a3d19",
+        "verified": true
+      }
+    },
+    {
+      "profile": "baldr",
+      "id": "sessioncrew-norse-baldr",
+      "oldtitle": "Mistletoe — Sleep Mode",
+      "targettitle": "Mistletoe — Sleep Mode",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "9a72ea849f7d6ae7a0fdff4e19aea212b1e544c87ab70b307b5e4a96af4a9890"
+      },
+      "readback": {
+        "title": "Mistletoe — Sleep Mode",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "9a72ea849f7d6ae7a0fdff4e19aea212b1e544c87ab70b307b5e4a96af4a9890",
+        "verified": true
+      }
+    },
+    {
+      "profile": "njord",
+      "id": "sessioncrew-norse-njord",
+      "oldtitle": "Synthetic demo: Across the Sea",
+      "targettitle": "Sea Winds — Smooth Sailing",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "f2809de2168385f7cb28638eff7b0a49d082f3f0520117e400faf5addc641bc4"
+      },
+      "readback": {
+        "title": "Sea Winds — Smooth Sailing",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "f2809de2168385f7cb28638eff7b0a49d082f3f0520117e400faf5addc641bc4",
+        "verified": true
+      }
+    },
+    {
+      "profile": "skadi",
+      "id": "sessioncrew-norse-skadi",
+      "oldtitle": "Synthetic demo: The Winter Mountain",
+      "targettitle": "Winter Mountain — Ski Patrol",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "79942dabb8f4a2bb389065bbde91d50ec4209fb656c82959e8e3e28547298b22"
+      },
+      "readback": {
+        "title": "Winter Mountain — Ski Patrol",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "79942dabb8f4a2bb389065bbde91d50ec4209fb656c82959e8e3e28547298b22",
+        "verified": true
+      }
+    },
+    {
+      "profile": "idunn",
+      "id": "sessioncrew-norse-idunn",
+      "oldtitle": "Synthetic demo: The Golden Apples",
+      "targettitle": "Golden Apples — Fresh Ideas",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "17fe04da505eec939d3a1e296f1aef6713eb9403f6ea6b246a0bac582e76a563"
+      },
+      "readback": {
+        "title": "Golden Apples — Fresh Ideas",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "17fe04da505eec939d3a1e296f1aef6713eb9403f6ea6b246a0bac582e76a563",
+        "verified": true
+      }
+    },
+    {
+      "profile": "bragi",
+      "id": "sessioncrew-norse-bragi",
+      "oldtitle": "Synthetic demo: A Poet’s Verse",
+      "targettitle": "Poet’s Harp — Verse in Progress",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "727f9ffe2d74997b26f7177cdb660934a78b4c42157a45c86cbc3d0f5d6e9371"
+      },
+      "readback": {
+        "title": "Poet’s Harp — Verse in Progress",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "727f9ffe2d74997b26f7177cdb660934a78b4c42157a45c86cbc3d0f5d6e9371",
+        "verified": true
+      }
+    },
+    {
+      "profile": "sif",
+      "id": "sessioncrew-norse-sif",
+      "oldtitle": "Synthetic demo: The Golden Harvest",
+      "targettitle": "Golden Hair — Harvest Report",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "6652e0e090c85ab65fe5ad16defc03aa242d681885dbddd754db050c1b482093"
+      },
+      "readback": {
+        "title": "Golden Hair — Harvest Report",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "6652e0e090c85ab65fe5ad16defc03aa242d681885dbddd754db050c1b482093",
+        "verified": true
+      }
+    },
+    {
+      "profile": "hel",
+      "id": "sessioncrew-norse-hel",
+      "oldtitle": "Synthetic demo: Beyond the Underworld",
+      "targettitle": "Underworld — Beyond the Gate",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "2873febd3cc1fe3ef764978cc3935c45775aac4aef745ee86400ba5d52a5f3d9"
+      },
+      "readback": {
+        "title": "Underworld — Beyond the Gate",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "2873febd3cc1fe3ef764978cc3935c45775aac4aef745ee86400ba5d52a5f3d9",
+        "verified": true
+      }
+    }
+  ],
+  "summary": {
+    "status": "complete",
+    "expected": 20,
+    "actual": 20,
+    "after": 20,
+    "same_ids": true,
+    "verified": 20,
+    "renamed": 7,
+    "remaining_matching_titles": [],
+    "blank_drafts": [
+      {
+        "profile": "default",
+        "id": "local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+        "title": null
+      },
+      {
+        "profile": "default",
+        "id": "local-2f67a4c81570c34603744a1f8d29d4f6b7a71a712e5e90014a64c2142568f56e",
+        "title": null
+      }
+    ]
+  },
+  "profiles_after": [
+    {
+      "profile": "default",
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "profile": "thor",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "loki",
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "profile": "freyja",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "freyr",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "frigg",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "tyr",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "heimdall",
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "profile": "baldr",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "njord",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "skadi",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "idunn",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "bragi",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "sif",
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "profile": "hel",
+      "expected": 1,
+      "actual": 1
+    }
+  ],
+  "list_after": [
+    {
+      "profile": "default",
+      "id": "local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+      "title": null
+    },
+    {
+      "profile": "default",
+      "id": "local-2f67a4c81570c34603744a1f8d29d4f6b7a71a712e5e90014a64c2142568f56e",
+      "title": null
+    },
+    {
+      "profile": "default",
+      "id": "sessioncrew-scripted-story-odin-v1",
+      "title": "Ragnarök — Awaken the Gods"
+    },
+    {
+      "profile": "default",
+      "id": "sessioncrew-norse-odin",
+      "title": "Two Ravens — One Inbox"
+    },
+    {
+      "profile": "thor",
+      "id": "sessioncrew-norse-thor",
+      "title": "Mjölnir — Hammer the Blockers"
+    },
+    {
+      "profile": "loki",
+      "id": "sessioncrew-scripted-story-loki-v1",
+      "title": "Rainbow Bridge — Missing Approval"
+    },
+    {
+      "profile": "loki",
+      "id": "sessioncrew-norse-loki",
+      "title": "Shapeshift — Approval Pending"
+    },
+    {
+      "profile": "freyja",
+      "id": "sessioncrew-norse-freyja",
+      "title": "Falcon Cloak — Flying Review"
+    },
+    {
+      "profile": "freyr",
+      "id": "sessioncrew-norse-freyr",
+      "title": "Golden Boar — Harvest Ready"
+    },
+    {
+      "profile": "frigg",
+      "id": "sessioncrew-norse-frigg",
+      "title": "Foresight — Spoiler Alert"
+    },
+    {
+      "profile": "tyr",
+      "id": "sessioncrew-norse-tyr",
+      "title": "Gleipnir — Pledge a Hand"
+    },
+    {
+      "profile": "heimdall",
+      "id": "sessioncrew-scripted-story-heimdall-v1",
+      "title": "Nine Realms — Readiness Report"
+    },
+    {
+      "profile": "heimdall",
+      "id": "sessioncrew-norse-heimdall",
+      "title": "Gjallarhorn — Final Call"
+    },
+    {
+      "profile": "baldr",
+      "id": "sessioncrew-norse-baldr",
+      "title": "Mistletoe — Sleep Mode"
+    },
+    {
+      "profile": "njord",
+      "id": "sessioncrew-norse-njord",
+      "title": "Sea Winds — Smooth Sailing"
+    },
+    {
+      "profile": "skadi",
+      "id": "sessioncrew-norse-skadi",
+      "title": "Winter Mountain — Ski Patrol"
+    },
+    {
+      "profile": "idunn",
+      "id": "sessioncrew-norse-idunn",
+      "title": "Golden Apples — Fresh Ideas"
+    },
+    {
+      "profile": "bragi",
+      "id": "sessioncrew-norse-bragi",
+      "title": "Poet’s Harp — Verse in Progress"
+    },
+    {
+      "profile": "sif",
+      "id": "sessioncrew-norse-sif",
+      "title": "Golden Hair — Harvest Report"
+    },
+    {
+      "profile": "hel",
+      "id": "sessioncrew-norse-hel",
+      "title": "Underworld — Beyond the Gate"
+    }
+  ]
+}

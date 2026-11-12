@@ -1,0 +1,62 @@
+{
+  "classification": "Scripted synthetic source, not model work",
+  "imports": [
+    {
+      "id": "sessioncrew-scripted-story-heimdall-v2",
+      "profile": "heimdall",
+      "status": 200,
+      "snapshot": {
+        "session_id": "sessioncrew-scripted-story-heimdall-v2",
+        "exists": false,
+        "runtime_revision": 0,
+        "runtime_generation": null
+      },
+      "attempt_status": 503,
+      "detail": "storage_unavailable"
+    },
+    {
+      "id": "sessioncrew-scripted-story-loki-v2",
+      "profile": "loki",
+      "status": 200,
+      "snapshot": {
+        "session_id": "sessioncrew-scripted-story-loki-v2",
+        "exists": false,
+        "runtime_revision": 0,
+        "runtime_generation": null
+      },
+      "attempt_status": 503,
+      "detail": "storage_unavailable"
+    },
+    {
+      "id": "sessioncrew-scripted-story-odin-v2",
+      "profile": "default",
+      "status": 200,
+      "snapshot": {
+        "session_id": "sessioncrew-scripted-story-odin-v2",
+        "exists": false,
+        "runtime_revision": 0,
+        "runtime_generation": null
+      },
+      "attempt_status": 503,
+      "detail": "storage_unavailable"
+    }
+  ],
+  "drafts": [
+    {
+      "id": "local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+      "profile": "default",
+      "title": "Fimbulwinter — Quiet Before the Storm",
+      "message_count": 0,
+      "transcript_revision": 0,
+      "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök"
+    },
+    {
+      "id": "local-2f67a4c81570c34603744a1f8d29d4f6b7a71a712e5e90014a64c2142568f56e",
+      "profile": "default",
+      "title": "Yggdrasil — Unwritten Branch",
+      "message_count": 0,
+      "transcript_revision": 0,
+      "cwd": "/Users/haruka"
+    }
+  ]
+}

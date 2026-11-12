@@ -1,0 +1,10 @@
+# BrandEndingLight MP4 QA
+
+- Output: `../ending-review.mp4`; independent ending only, not the 86-second film.
+- Render: `./node_modules/.bin/remotion render BrandEndingLight out/ending-review.mp4 --codec=h264 --overwrite=false`; full console output in `render.log`.
+- Source: `public/artwork/light-hero-v1/upscale2x/hero-light-2x.png`, 3072×2048, SHA-256 `0f624c03280078154870f899bfae1ab7b8133562896bd41bfbffdbb7c73b63d4`.
+- `ffprobe.json`: H.264, 1920×1080, 30/1 fps, 240 decoded frames, 8.000000 s; no audio stream. Full decode with `ffmpeg -v error -xerror` completed successfully; `decode-errors.log` is empty. MP4 hash: `sha256.txt`.
+- Visual review: decoded contact sheets `motion-0.png`, `motion-30.png`, `motion-60.png`, `motion-90.png` sample every third frame 0–117; `hold-120.png` samples every tenth frame 120–230; `still-01.png` and `still-02.png` are frames 93 and 239. Frame 239 inspected at enlarged display: exact copy “SessionCrew” and “Interact with sessions like bots.” is legible. Text reaches full opacity at frame 93 (3.1 s) according to the composition and remains through the end, 4.9 s of settled display.
+- Slice gaps and changing alignment are visible during the intended assembly; sampled frames show the artwork settled by the end of its entrance, with no obvious black borders, unexpected seam or jump. Sampling is not proof about every individual frame or normal-speed perception. The artwork's pale rectangular paper background remains visibly distinct from the surrounding cream field; this is a visual characteristic worth creative review, not a decode fault. The artwork occupies its intended 1080×720 rectangle; no obvious unintended clipping observed.
+- Limitation: no full normal-speed human playback was performed; visual QA is sampled decoded frames only. No audio review was performed; the output has no audio. The full film remains incomplete (first 78 seconds are slates).
+- Tool note: the first attempt to make labeled sheets failed because this FFmpeg build lacks `drawtext`; unlabeled sheets were generated successfully, with frame order specified above.

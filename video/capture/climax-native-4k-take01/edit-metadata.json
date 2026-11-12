@@ -1,0 +1,9 @@
+{
+  "classification": "Controlled synthetic plugin state rendered by installed native UI; not actual model execution.",
+  "method": "CDP Page.captureScreenshot JPEG quality 96, viewport 1920x1080 deviceScaleFactor 2; screenshot fallback used directly, no screencast transport test.",
+  "measured_source": {"frames": 296, "width": 3840, "height": 2160, "first_to_last_seconds": 21.582121, "timestamp_manifest": "frames.json", "all_frame_dimensions_verified": true},
+  "editing_copy": {"file": "../../public/footage/climax-native-4k-take01.mp4", "width": 3840, "height": 2160, "fps": 30, "duration_seconds": 21.766667, "note": "CFR repeats captured frames according to recorded elapsed timestamps; not 30 unique source frames per second."},
+  "cuts": [{"output_seconds": [0, 5.2], "source_seconds": [6.3, 11.5], "camera": "four working profiles, editorial pan"}, {"output_seconds": [5.2, 12], "source_seconds": [12.2, 19], "camera": "Odin centered; 9-frame push, native shadow change and hold"}],
+  "off_readback": "states.json records POST 200 and status 200 with 15 rows; off.png later shows synthetic working and shadow decorations cleared. Initial capture script incorrectly expected stage=off on live rows and exited with an error; off was successful and independently verified after cleanup; the script was corrected for future use.",
+  "audio": "Native footage silent; audio not listened to."
+}

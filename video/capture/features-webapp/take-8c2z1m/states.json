@@ -1,0 +1,447 @@
+[
+  {
+    "stage": "idle",
+    "requestMs": 1794337906456,
+    "responseMs": 1794337906471,
+    "postStatus": 200,
+    "post": "{\"source\":\"synthetic\",\"stage\":\"idle\"}",
+    "status": [
+      {
+        "profile": "default",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "heimdall",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "loki",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "thor",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "tyr",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "freyja",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "frigg",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "baldr",
+        "source": "synthetic",
+        "stage": "idle",
+        "online": false,
+        "state": "offline",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      }
+    ]
+  },
+  {
+    "stage": "reminder",
+    "requestMs": 1794337928281,
+    "responseMs": 1794337928299,
+    "postStatus": 200,
+    "post": "{\"source\":\"synthetic\",\"stage\":\"reminder\"}",
+    "status": [
+      {
+        "profile": "default",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "heimdall",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": true,
+        "state": "waiting",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": true
+      },
+      {
+        "profile": "loki",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "thor",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "tyr",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "freyja",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "frigg",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "baldr",
+        "source": "synthetic",
+        "stage": "reminder",
+        "online": false,
+        "state": "offline",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      }
+    ]
+  },
+  {
+    "stage": "working",
+    "requestMs": 1794337941883,
+    "responseMs": 1794337941901,
+    "postStatus": 200,
+    "post": "{\"source\":\"synthetic\",\"stage\":\"working\"}",
+    "status": [
+      {
+        "profile": "default",
+        "source": "synthetic",
+        "stage": "working",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "heimdall",
+        "source": "synthetic",
+        "stage": "working",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "loki",
+        "source": "synthetic",
+        "stage": "working",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "thor",
+        "source": "synthetic",
+        "stage": "working",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "tyr",
+        "source": "synthetic",
+        "stage": "working",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "freyja",
+        "source": "synthetic",
+        "stage": "working",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "frigg",
+        "source": "synthetic",
+        "stage": "working",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "baldr",
+        "source": "synthetic",
+        "stage": "working",
+        "online": false,
+        "state": "offline",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      }
+    ]
+  },
+  {
+    "stage": "overlap",
+    "requestMs": 1794337962201,
+    "responseMs": 1794337962220,
+    "postStatus": 200,
+    "post": "{\"source\":\"synthetic\",\"stage\":\"overlap\"}",
+    "status": [
+      {
+        "profile": "default",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "heimdall",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "loki",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "thor",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "tyr",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "freyja",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "frigg",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": true,
+        "state": "working",
+        "busy": true,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "baldr",
+        "source": "synthetic",
+        "stage": "overlap",
+        "online": false,
+        "state": "offline",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      }
+    ]
+  },
+  {
+    "stage": "settled",
+    "requestMs": 1794337976914,
+    "responseMs": 1794337976936,
+    "postStatus": 200,
+    "post": "{\"source\":\"synthetic\",\"stage\":\"settled\"}",
+    "status": [
+      {
+        "profile": "default",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "heimdall",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "loki",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "thor",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "tyr",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "freyja",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "frigg",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": true,
+        "state": "idle",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      },
+      {
+        "profile": "baldr",
+        "source": "synthetic",
+        "stage": "settled",
+        "online": false,
+        "state": "offline",
+        "busy": false,
+        "idle_since": null,
+        "scripted_unread": false
+      }
+    ]
+  }
+]

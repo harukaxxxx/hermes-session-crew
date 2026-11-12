@@ -1,0 +1,18 @@
+{
+  "classification": "Native installed plugin rendering controlled synthetic states; not evidence of real execution",
+  "target": "http://192.168.1.100:4178",
+  "background": "Fimbulwinter — Quiet Before the Storm, empty native draft",
+  "dimensions": "1920x1080",
+  "source": "CDP Page.screencastFrame change events, JPEG originals and timestamps retained",
+  "source_events": 47,
+  "source_event_span_seconds": 77.0048279762268,
+  "capture_wall_seconds": 83.679499209,
+  "vfr_master": "raw.mkv, duration 83.680s",
+  "cfr_delivery": "../../../public/footage/features-webapp-take01.mp4",
+  "delivery_duration_seconds": 83.666667,
+  "delivery_fps": 30,
+  "cfr_note": "30fps encoding includes held frames; only 47 source events. State review gates extended the recording beyond intended 28-second master. Editing required; no 30fps unique-motion claim.",
+  "stages": "idle, reminder, working, overlap, settled; control and readback timestamps in states.json",
+  "observations": "Screenshots show yellow reminder ordered first, four green portraits and four text faces, Odin shadow stack, gray Baldr. Working bubbles are displaced far right and offset vertically from portraits; evaluate native renderer alignment and readability before final edit. Rotation appears to change between working and overlap stills; smooth animation not established by 47 events.",
+  "cleanup": "Control off POST 200, status GET 200 returned 15 live entries; off.png shows no synthetic reminder, stack or working bubbles. Existing TaskSpace 73 retained."
+}

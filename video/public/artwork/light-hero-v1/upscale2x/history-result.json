@@ -1,0 +1,108 @@
+{
+  "prompt": [
+    0,
+    "5fb16003-9575-4462-9f2b-1e07766fa355",
+    {
+      "76": {
+        "class_type": "LoadImage",
+        "inputs": {
+          "image": "hero-light.png"
+        }
+      },
+      "79": {
+        "class_type": "UpscaleModelLoader",
+        "inputs": {
+          "model_name": "4x-ultra-mix_balanced.pth"
+        }
+      },
+      "78": {
+        "class_type": "ImageUpscaleWithModel",
+        "inputs": {
+          "upscale_model": [
+            "79",
+            0
+          ],
+          "image": [
+            "76",
+            0
+          ]
+        }
+      },
+      "88": {
+        "class_type": "ImageScaleBy",
+        "inputs": {
+          "image": [
+            "78",
+            0
+          ],
+          "upscale_method": "area",
+          "scale_by": 0.5
+        }
+      },
+      "95": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": [
+            "88",
+            0
+          ],
+          "filename_prefix": "sessioncrew-video-light-hero-upscale2x"
+        }
+      }
+    },
+    {
+      "client_id": "sessioncrew-video-light-hero-upscale2x",
+      "create_time": 1794332479712
+    },
+    [
+      "95"
+    ]
+  ],
+  "outputs": {
+    "95": {
+      "images": [
+        {
+          "filename": "sessioncrew-video-light-hero-upscale2x_00001_.png",
+          "subfolder": "",
+          "type": "output"
+        }
+      ]
+    }
+  },
+  "status": {
+    "status_str": "success",
+    "completed": true,
+    "messages": [
+      [
+        "execution_start",
+        {
+          "prompt_id": "5fb16003-9575-4462-9f2b-1e07766fa355",
+          "timestamp": 1794332479713
+        }
+      ],
+      [
+        "execution_cached",
+        {
+          "nodes": [],
+          "prompt_id": "5fb16003-9575-4462-9f2b-1e07766fa355",
+          "timestamp": 1794332479718
+        }
+      ],
+      [
+        "execution_success",
+        {
+          "prompt_id": "5fb16003-9575-4462-9f2b-1e07766fa355",
+          "timestamp": 1794332508950
+        }
+      ]
+    ]
+  },
+  "meta": {
+    "95": {
+      "node_id": "95",
+      "display_node": "95",
+      "parent_node": null,
+      "real_node_id": "95"
+    }
+  }
+}

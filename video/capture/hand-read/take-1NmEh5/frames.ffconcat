@@ -1,0 +1,45 @@
+ffconcat version 1.0
+file '000000.jpg'
+option framerate 1000
+duration 2.042684
+file '000001.jpg'
+option framerate 1000
+duration 1.815507
+file '000002.jpg'
+option framerate 1000
+duration 0.092274
+file '000003.jpg'
+option framerate 1000
+duration 0.014389
+file '000004.jpg'
+option framerate 1000
+duration 0.493395
+file '000005.jpg'
+option framerate 1000
+duration 0.492917
+file '000006.jpg'
+option framerate 1000
+duration 0.507201
+file '000007.jpg'
+option framerate 1000
+duration 0.491458
+file '000008.jpg'
+option framerate 1000
+duration 0.508178
+file '000009.jpg'
+option framerate 1000
+duration 0.491966
+file '000010.jpg'
+option framerate 1000
+duration 0.508639
+file '000011.jpg'
+option framerate 1000
+duration 0.491619
+file '000012.jpg'
+option framerate 1000
+duration 0.015095
+file '000013.jpg'
+option framerate 1000
+duration 0.036600
+file '000013.jpg'
+option framerate 1000

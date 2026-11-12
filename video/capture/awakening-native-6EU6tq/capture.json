@@ -1,0 +1,1881 @@
+{
+  "classification": "Sequential genuine native 2x-density screenshots of isolated opt-in synthetic statuses; no model execution or continuous-frame-rate claim",
+  "records": [
+    {
+      "stage": "awakening-0",
+      "status": [
+        {
+          "profile": "default",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "heimdall",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "loki",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "thor",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "tyr",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "freyja",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "frigg",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "baldr",
+          "source": "synthetic",
+          "stage": "awakening-0",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        }
+      ],
+      "snapshot": {
+        "version": 2,
+        "source_root": "default",
+        "source_id": "synthetic-scripted",
+        "server_epoch": "1b3d2e7938f24f57976587ff958eee77",
+        "source": "synthetic",
+        "stage": "awakening-0",
+        "scripted_unread_profiles": [],
+        "profiles": [
+          {
+            "profile": "default",
+            "status": "ok",
+            "database_id": "synthetic-default",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.196553,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "heimdall",
+            "status": "ok",
+            "database_id": "synthetic-heimdall",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.196556,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "loki",
+            "status": "ok",
+            "database_id": "synthetic-loki",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.196558,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "thor",
+            "status": "ok",
+            "database_id": "synthetic-thor",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.1965592,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "tyr",
+            "status": "ok",
+            "database_id": "synthetic-tyr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.19656,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "freyja",
+            "status": "ok",
+            "database_id": "synthetic-freyja",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.1965618,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "frigg",
+            "status": "ok",
+            "database_id": "synthetic-frigg",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.196563,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "baldr",
+            "status": "ok",
+            "database_id": "synthetic-baldr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344631.196564,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          }
+        ]
+      },
+      "image": {
+        "filename": "awakening-0.png",
+        "width": 3840,
+        "height": 2160
+      },
+      "capturedAt": "2026-11-10T21:03:52.001Z"
+    },
+    {
+      "stage": "awakening-1",
+      "status": [
+        {
+          "profile": "default",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "heimdall",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "loki",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "thor",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "tyr",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "freyja",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "frigg",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "baldr",
+          "source": "synthetic",
+          "stage": "awakening-1",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        }
+      ],
+      "snapshot": {
+        "version": 2,
+        "source_root": "default",
+        "source_id": "synthetic-scripted",
+        "server_epoch": "1b3d2e7938f24f57976587ff958eee77",
+        "source": "synthetic",
+        "stage": "awakening-1",
+        "scripted_unread_profiles": [],
+        "profiles": [
+          {
+            "profile": "default",
+            "status": "ok",
+            "database_id": "synthetic-default",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.5384681,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "heimdall",
+            "status": "ok",
+            "database_id": "synthetic-heimdall",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.538472,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "loki",
+            "status": "ok",
+            "database_id": "synthetic-loki",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.538473,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "thor",
+            "status": "ok",
+            "database_id": "synthetic-thor",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.538475,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "tyr",
+            "status": "ok",
+            "database_id": "synthetic-tyr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.538476,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "freyja",
+            "status": "ok",
+            "database_id": "synthetic-freyja",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.538477,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "frigg",
+            "status": "ok",
+            "database_id": "synthetic-frigg",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.5384781,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "baldr",
+            "status": "ok",
+            "database_id": "synthetic-baldr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344638.538479,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          }
+        ]
+      },
+      "image": {
+        "filename": "awakening-1.png",
+        "width": 3840,
+        "height": 2160
+      },
+      "capturedAt": "2026-11-10T21:03:59.639Z"
+    },
+    {
+      "stage": "awakening-2",
+      "status": [
+        {
+          "profile": "default",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "heimdall",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "loki",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "thor",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "tyr",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "freyja",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "frigg",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "baldr",
+          "source": "synthetic",
+          "stage": "awakening-2",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        }
+      ],
+      "snapshot": {
+        "version": 2,
+        "source_root": "default",
+        "source_id": "synthetic-scripted",
+        "server_epoch": "1b3d2e7938f24f57976587ff958eee77",
+        "source": "synthetic",
+        "stage": "awakening-2",
+        "scripted_unread_profiles": [],
+        "profiles": [
+          {
+            "profile": "default",
+            "status": "ok",
+            "database_id": "synthetic-default",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.168243,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "heimdall",
+            "status": "ok",
+            "database_id": "synthetic-heimdall",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.1682482,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "loki",
+            "status": "ok",
+            "database_id": "synthetic-loki",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.1682491,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "thor",
+            "status": "ok",
+            "database_id": "synthetic-thor",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.1682508,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "tyr",
+            "status": "ok",
+            "database_id": "synthetic-tyr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.168252,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "freyja",
+            "status": "ok",
+            "database_id": "synthetic-freyja",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.168253,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "frigg",
+            "status": "ok",
+            "database_id": "synthetic-frigg",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.168255,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "baldr",
+            "status": "ok",
+            "database_id": "synthetic-baldr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344646.168256,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          }
+        ]
+      },
+      "image": {
+        "filename": "awakening-2.png",
+        "width": 3840,
+        "height": 2160
+      },
+      "capturedAt": "2026-11-10T21:04:06.648Z"
+    },
+    {
+      "stage": "awakening-3",
+      "status": [
+        {
+          "profile": "default",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "heimdall",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "loki",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "thor",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "tyr",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "freyja",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "frigg",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "baldr",
+          "source": "synthetic",
+          "stage": "awakening-3",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        }
+      ],
+      "snapshot": {
+        "version": 2,
+        "source_root": "default",
+        "source_id": "synthetic-scripted",
+        "server_epoch": "1b3d2e7938f24f57976587ff958eee77",
+        "source": "synthetic",
+        "stage": "awakening-3",
+        "scripted_unread_profiles": [],
+        "profiles": [
+          {
+            "profile": "default",
+            "status": "ok",
+            "database_id": "synthetic-default",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.171207,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "heimdall",
+            "status": "ok",
+            "database_id": "synthetic-heimdall",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.171211,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "loki",
+            "status": "ok",
+            "database_id": "synthetic-loki",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.1712132,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "thor",
+            "status": "ok",
+            "database_id": "synthetic-thor",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.171214,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "tyr",
+            "status": "ok",
+            "database_id": "synthetic-tyr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.171215,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "freyja",
+            "status": "ok",
+            "database_id": "synthetic-freyja",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.171217,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "frigg",
+            "status": "ok",
+            "database_id": "synthetic-frigg",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.171217,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "baldr",
+            "status": "ok",
+            "database_id": "synthetic-baldr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344653.1712189,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          }
+        ]
+      },
+      "image": {
+        "filename": "awakening-3.png",
+        "width": 3840,
+        "height": 2160
+      },
+      "capturedAt": "2026-11-10T21:04:14.094Z"
+    },
+    {
+      "stage": "awakening-4",
+      "status": [
+        {
+          "profile": "default",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "heimdall",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "loki",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "thor",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "tyr",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "freyja",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "frigg",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "baldr",
+          "source": "synthetic",
+          "stage": "awakening-4",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        }
+      ],
+      "snapshot": {
+        "version": 2,
+        "source_root": "default",
+        "source_id": "synthetic-scripted",
+        "server_epoch": "1b3d2e7938f24f57976587ff958eee77",
+        "source": "synthetic",
+        "stage": "awakening-4",
+        "scripted_unread_profiles": [],
+        "profiles": [
+          {
+            "profile": "default",
+            "status": "ok",
+            "database_id": "synthetic-default",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.6239302,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "heimdall",
+            "status": "ok",
+            "database_id": "synthetic-heimdall",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.623935,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "loki",
+            "status": "ok",
+            "database_id": "synthetic-loki",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.6239371,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "thor",
+            "status": "ok",
+            "database_id": "synthetic-thor",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.623939,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "tyr",
+            "status": "ok",
+            "database_id": "synthetic-tyr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.6239412,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "freyja",
+            "status": "ok",
+            "database_id": "synthetic-freyja",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.6239429,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "frigg",
+            "status": "ok",
+            "database_id": "synthetic-frigg",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.623945,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "baldr",
+            "status": "ok",
+            "database_id": "synthetic-baldr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344660.623947,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          }
+        ]
+      },
+      "image": {
+        "filename": "awakening-4.png",
+        "width": 3840,
+        "height": 2160
+      },
+      "capturedAt": "2026-11-10T21:04:21.698Z"
+    },
+    {
+      "stage": "awakening-overlap",
+      "status": [
+        {
+          "profile": "default",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "heimdall",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": true,
+          "state": "idle",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "loki",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "thor",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "tyr",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "freyja",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "frigg",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": true,
+          "state": "working",
+          "busy": true,
+          "idle_since": null,
+          "scripted_unread": false
+        },
+        {
+          "profile": "baldr",
+          "source": "synthetic",
+          "stage": "awakening-overlap",
+          "online": false,
+          "state": "offline",
+          "busy": false,
+          "idle_since": null,
+          "scripted_unread": false
+        }
+      ],
+      "snapshot": {
+        "version": 2,
+        "source_root": "default",
+        "source_id": "synthetic-scripted",
+        "server_epoch": "1b3d2e7938f24f57976587ff958eee77",
+        "source": "synthetic",
+        "stage": "awakening-overlap",
+        "scripted_unread_profiles": [],
+        "profiles": [
+          {
+            "profile": "default",
+            "status": "ok",
+            "database_id": "synthetic-default",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 3,
+              "observed_at": 1794344668.235195,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 3,
+                "children": [
+                  {
+                    "id": "scripted-child-0",
+                    "kind": "recent",
+                    "leased": false
+                  },
+                  {
+                    "id": "scripted-child-1",
+                    "kind": "recent",
+                    "leased": false
+                  },
+                  {
+                    "id": "scripted-child-2",
+                    "kind": "recent",
+                    "leased": false
+                  }
+                ],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "heimdall",
+            "status": "ok",
+            "database_id": "synthetic-heimdall",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344668.2352011,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "loki",
+            "status": "ok",
+            "database_id": "synthetic-loki",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344668.235204,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "thor",
+            "status": "ok",
+            "database_id": "synthetic-thor",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344668.235206,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "tyr",
+            "status": "ok",
+            "database_id": "synthetic-tyr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344668.235208,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "freyja",
+            "status": "ok",
+            "database_id": "synthetic-freyja",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344668.23521,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "frigg",
+            "status": "ok",
+            "database_id": "synthetic-frigg",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344668.235212,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          },
+          {
+            "profile": "baldr",
+            "status": "ok",
+            "database_id": "synthetic-baldr",
+            "high_water": 0,
+            "truncated": false,
+            "rows": [],
+            "activity": {
+              "version": 1,
+              "coverage": "observed",
+              "definition": "synthetic scripted",
+              "observed_active_count": 0,
+              "observed_child_active": false,
+              "observed_child_count": 0,
+              "observed_at": 1794344668.235214,
+              "unknown_reasons": [
+                "synthetic"
+              ],
+              "child_metadata": {
+                "availability": "available",
+                "presentation_count": 0,
+                "children": [],
+                "truncated": false
+              }
+            }
+          }
+        ]
+      },
+      "image": {
+        "filename": "awakening-overlap.png",
+        "width": 3840,
+        "height": 2160
+      },
+      "capturedAt": "2026-11-10T21:04:29.169Z"
+    }
+  ]
+}

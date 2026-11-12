@@ -1,0 +1,17 @@
+[
+  {"id":"odin","name":"Odin","zh":"奧丁","motif":"wisdom, one eye, ravens"},
+  {"id":"thor","name":"Thor","zh":"索爾","motif":"thunder, hammer"},
+  {"id":"loki","name":"Loki","zh":"洛基","motif":"cunning, shapeshifting"},
+  {"id":"freyja","name":"Freyja","zh":"芙蕾雅","motif":"love, seidr, falcon cloak"},
+  {"id":"freyr","name":"Freyr","zh":"弗雷","motif":"fertility, golden boar"},
+  {"id":"frigg","name":"Frigg","zh":"弗麗嘉","motif":"foresight, weaving"},
+  {"id":"tyr","name":"Tyr","zh":"提爾","motif":"courage, one hand"},
+  {"id":"heimdall","name":"Heimdall","zh":"海姆達爾","motif":"watchfulness, Gjallarhorn"},
+  {"id":"baldr","name":"Baldr","zh":"巴德爾","motif":"radiance, mistletoe"},
+  {"id":"njord","name":"Njord","zh":"尼奧爾德","motif":"sea, sailing"},
+  {"id":"skadi","name":"Skadi","zh":"絲卡蒂","motif":"winter, mountains, bow"},
+  {"id":"idunn","name":"Idunn","zh":"伊登","motif":"youth, golden apples"},
+  {"id":"bragi","name":"Bragi","zh":"布拉吉","motif":"poetry, music"},
+  {"id":"sif","name":"Sif","zh":"希芙","motif":"golden hair, harvest"},
+  {"id":"hel","name":"Hel","zh":"赫爾","motif":"underworld, duality"}
+]

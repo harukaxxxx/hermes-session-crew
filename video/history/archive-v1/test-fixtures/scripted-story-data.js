@@ -1,0 +1,5 @@
+[
+ {profile:'heimdall',id:'sessioncrew-scripted-story-heimdall-v1',title:'Scripted demo: Nine Realms report',messages:[{role:'user',content:'Scripted demo: Give us the Nine Realms progress report.'},{role:'assistant',content:'I have checked progress across the Nine Realms. Everyone is ready — except Loki. Can someone ask him where the Rainbow Bridge acceptance report is?'}]},
+ {profile:'loki',id:'sessioncrew-scripted-story-loki-v1',title:'Scripted demo: Rainbow Bridge',messages:[{role:'user',content:'Scripted demo: Heimdall is looking for you. Where is the Rainbow Bridge acceptance report?'},{role:'assistant',content:'It must be Ragnarök again. They scheduled the end of the world, but forgot to get Odin’s approval.'}]},
+ {profile:'default',id:'sessioncrew-scripted-story-odin-v1',title:'Scripted demo: Ragnarök',messages:[{role:'user',content:'Scripted demo: The gods are still waiting for your command. Any longer, and Ragnarök will be nothing but twilight.'},{role:'assistant',content:"Then awaken the gods. And I'll form the head!"}]}
+]

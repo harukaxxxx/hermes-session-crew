@@ -1,0 +1,366 @@
+{
+  "request_id": "sessioncrew-norse-avatars-15-v1",
+  "status": "delivered_15_native_256px_with_resolution_limitation",
+  "roster_source": "/Users/haruka/SessionCrew-Demo/norse-roster.json",
+  "expected_count": 15,
+  "generated_count": 15,
+  "verified_avatar_count": 15,
+  "missing_avatar_count": 0,
+  "generation_provenance": {
+    "tool": "image_generate",
+    "calls_submitted": 1,
+    "success": true,
+    "effective_provider": "openai",
+    "effective_model": "gpt-image-2.6-sunburst",
+    "effective_endpoint": "https://api.openai.com/v1",
+    "endpoint_evidence": "Parent-approved preflight relayed by user; provider/model additionally confirmed by generation result.",
+    "aspect_ratio": "square",
+    "size_returned": "1024x1024",
+    "quality_returned": null,
+    "raw_outputs": [
+      "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png"
+    ],
+    "original_tool_output_path": "/Users/haruka/.hermes/profiles/makino-natsuki/cache/generated/images/openai_gpt-image-2.6-sunburst_20261110_231901_5ed87b15.png",
+    "reference_image_urls": [
+      "https://web-assets.nousresearch.com/marketing/0e0950dc1c0ea3d01e688d5ac5f4c09880bb5ca4/assets/hermes-agent/hero.webp"
+    ],
+    "prompt_path": "/Users/haruka/SessionCrew-Demo/artwork/norse/generation-prompt.txt",
+    "note": "One successful native generation, 15 portrait cells plus one unused charcoal cell. Full generation prompt saved separately."
+  },
+  "blocker": null,
+  "references": [
+    {
+      "page": "https://hermes-agent.nousresearch.com/",
+      "image": "https://web-assets.nousresearch.com/marketing/0e0950dc1c0ea3d01e688d5ac5f4c09880bb5ca4/assets/hermes-agent/hero.webp",
+      "visually_inspected": true,
+      "role": "primary illustrative direction: silver-on-black classical engraving and geometric rays"
+    },
+    {
+      "page": "https://hermes-agent.nousresearch.com/desktop",
+      "image": "https://web-assets.nousresearch.com/marketing/a126317bd394b40de2356dd69fa2797222f75c8e/assets/hermes-agent/platform-art.webp",
+      "visually_inspected": true,
+      "role": "supporting monochrome grain and classical drapery"
+    },
+    {
+      "page": "https://github.com/NousResearch/hermes-agent",
+      "image": "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/assets/banner.png",
+      "visually_inspected": true,
+      "role": "comparison only: yellow pixel typography, not selected as figurative style"
+    }
+  ],
+  "qa_summary": "Original atlas and all 15 named crops visually inspected individually: distinct single-headed portraits, contained motifs, no text, duplicate heads or cross-cell spill. All 15 PNGs decoded at native 256x256. Actual 34px square and rounded previews inspected: faces remain legible and rounded corners preserve faces, but fine symbol details and engraving are not consistently recognizable at 34px; some flowing pale hair silhouettes are similar. Native resolution is below the initial 512px target, explicitly reported without upscaling. Baldr botanical species is not verified; gold is tonal in this monochrome series.",
+  "contact_sheet": {
+    "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/contact-sheet.png",
+    "dimensions": [
+      1280,
+      882
+    ],
+    "status": "created_decoded"
+  },
+  "avatars": [
+    {
+      "id": "odin",
+      "name": "Odin",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/odin.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; eyepatch and raven visible. Distinct elderly silhouette.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "thor",
+      "name": "Thor",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/thor.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        256,
+        0,
+        512,
+        256
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; broad smiling beard and squared hammer visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "loki",
+      "name": "Loki",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/loki.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        512,
+        0,
+        768,
+        256
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; clean-shaven angular face and smoke ribbon visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "freyja",
+      "name": "Freyja",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/freyja.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        768,
+        0,
+        1024,
+        256
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; falcon feather cloak and round necklace visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "freyr",
+      "name": "Freyr",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/freyr.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        0,
+        256,
+        256,
+        512
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; youthful wavy hair and boar brooch visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "frigg",
+      "name": "Frigg",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/frigg.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        256,
+        256,
+        512,
+        512
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; mature face, braided crown and spindle visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "tyr",
+      "name": "Tyr",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/tyr.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        512,
+        256,
+        768,
+        512
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; scarred warrior and wrapped forearm stump visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "heimdall",
+      "name": "Heimdall",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/heimdall.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        768,
+        256,
+        1024,
+        512
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; watchful dark-skinned face and curved horn visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "baldr",
+      "name": "Baldr",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/baldr.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        0,
+        512,
+        256,
+        768
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; pale flowing hair, radiant lines and collar sprig visible; botanical species not verifiable.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "njord",
+      "name": "Njord",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/njord.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        256,
+        512,
+        512,
+        768
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; weathered beard, waves and sail visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "skadi",
+      "name": "Skadi",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/skadi.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        512,
+        512,
+        768,
+        768
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; dark braids, fur, bow and snowy peak visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "idunn",
+      "name": "Idunn",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/idunn.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        768,
+        512,
+        1024,
+        768
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; joyful curls and apple visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "bragi",
+      "name": "Bragi",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/bragi.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        0,
+        768,
+        256,
+        1024
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; elaborate braided beard and lyre visible.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "sif",
+      "name": "Sif",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/sif.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        256,
+        768,
+        512,
+        1024
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; flowing pale hair and wheat visible; monochrome cannot literally show gold.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    },
+    {
+      "id": "hel",
+      "name": "Hel",
+      "path": "/Users/haruka/SessionCrew-Demo/artwork/norse/hel.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "source": "/Users/haruka/SessionCrew-Demo/artwork/norse/raw/norse-atlas-original.png",
+      "crop_box_xyxy": [
+        512,
+        768,
+        768,
+        1024
+      ],
+      "resampled": false,
+      "status": "generated_decoded",
+      "qa": "One large head; split living/skeletal face visible, non-gory.",
+      "generation_provenance": "One original native image_generate atlas; row-major crop, no synthesized drawing or upscaling."
+    }
+  ],
+  "minimum_512px_met": false,
+  "resolution_note": "Native tool returned 1024x1024 despite higher-resolution prompt; 4x4 atlas yields native 256x256 crops. No upscaling.",
+  "previous_blocker_resolution": "User supplied parent-approved preflight with exit_code=0; native image_generate subsequently succeeded.",
+  "small_avatar_qa_preview": "/Users/haruka/SessionCrew-Demo/artwork/norse/qa-34px.png"
+}

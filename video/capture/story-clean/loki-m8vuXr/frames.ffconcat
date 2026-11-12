@@ -1,0 +1,15 @@
+ffconcat version 1.0
+file '000000.jpg'
+option framerate 1000
+duration 1.040032
+file '000001.jpg'
+option framerate 1000
+duration 0.013339
+file '000002.jpg'
+option framerate 1000
+duration 8.534272
+file '000003.jpg'
+option framerate 1000
+duration 1.449967
+file '000003.jpg'
+option framerate 1000

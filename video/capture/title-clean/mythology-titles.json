@@ -1,0 +1,372 @@
+{
+  "profiles": [
+    {
+      "profile": "default",
+      "count": 4
+    },
+    {
+      "profile": "heimdall",
+      "count": 2
+    },
+    {
+      "profile": "loki",
+      "count": 2
+    },
+    {
+      "profile": "thor",
+      "count": 1
+    },
+    {
+      "profile": "tyr",
+      "count": 1
+    },
+    {
+      "profile": "freyja",
+      "count": 1
+    },
+    {
+      "profile": "frigg",
+      "count": 1
+    },
+    {
+      "profile": "baldr",
+      "count": 1
+    }
+  ],
+  "sessions": [
+    {
+      "profile": "default",
+      "id": "local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+      "oldtitle": null,
+      "targettitle": null,
+      "action": "preserve",
+      "before": {
+        "source": "gui",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "17755cde92415635f154727cfa892421c1a8153b40830915bc09729188a1bac2"
+      },
+      "readback": {
+        "title": null,
+        "profile": "default",
+        "id": "local-f5959b6a7b8a785be6a1b918782598da3b7e5bb2ef47567df9d73bcdd28fc713",
+        "source": "gui",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "17755cde92415635f154727cfa892421c1a8153b40830915bc09729188a1bac2",
+        "verified": true
+      }
+    },
+    {
+      "profile": "default",
+      "id": "local-2f67a4c81570c34603744a1f8d29d4f6b7a71a712e5e90014a64c2142568f56e",
+      "oldtitle": null,
+      "targettitle": null,
+      "action": "preserve",
+      "before": {
+        "source": "gui",
+        "cwd": "/Users/haruka",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "6850f50b412e2c94ab5e4d42aaaa768dfe95cf39bc2212ad5979af61d64bf7d3"
+      },
+      "readback": {
+        "title": null,
+        "profile": "default",
+        "id": "local-2f67a4c81570c34603744a1f8d29d4f6b7a71a712e5e90014a64c2142568f56e",
+        "source": "gui",
+        "cwd": "/Users/haruka",
+        "message_count": 0,
+        "transcript_revision": 0,
+        "messages_sha256": "6850f50b412e2c94ab5e4d42aaaa768dfe95cf39bc2212ad5979af61d64bf7d3",
+        "verified": true
+      }
+    },
+    {
+      "profile": "default",
+      "id": "sessioncrew-scripted-story-odin-v1",
+      "oldtitle": "Ragnarök — Awaken the Gods",
+      "targettitle": "Ragnarök — Awaken the Gods",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3aead4872a517290ad0116a4b0bf64d6be412e6c9115b46737e5214f8f73cabf"
+      },
+      "readback": {
+        "title": "Ragnarök — Awaken the Gods",
+        "profile": "default",
+        "id": "sessioncrew-scripted-story-odin-v1",
+        "source": "cli",
+        "cwd": "/Users/haruka/SessionCrew-Demo/Ragnarök",
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3aead4872a517290ad0116a4b0bf64d6be412e6c9115b46737e5214f8f73cabf",
+        "verified": true
+      }
+    },
+    {
+      "profile": "default",
+      "id": "sessioncrew-norse-odin",
+      "oldtitle": "Synthetic demo: Ravens and Wisdom",
+      "targettitle": "Two Ravens — One Inbox",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "12b372e32aadbe496ed59c9b0ef4771afd519aad161fbafa2bf6d8856becc588"
+      },
+      "readback": {
+        "title": "Two Ravens — One Inbox",
+        "profile": "default",
+        "id": "sessioncrew-norse-odin",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "12b372e32aadbe496ed59c9b0ef4771afd519aad161fbafa2bf6d8856becc588",
+        "verified": true
+      }
+    },
+    {
+      "profile": "heimdall",
+      "id": "sessioncrew-scripted-story-heimdall-v1",
+      "oldtitle": "Nine Realms — Readiness Report",
+      "targettitle": "Nine Realms — Readiness Report",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3ff74204d983c1f2d4eabd28b738f3038c1f5daebc78d4fdb925156474ac5eeb"
+      },
+      "readback": {
+        "title": "Nine Realms — Readiness Report",
+        "profile": "heimdall",
+        "id": "sessioncrew-scripted-story-heimdall-v1",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3ff74204d983c1f2d4eabd28b738f3038c1f5daebc78d4fdb925156474ac5eeb",
+        "verified": true
+      }
+    },
+    {
+      "profile": "heimdall",
+      "id": "sessioncrew-norse-heimdall",
+      "oldtitle": "Synthetic demo: The Watchful Horn",
+      "targettitle": "Gjallarhorn — Final Call",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "fc7283ce0e3e300f16912757ab6e46e84de014644060354a70aaf49c1e6a3d19"
+      },
+      "readback": {
+        "title": "Gjallarhorn — Final Call",
+        "profile": "heimdall",
+        "id": "sessioncrew-norse-heimdall",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "fc7283ce0e3e300f16912757ab6e46e84de014644060354a70aaf49c1e6a3d19",
+        "verified": true
+      }
+    },
+    {
+      "profile": "loki",
+      "id": "sessioncrew-scripted-story-loki-v1",
+      "oldtitle": "Rainbow Bridge — Missing Approval",
+      "targettitle": "Rainbow Bridge — Missing Approval",
+      "action": "preserve",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "97c641b72781d8e8634945970c2eef83eac080aecb088dd3fc3e60cbd9816e63"
+      },
+      "readback": {
+        "title": "Rainbow Bridge — Missing Approval",
+        "profile": "loki",
+        "id": "sessioncrew-scripted-story-loki-v1",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "97c641b72781d8e8634945970c2eef83eac080aecb088dd3fc3e60cbd9816e63",
+        "verified": true
+      }
+    },
+    {
+      "profile": "loki",
+      "id": "sessioncrew-norse-loki",
+      "oldtitle": "Synthetic demo: A Shapeshifter’s Trick",
+      "targettitle": "Shapeshift — Approval Pending",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "db5936317377dccebf0f070d5c5b916be16f81aebb17f4cf8e662ea9624fa4fd"
+      },
+      "readback": {
+        "title": "Shapeshift — Approval Pending",
+        "profile": "loki",
+        "id": "sessioncrew-norse-loki",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "db5936317377dccebf0f070d5c5b916be16f81aebb17f4cf8e662ea9624fa4fd",
+        "verified": true
+      }
+    },
+    {
+      "profile": "thor",
+      "id": "sessioncrew-norse-thor",
+      "oldtitle": "Synthetic demo: The Thunder Hammer",
+      "targettitle": "Mjölnir — Hammer the Blockers",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "2a96a00867823a4bdf39ffaccea05972f543a3a0f8d93cfa424f0440604b5b23"
+      },
+      "readback": {
+        "title": "Mjölnir — Hammer the Blockers",
+        "profile": "thor",
+        "id": "sessioncrew-norse-thor",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "2a96a00867823a4bdf39ffaccea05972f543a3a0f8d93cfa424f0440604b5b23",
+        "verified": true
+      }
+    },
+    {
+      "profile": "tyr",
+      "id": "sessioncrew-norse-tyr",
+      "oldtitle": "Synthetic demo: A Courageous Oath",
+      "targettitle": "Gleipnir — Pledge a Hand",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "180f12f21413c059bddbf8956b140929ad42745c81baf6cf852a83b03442c190"
+      },
+      "readback": {
+        "title": "Gleipnir — Pledge a Hand",
+        "profile": "tyr",
+        "id": "sessioncrew-norse-tyr",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "180f12f21413c059bddbf8956b140929ad42745c81baf6cf852a83b03442c190",
+        "verified": true
+      }
+    },
+    {
+      "profile": "freyja",
+      "id": "sessioncrew-norse-freyja",
+      "oldtitle": "Synthetic demo: The Falcon Cloak",
+      "targettitle": "Falcon Cloak — Flying Review",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "533079d5b94e459e2e92062174f6d6c046713eda4d964ae76bb89d58b2219347"
+      },
+      "readback": {
+        "title": "Falcon Cloak — Flying Review",
+        "profile": "freyja",
+        "id": "sessioncrew-norse-freyja",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "533079d5b94e459e2e92062174f6d6c046713eda4d964ae76bb89d58b2219347",
+        "verified": true
+      }
+    },
+    {
+      "profile": "frigg",
+      "id": "sessioncrew-norse-frigg",
+      "oldtitle": "Synthetic demo: Threads of Foresight",
+      "targettitle": "Foresight — Spoiler Alert",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3297239ae98ab3ae6b9839c16063829934bfbad43e42ce92feb840d32aeb74a6"
+      },
+      "readback": {
+        "title": "Foresight — Spoiler Alert",
+        "profile": "frigg",
+        "id": "sessioncrew-norse-frigg",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "3297239ae98ab3ae6b9839c16063829934bfbad43e42ce92feb840d32aeb74a6",
+        "verified": true
+      }
+    },
+    {
+      "profile": "baldr",
+      "id": "sessioncrew-norse-baldr",
+      "oldtitle": "Synthetic demo: Light and Mistletoe",
+      "targettitle": "Mistletoe — Sleep Mode",
+      "action": "rename",
+      "before": {
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "9a72ea849f7d6ae7a0fdff4e19aea212b1e544c87ab70b307b5e4a96af4a9890"
+      },
+      "readback": {
+        "title": "Mistletoe — Sleep Mode",
+        "profile": "baldr",
+        "id": "sessioncrew-norse-baldr",
+        "source": "cli",
+        "cwd": null,
+        "message_count": 2,
+        "transcript_revision": 0,
+        "messages_sha256": "9a72ea849f7d6ae7a0fdff4e19aea212b1e544c87ab70b307b5e4a96af4a9890",
+        "verified": true
+      }
+    }
+  ],
+  "summary": {
+    "expected": 13,
+    "actual": 13,
+    "missing": [],
+    "unexpected": [],
+    "verified": 13,
+    "rename_expected": 8,
+    "rename_verified": 8
+  }
+}
