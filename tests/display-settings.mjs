@@ -10,6 +10,13 @@ const atom=value=>({get:()=>value}),host={state:{connectionId:atom('c'),profile:
 const sdk={host,useValue:a=>a.get(),useQuery,Popover:()=>null,PopoverContent:()=>null,PopoverTrigger:()=>null},source=await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8')
 const mod=new SourceTextModule(source+'\nexport {createPreferences,Settings,Recent,officeStatus,recentData,profileVisible,DialogRestContext};');await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate()
 const {createPreferences,Settings,Recent,officeStatus,recentData,profileVisible,DialogRestContext}=mod.namespace
+for(const legacy of [undefined,false,true]){
+ const original={hideOffline:true,showCron:true,hiddenProfiles:['beta'],...(legacy===undefined?{}:{hideMessaging:legacy})};let writes=0
+ const migrated=createPreferences({get:async()=>structuredClone(original),set:async()=>{writes++}})
+ for(let i=0;i<50&&!migrated.get().ready;i++)await new Promise(r=>setTimeout(r,2))
+ assert.equal(migrated.get().ready,true);assert.equal(migrated.get().hiddenMessagingSources.includes('discord'),legacy===true);assert.equal(migrated.get().hiddenMessagingSources.includes('whatsapp_cloud'),legacy===true);assert.equal(migrated.get().hiddenMessagingSources.includes('future-adapter'),false);assert.equal(writes,0,'migration on read does not write');assert.deepEqual(migrated.get().hiddenProfiles,['beta'])
+}
+{let writes=0;const bad=createPreferences({get:async()=>({hideOffline:false,showCron:false,hiddenProfiles:[],hiddenMessagingSources:'discord'}),set:async()=>{writes++}});await new Promise(r=>setTimeout(r,10));assert.equal(bad.get().ready,false);assert.equal(bad.get().error.translationKey,'settings.readFailed');assert.equal(writes,0)}
 const rest=async(path,opts)=>activityResponse(opts)
 assert.equal(officeStatus(undefined),'unknown');assert.equal(officeStatus({online:false}),'offline')
 assert.equal(profileVisible({name:'x',status:'unknown'},{hideOffline:true,hiddenProfiles:[]}),true);assert.equal(profileVisible({name:'x',status:'offline'},{hideOffline:true,hiddenProfiles:[]}),false);assert.equal(profileVisible({name:'x',status:'working'},{hideOffline:false,hiddenProfiles:['x']}),false)
@@ -25,7 +32,7 @@ assert.equal(prefs.get().hideOffline,false);assert.equal(prefs.get().showCron,fa
 assert.equal(saved,undefined,'reading defaults must not write client settings');assert.doesNotMatch(document.body.textContent,/Scheduled/);assert.match(document.body.textContent,/Unknown source/)
 async function change(label){const el=[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')===label||x.textContent===label);assert.ok(el,label);assert.ok(el.getAttribute('role')==='switch'||el.hasAttribute('aria-pressed'),label+' exposes state');await React.act(async()=>{el.click();await new Promise(r=>setTimeout(r,10))});await update()}
 await change('Show Cron sessions');assert.match(document.body.textContent,/Scheduled/)
-await change('beta');await change('Hide offline profiles');assert.deepEqual(saved,{hideOffline:true,showCron:true,hideMessaging:false,hiddenProfiles:['beta']})
+await change('beta');await change('Hide offline profiles');assert.deepEqual(saved,{hideOffline:true,showCron:true,hiddenMessagingSources:[],hiddenProfiles:['beta']})
 prefs=createPreferences(storage);await update();await wait(()=>prefs.get().ready);await update();assert.deepEqual(prefs.get().hiddenProfiles,['beta']);assert.equal(prefs.get().showCron,true,'previous explicit show choice survives reload');assert.match(document.body.textContent,/Scheduled/);assert.ok(!prefs.get().hiddenProfiles.includes('new'))
 await change('Show Cron sessions');assert.doesNotMatch(document.body.textContent,/Scheduled/);assert.match(document.body.textContent,/cron-like title/);assert.match(document.body.textContent,/Unknown source/)
 prefs=createPreferences(storage);await update();await wait(()=>prefs.get().ready);assert.equal(prefs.get().showCron,false,'previous explicit hide choice survives reload')
