@@ -86,4 +86,33 @@ for(const bad of [42,'','x'.repeat(257)]){
  await freshCron();unread()[0].last_known_session_source=bad;const saved=structuredClone(value['completion-snapshot-v2'])
  await remount();await until(()=>document.querySelector('[data-completion-error]')?.getAttribute('title')==='Could not save completion records');assert.deepEqual(value['completion-snapshot-v2'],saved);assert.equal(dot(),false);await unmount()
 }
-client.clear();console.log('PASS cron unread and source conflict regressions')
+// One-shot source is presentation-only, independent of the Cron toggle.
+value={'display-settings-v1':{hideOffline:false,showCron:true,hiddenProfiles:[]}}
+snapshot.profiles=[profile('alpha','db1',row('cron1','oneshot','c'))]
+await remount();if(toggle().getAttribute('aria-checked')!=='true')await React.act(async()=>toggle().click());await until(()=>toggle().getAttribute('aria-checked')==='true');snapshot.profiles[0].rows[0].status='terminal';snapshot.profiles[0].rows[0].outcome='completed';await refetch();await until(()=>unread().length===1)
+assert.equal(dot(),false,'oneshot-only unread does not light profile even when Cron is shown')
+await React.act(async()=>document.querySelector('.profile-rail-hit').click());await until(()=>document.querySelector('[data-recent-row]'))
+assert.equal(document.querySelector('[data-session-completion-badge]'),null,'oneshot row has no unread dot');assert.equal(unread()[0].read,false)
+await unmount();await remount();assert.equal(dot(),false,'persisted oneshot remains hidden on remount');assert.equal(unread()[0].read,false)
+// A normal completion still lights both markers, and explicit opening still
+// acknowledges the hidden oneshot record through the unfiltered watermark.
+snapshot.profiles[0].high_water=2;snapshot.profiles[0].rows.push({...row('normal1','desktop','n'),seq:2,status:'terminal',outcome:'completed'});await refetch();await until(()=>unread().length===2&&dot())
+await React.act(async()=>document.querySelector('.profile-rail-hit').click());await until(()=>document.querySelectorAll('[data-recent-row]').length===2)
+const listed=[...document.querySelectorAll('[data-recent-row]')],one=listed.find(x=>x.textContent.includes('cron')),normal=listed.find(x=>x.textContent.includes('normal'))
+assert.equal(one.querySelector('[data-session-completion-badge]'),null);assert.ok(normal.querySelector('[data-session-completion-badge]'))
+await React.act(async()=>one.click());await until(()=>unread().length===1);assert.equal(unread()[0].session,'normal1');assert.equal(dot(),true)
+await unmount()
+// Mark-all still acknowledges an otherwise invisible oneshot; its hand is independent.
+value={'display-settings-v1':{hideOffline:false,showCron:true,hiddenProfiles:[]}};active={alpha:[{id:'cron1',session_key:'cron1',source:'desktop',status:'waiting'}]}
+snapshot.profiles=[profile('alpha','db1',row('cron1','oneshot','c'))]
+await remount();snapshot.profiles[0].rows[0].status='terminal';snapshot.profiles[0].rows[0].outcome='completed';await refetch();await until(()=>unread().length===1&&document.querySelector('[data-avatar-waiting]'))
+await React.act(async()=>document.querySelector('.profile-rail-hit').click());await until(()=>document.querySelector('[data-session-waiting]'));assert.equal(document.querySelector('[data-session-waiting]').textContent,'✋');assert.equal(unread()[0].read,false)
+await React.act(async()=>document.querySelector('[data-completion-read-all]').click());await until(()=>unread().length===0);assert.ok(document.querySelector('[data-avatar-waiting]'));await unmount();active={}
+// Unknown and conflicting authoritative snapshot evidence must remain visible.
+value={'display-settings-v1':{hideOffline:false,showCron:true,hiddenProfiles:[]}}
+snapshot.profiles=[profile('alpha','db1',row('cron1','oneshot','c'))]
+await remount();snapshot.profiles[0].rows[0].status='terminal';snapshot.profiles[0].rows[0].outcome='completed';await refetch();await until(()=>unread().length===1)
+delete snapshot.profiles[0].rows[0].session_source;await refetch();await until(()=>unread()[0].session_source===null&&dot())
+await React.act(async()=>document.querySelector('.profile-rail-hit').click());await until(()=>document.querySelector('[data-session-completion-badge]'))
+snapshot.profiles[0].rows[0].session_source='desktop';await refetch();await until(()=>unread()[0].session_source_conflict===true);assert.equal(dot(),true);assert.equal(unread()[0].read,false)
+await unmount();client.clear();console.log('PASS cron and oneshot unread and source conflict regressions')

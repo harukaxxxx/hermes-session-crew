@@ -26,11 +26,13 @@ try{
  await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
  await until(()=>saved['completion-snapshot-v2']?.coverage&&order().length===names.length)
  for(const name of ['dot','both']){const p=snapshot.profiles.find(p=>p.profile===name);p.high_water=1;p.rows=[{seq:1,admission_id:name,session_id:name,status:'terminal',outcome:'completed',generation:1}]}
+ const plain=snapshot.profiles.find(p=>p.profile==='plain');plain.high_water=1;plain.rows=[{seq:1,admission_id:'oneshot',session_id:'oneshot',session_source:'oneshot',status:'terminal',outcome:'completed',generation:1}]
  active.hand=[record('hand')];active.both=[record('both')]
  await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']});await client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']})})
  await until(()=>entries().filter(x=>x.hand).length===2&&entries().some(x=>x.name==='dot'&&x.dot))
  assert.deepEqual(order(),['working','office wait','hand','both','dot','idle new','plain','idle old','offline'],'status first, then visible hand, visible dot, and idle timestamp; office waiting is not an input hand')
  assert.equal(entries().find(x=>x.name==='both').dot,false,'hand hides retained unread')
+ assert.equal(entries().find(x=>x.name==='plain').dot,false,'oneshot does not create profile attention priority')
  active.both=[]
  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
  await until(()=>entries().find(x=>x.name==='both')?.dot)
