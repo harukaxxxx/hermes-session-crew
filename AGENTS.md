@@ -2,7 +2,7 @@
 
 ## 專案範圍與設計方向
 
-- 以**不修改 Hermes core／SDK 的插件**為開發方向。權威 Desktop 入口為 [`desktop/plugin.js`](desktop/plugin.js)；`dashboard/` 是 SessionCrew 自有 backend，不依賴 Office 的執行環境、API 或 cache。以 [README](README.md) 說明現況；`history/` 與 `evidence/` 是特定版本的歷史證據，不代表現版已驗收。
+- 以**不修改 Hermes core／SDK 的插件**為開發方向。權威 Desktop 入口為 [`desktop/plugin.js`](desktop/plugin.js)；`dashboard/` 是 SessionCrew 自有 backend。
 - 保留已核准的視覺與互動，不因 SDK 相容性重做設計。若公開 hook 或掛載契約不足，記錄執行版本、缺少的契約、證據及影響；不擅改核心、不把替代方案說成等價。可提出 upstream hook 需求，但開 issue 需另獲授權。
 
 ## 實作邊界
