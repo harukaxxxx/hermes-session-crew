@@ -1,3 +1,4 @@
+import {activityResponse} from './recent-activity-fixture.mjs'
 import {createPopoverFixture} from './popover-fixture.mjs'
 import {readFile} from 'node:fs/promises'
 import {createRequire} from 'node:module'
@@ -10,7 +11,7 @@ const state={connectionId:'c',profile:'alpha'};const atom=k=>({get:()=>state[k]}
 const descriptors=['alpha','beta'].map(profile=>({connectionId:'c',mode:'remote',profile,targetProfile:'backend-'+profile}))
 const host={state:{connectionId:atom('connectionId'),profile:atom('profile')},profiles:{list:async()=>({profiles:[{name:'alpha'},{name:'beta'}]})},profileRoutes:()=>routesHandler(),request:async()=>({}),requestProfile:(...args)=>{calls.push(args);return handler(...args)}}
 const sdk={host,useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
-const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate();let contribution;mod.namespace.default.register({register:c=>contribution=c})
+const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate();let contribution;mod.namespace.default.register({rest:async(path,opts)=>path==='/recent-activity'?activityResponse(opts):Promise.reject(Error('fixture unavailable')),register:c=>contribution=c})
 const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 async function until(predicate,description){const end=Date.now()+1500;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,5))});if(predicate())return}throw Error('timeout: '+description+'; DOM='+document.body.textContent)}
 async function click(text){const button=[...document.querySelectorAll('button')].find(x=>x.textContent===text||x.getAttribute('aria-label')?.startsWith(text));assert.ok(button,text);await React.act(async()=>button.click())}

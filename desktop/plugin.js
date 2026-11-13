@@ -131,6 +131,7 @@ const messages = {
       projectFormat: "Unsupported project response format",
       projectNoPath: "Project has no available folder path",
       sessionFormat: "Unsupported session response format",
+      activityUnavailable: "Session activity ordering unavailable; retry",
       missingProjectId: "Creation response lacks a project ID; outcome unknown",
       missingSessionId: "Creation response lacks a session ID",
       rootChangedDialog: "Backend root changed; reopen the dialog",
@@ -315,6 +316,7 @@ const messages = {
       projectFormat: "專案回應格式不支援",
       projectNoPath: "專案沒有可用的資料夾路徑",
       sessionFormat: "工作階段回應格式不支援",
+      activityUnavailable: "工作階段活動排序無法使用，請重試",
       missingProjectId: "建立回應缺少專案 ID，結果未知",
       missingSessionId: "建立回應缺少工作階段 ID",
       rootChangedDialog: "後端根目錄已變更，請重新開啟對話框",
@@ -409,7 +411,13 @@ async function requestOwner(owner,method,params,spawnPriority='background'){
  if(host.state.connectionId.get()===owner.connectionId && host.state.profile.get()===owner.name && typeof host.request==='function') return bounded(()=>host.request(method,params),method)
  throw new LocalizedError('errors.otherProfilesUnsupported')
 }
-async function recentData(owner,spawnPriority='background'){
+async function recentData(owner,spawnPriority='background',rest=null){
+ const connection=host.state.connectionId.get(),profile=host.state.profile.get();let changed=false
+ const dispose=[host.state.connectionId,host.state.profile].map(atom=>typeof atom.subscribe==='function'?atom.subscribe(()=>{if(host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)changed=true}):null)
+ const sameScope=()=>!changed&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile
+ try{return await recentDataScoped(owner,spawnPriority,rest,sameScope)}finally{for(const off of dispose)if(typeof off==='function')off()}
+}
+async function recentDataScoped(owner,spawnPriority,rest,sameScope){
  let result
  try { result=await requestOwner(owner,'session.list',{limit:200,scope:'stored'},spawnPriority); if(result?.error) throw result.error }
  catch(e){if(!scopeError(e)) throw e;result=await requestOwner(owner,'session.list',{limit:200},spawnPriority)}
@@ -421,9 +429,20 @@ async function recentData(owner,spawnPriority='background'){
   if(live?.error || live?.scope!=='live' || !Array.isArray(live.sessions)) throw new LocalizedError('errors.liveSessionFormat')
   sessions=[...live.sessions,...sessions]
  }
- // Both supported stored-list implementations return MRU order but omit the
- // activity timestamp. started_at is creation time, not a sorting substitute.
- const seen=new Set(), rows=sessions.filter(x=>typeof x?.id==='string'&&x.id&&!seen.has(x.id)&&seen.add(x.id)).slice(0,200).map(x=>({id:x.id,title:typeof x.title==='string'?x.title:'',source:typeof x.source==='string'?x.source:null,last_active:x.last_active,updated_at:x.updated_at,started_at:x.started_at}))
+ const seen=new Set(), unique=sessions.filter(x=>typeof x?.id==='string'&&x.id&&!seen.has(x.id)&&seen.add(x.id))
+ let activity={}
+ if(unique.length){
+  const profile=typeof owner.route==='string'?owner.name:owner.route?.targetProfile
+  if(!profile||!sameScope()||host.state.connectionId.get()!==owner.connectionId)throw new LocalizedError('errors.routingUnsupported')
+  if(typeof rest!=='function')throw new LocalizedError('errors.activityUnavailable')
+  let data
+  try{data=await rest('/recent-activity',{method:'POST',body:{profile,ids:unique.map(x=>x.id)},timeoutMs:10000})}catch{throw new LocalizedError('errors.activityUnavailable')}
+  if(!sameScope()||host.state.connectionId.get()!==owner.connectionId)throw new LocalizedError('errors.routingUnsupported')
+  if(data?.profile!==profile||!data.activity||typeof data.activity!=='object'||Array.isArray(data.activity)||unique.some(x=>!Object.hasOwn(data.activity,x.id)||(data.activity[x.id]!==null&&(typeof data.activity[x.id]!=='number'||!Number.isFinite(data.activity[x.id])||data.activity[x.id]<=0))))throw new LocalizedError('errors.activityUnavailable')
+  activity=data.activity
+ }
+ // Unknown timestamps retain input order after known activity; unread is independent.
+ const rows=unique.map((x,index)=>({x,index,time:typeof activity[x.id]==='number'&&Number.isFinite(activity[x.id])&&activity[x.id]>0?activity[x.id]:null})).sort((a,b)=>(b.time??-Infinity)-(a.time??-Infinity)||a.index-b.index).slice(0,200).map(({x,time})=>({id:x.id,title:typeof x.title==='string'?x.title:'',source:typeof x.source==='string'?x.source:null,last_activity_at:time,last_active:x.last_active,updated_at:x.updated_at,started_at:x.started_at}))
  return {rows}
 }
 async function projectData(owner,spawnPriority='background'){
@@ -510,18 +529,20 @@ function useProfileInputWaiting(owner,rest){
  useEffect(()=>{if(!supported||typeof host.onEvent!=='function')return;return host.onEvent('gateway.ready',()=>{void q.refetch()})},[supported,key])
  return supported&&!q.isError&&q.data&&Date.now()-q.data.started<20000?q.data.waiting:null
 }
-function ProfileAvatar({owner,rest,...props}){
+function ProfileAvatar({owner,rest,attentionKey,onWaiting,...props}){
  const tr=useTranslator(),waiting=useProfileInputWaiting(owner,rest),label=waiting?tr('sessionActivity.waiting'):''
+ useEffect(()=>{onWaiting(attentionKey,waiting===true);return()=>onWaiting(attentionKey,false)},[attentionKey,onWaiting,waiting])
  return jsx(AvatarLayers,{...props,waiting:waiting===true,triggerProps:{...props.triggerProps,'aria-label':[props.triggerProps['aria-label'],label].filter(Boolean).join(' · '),title:[props.triggerProps.title,label|| (props.unread?tr('completion.unread'):'')].filter(Boolean).join(' ')||undefined}})
 }
-function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:true}}){
+function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false}}){
  const tr=useTranslator()
+ const recentRest=useContext(DialogRestContext)
  const [count,setCount]=useState(3),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
- async function open(id){if(rowLock.current)return;rowLock.current=true;setBusy(true);setError('');const watermark=completion.watermark(owner,id);try{await openOwned(owner,id);await completion.ack(owner,id,watermark);onOpened()}catch(e){setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}finally{rowLock.current=false;setBusy(false)}}
+ async function open(id){if(rowLock.current)return;rowLock.current=true;setBusy(true);setError('');const watermark=completion.watermark(owner,id,true);try{await openOwned(owner,id);await completion.ack(owner,id,watermark);onOpened()}catch(e){setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}finally{rowLock.current=false;setBusy(false)}}
  const route=owner?.route, key=[owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]
  // Consume the open/retry intent once; interval and focus callbacks stay background.
  const recentIntent=useRef(null),intentKey=JSON.stringify([...key,generation])
- const result=useQuery({queryKey:['sessioncrew','recent',...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
+ const result=useQuery({queryKey:['sessioncrew','recent',...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
  const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>settings.showCron||row.source!=='cron')}}:result
  const activity=useRowActivity(owner,q.data?.rows)
  const projectIntent=useRef(0)
@@ -757,7 +778,7 @@ function validateSnapshot(data){
   if(p.status==='unavailable')continue
   if(!text(p.database_id)||!Number.isSafeInteger(p.high_water)||p.high_water<0||typeof p.truncated!=='boolean'||!Array.isArray(p.rows)||p.rows.length>2000)throw new LocalizedError('errors.completionDataFormat')
   const seqs=new Set(),ids=new Set()
-  for(const r of p.rows){if(!r||!Number.isSafeInteger(r.seq)||r.seq<1||r.seq>p.high_water||seqs.has(r.seq)||!text(r.admission_id)||ids.has(r.admission_id)||!text(r.session_id)||!['queued','started','unknown','terminal'].includes(r.status)||(r.outcome!==null&&typeof r.outcome!=='string')||(r.generation!==null&&(!Number.isSafeInteger(r.generation)||r.generation<1)))throw new LocalizedError('errors.completionEventFormat');seqs.add(r.seq);ids.add(r.admission_id)}
+  for(const r of p.rows){if(!r||!Number.isSafeInteger(r.seq)||r.seq<1||r.seq>p.high_water||seqs.has(r.seq)||!text(r.admission_id)||ids.has(r.admission_id)||!text(r.session_id)||(r.session_source!=null&&!text(r.session_source))||!['queued','started','unknown','terminal'].includes(r.status)||(r.outcome!==null&&typeof r.outcome!=='string')||(r.generation!==null&&(!Number.isSafeInteger(r.generation)||r.generation<1)))throw new LocalizedError('errors.completionEventFormat');seqs.add(r.seq);ids.add(r.admission_id)}
  }
  return data
 }
@@ -766,7 +787,7 @@ function validStoredLedger(saved){
   if(!saved||saved.version!==2||!Array.isArray(saved.rows)||saved.rows.length>5000)return false
   const keys=new Set(),text=x=>typeof x==='string'&&x.length>0&&x.length<=256
   for(const x of saved.rows){
-   if(!x||typeof x.key!=='string'||!text(x.owner)||!text(x.session)||!text(x.database)||typeof x.connection!=='string'||typeof x.source!=='string'||typeof x.read!=='boolean'||keys.has(x.key))return false
+   if(!x||typeof x.key!=='string'||!text(x.owner)||!text(x.session)||!text(x.database)||typeof x.connection!=='string'||typeof x.source!=='string'||(x.session_source!=null&&!text(x.session_source))||(x.last_known_session_source!=null&&!text(x.last_known_session_source))||(x.session_source_conflict!=null&&typeof x.session_source_conflict!=='boolean')||typeof x.read!=='boolean'||keys.has(x.key))return false
    const source=JSON.parse(x.source),key=JSON.parse(x.key)
    if(!Array.isArray(source)||source.length!==3||!(source[0]===null||text(source[0]))||!text(source[1])||!text(source[2])||JSON.stringify(source)!==x.source||JSON.stringify(source[0])!==x.connection||!Array.isArray(key)||key.length!==5||key[0]!==x.source||key[1]!==x.owner||key[2]!==x.database||key[3]!==x.session||!text(key[4])||JSON.stringify(key)!==x.key)return false
    keys.add(x.key)
@@ -776,7 +797,7 @@ function validStoredLedger(saved){
  }catch{return false}
 }
 function sameSnapshotDataset(a,b){try{const x=JSON.parse(a),y=JSON.parse(b);return x[0]===y[0]&&x[1]===y[1]}catch{return false}}
-function useCompletion(storage,rest,connection,profile){
+function useCompletion(storage,rest,connection,profile,showCron){
  const tr=useTranslator()
  const focusIdAtom=host.state.focusedStoredSessionId,focusOwnerAtom=host.state.focusedSessionOwner
  const focusedId=useSyncExternalStore(fn=>focusIdAtom?.subscribe?.(fn)||(()=>{}),()=>focusIdAtom?.get?.()??null,()=>null)
@@ -813,7 +834,10 @@ function useCompletion(storage,rest,connection,profile){
     if(reference){state.gap=true;rows=rows.filter(x=>!sameSnapshotDataset(x.source,source)||x.owner!==p.profile)}
     else rows=rows.filter(x=>{if(!sameSnapshotDataset(x.source,source)||x.owner!==p.profile)return true;const r=now.get(JSON.parse(x.key)[4]);return x.database===p.database_id&&r?.session_id===x.session&&r.status==='terminal'&&r.outcome==='completed'})
    }
-    if(before&&consistent)for(const r of p.rows){const previous=prior.get(r.admission_id);const becameComplete=r.status==='terminal'&&r.outcome==='completed'&&(!previous||previous.status!=='terminal'||previous.outcome!=='completed');if(!becameComplete)continue;const key=JSON.stringify([source,p.profile,p.database_id,r.session_id,r.admission_id]);if(!rows.some(x=>sameSnapshotDataset(x.source,source)&&x.owner===p.profile&&x.database===p.database_id&&x.session===r.session_id&&JSON.parse(x.key)[4]===r.admission_id))rows.push({key,connection:JSON.stringify(connection??null),source,owner:p.profile,database:p.database_id,session:r.session_id,read:focusedMatches(p.profile,r.session_id)})}
+    // Dataset identity is not the session source. Classify only against an
+    // owner/database-matched complete snapshot; disagreements stay unknown.
+    rows=rows.map(x=>{if(!sameSnapshotDataset(x.source,source)||x.owner!==p.profile||x.database!==p.database_id)return x;const r=now.get(JSON.parse(x.key)[4]),previous=prior.get(JSON.parse(x.key)[4]);if(!r||r.session_id!==x.session)return x;const s=r.session_source??null,known=[x.last_known_session_source,x.session_source,previous?.session_source,s].filter(Boolean),conflict=!!x.session_source_conflict||new Set(known).size>1;return {...x,session_source:conflict?null:s,last_known_session_source:s??previous?.session_source??x.session_source??x.last_known_session_source??null,session_source_conflict:conflict}})
+    if(before&&consistent)for(const r of p.rows){const previous=prior.get(r.admission_id);const becameComplete=r.status==='terminal'&&r.outcome==='completed'&&(!previous||previous.status!=='terminal'||previous.outcome!=='completed');if(!becameComplete)continue;const key=JSON.stringify([source,p.profile,p.database_id,r.session_id,r.admission_id]);const conflict=!!(r.session_source&&previous?.session_source&&previous.session_source!==r.session_source);if(!rows.some(x=>sameSnapshotDataset(x.source,source)&&x.owner===p.profile&&x.database===p.database_id&&x.session===r.session_id&&JSON.parse(x.key)[4]===r.admission_id))rows.push({key,connection:JSON.stringify(connection??null),source,owner:p.profile,database:p.database_id,session:r.session_id,session_source:conflict?null:r.session_source??null,last_known_session_source:r.session_source??previous?.session_source??null,session_source_conflict:conflict,read:focusedMatches(p.profile,r.session_id)})}
     const coverage={database_id:p.database_id,high_water:p.high_water,rows:p.rows};next.set(p.profile,coverage);known.set(p.profile,coverage)
    }
    if(rows.length>5000)throw Error('completion ledger full')
@@ -853,7 +877,10 @@ function useCompletion(storage,rest,connection,profile){
  }
  const covered=(x,owner)=>x.owner===owner?.name&&owner?.connectionId===connection&&sameSnapshotDataset(x.source,state.baseline?.source)&&x.connection===JSON.stringify(connection??null)&&x.database===state.baseline?.profiles.get(owner.name)?.database_id&&!x.read
  const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
- return {activityFor,childMetadataFor,ackAll,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:name=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read),watermark:(owner,id)=>usable()?state.rows.filter(x=>matches(x,owner,id)).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{state.failed=true;render(n=>n+1)});await state.queue}}
+ // Source classification comes from the scoped completion ledger, not the
+ // bounded recent list. Unknown/conflicting evidence stays visible.
+ const visible=x=>x.session_source_conflict===true||(x.session_source!=='oneshot'&&(showCron||x.session_source!=='cron'))
+ return {activityFor,childMetadataFor,ackAll,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:name=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read&&visible(x)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{state.failed=true;render(n=>n+1)});await state.queue}}
 }
 const activityLabel=(n,t=tr)=>t('activity.observed',n)
 // Activity inputs are tri-state: unknown does not invent a child or a count.
@@ -869,7 +896,7 @@ export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,o
  const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
  return jsx('span',{ref:box,style:{display:'block',width:'100%',height:37},children:jsxs('span',{'data-avatar-stack':true,style:{position:'relative',display:'block',margin:'0 auto',width:Math.min(natural,available),height:37},children:[jsx('span',{style:{position:'absolute',inset:0,overflow:'hidden',zIndex:0},children:Array.from({length:visible},(_,i)=>jsxs('span',{style:{position:'absolute',left:(i+1)*6,top:1.5,width:34,height:34,zIndex:-(i+1),opacity:Math.max(0,1-(i+1)/7),pointerEvents:'none'},children:[face(null,i+1),jsx('span',{'data-child-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:0,width:34,height:34,borderRadius:'22%',boxShadow:'inset 0 0 0 1px '+shadowColor(i),zIndex:-(i+1),pointerEvents:'none'}})]},i))}),jsx(PopoverTrigger,{asChild:true,children:jsx('button',{...triggerProps,ref:avatarRef,type:'button',className:'profile-rail-hit',style:{...s.hit,position:'absolute',left:0,top:1.5,width:34,height:34,zIndex:1},children:face(null)})}),offline?jsx('span',{'data-avatar-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:1.5,width:34,height:34,borderRadius:'22%',outline:'2px solid '+color,zIndex:2,pointerEvents:'none'}}):null,waiting||unread?jsx('span',{'data-completion-badge':unread&&!waiting||undefined,'data-avatar-waiting':waiting||undefined,'aria-hidden':true,style:{position:'absolute',left:26,top:-5,zIndex:3,pointerEvents:'none',...(waiting?{fontSize:14,lineHeight:1}:{...unreadCircle,left:28,top:-3})},children:waiting?'✋':undefined}):null,Number.isSafeInteger(runningCount)&&runningCount>=2?jsx('span',{'data-running-count':true,title:activityLabel(runningCount,tr),'aria-hidden':true,style:{position:'absolute',left:26,bottom:0,zIndex:3,borderRadius:'50%',minWidth:17,height:17,lineHeight:'17px',textAlign:'center',fontSize:9,color:'var(--ui-text-primary)',background:'var(--ui-bg-elevated)',border:'1px solid var(--ui-stroke-secondary)',pointerEvents:'none'},children:'x'+runningCount}):null]})})
 }
-const defaultPreferences={hideOffline:false,showCron:true,hiddenProfiles:[]}
+const defaultPreferences={hideOffline:false,showCron:false,hiddenProfiles:[]}
 const profileVisible=(p,settings)=>!settings.hiddenProfiles.includes(p.name)&&(!settings.hideOffline||p.status!=='offline')
 function createPreferences(storage){
  let value=defaultPreferences,ready=false,error='',pending=false,version=0
@@ -894,8 +921,10 @@ function Rail({storage,rest,preferences}){
  const tr=useTranslator()
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
- const completion=useCompletion(storage,rest,connectionId,profile)
+ const completion=useCompletion(storage,rest,connectionId,profile,settings.showCron)
  const [office,clock]=useRailSnapshot(rest,connectionId,profile)
+ const [hands,setHands]=useState({})
+ const onWaiting=useCallback((key,value)=>setHands(previous=>{if(!!previous[key]===value)return previous;const next={...previous};if(value)next[key]=true;else delete next[key];return next}),[])
  const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
  const select=value=>{const next=typeof value==='function'?value(selectedRef.current):value;if(next!==selectedRef.current){selectionEpoch.current++;setProjectOwner(null)}selectedRef.current=next;setSelected(next)}
  useEffect(()=>{select(null)},[connectionId,profile])
@@ -915,8 +944,9 @@ function Rail({storage,rest,preferences}){
  if(q.isError) return jsxs('div',{children:[jsx('p',{children:tr('settings.profilesUnknown')}),jsx('button',{onClick:()=>q.refetch(),children:tr('common.retry')})]})
  if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const byName=new Map(office.map(row=>[row.profile,row]))
- const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>({...p,index,office:byName.get(p.name),status:officeStatus(byName.get(p.name))})).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
-  const rank=statusOrder[a.status]-statusOrder[b.status];if(rank)return rank
+ const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>({...p,index,attentionKey:JSON.stringify([connectionId,profile,p.name,routes.data]),office:byName.get(p.name),status:officeStatus(byName.get(p.name))})).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
+ const rank=statusOrder[a.status]-statusOrder[b.status];if(rank)return rank
+ const attention=p=>hands[p.attentionKey]?0:completion.has(p.name)?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
   if(a.status==='idle'){const x=a.office?.idle_since,y=b.office?.idle_since,valid=v=>typeof v==='number'&&Number.isFinite(v)&&v>0; if(valid(x)&&valid(y)&&x!==y)return y-x;if(valid(x)!==valid(y))return valid(x)?-1:1}
   return a.index-b.index
  })
@@ -927,7 +957,7 @@ function Rail({storage,rest,preferences}){
   let owner=null,phase=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
   if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(selectedRef.current===selectionKey)select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
-   jsx(ProfileAvatar,{owner,rest,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,offline:p.status==='offline',unread:completion.has(p.name),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
+   jsx(ProfileAvatar,{owner,rest,attentionKey:p.attentionKey,onWaiting,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,offline:p.status==='offline',unread:completion.has(p.name),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
   jsxs(PopoverContent,{ref:contentRef,onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,position:'relative'},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }

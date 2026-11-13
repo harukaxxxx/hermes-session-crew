@@ -39,9 +39,9 @@ def test_root_snapshot_only_metadata_and_known_session_ownership(tmp_path):
             continue
         assert p['status'] == 'ok' and not p['truncated']
         assert [row['admission_id'] for row in p['rows']] == ['old','pending','nope']
-        assert p['rows'][1] == {'seq':2,'admission_id':'pending','session_id':'same','status':'started','outcome':None,'generation':2}
+        assert p['rows'][1] == {'seq':2,'admission_id':'pending','session_id':'same','session_source':'desktop','status':'started','outcome':None,'generation':2}
         assert p['high_water'] == 3
-        assert all(set(row)=={'seq','admission_id','session_id','status','outcome','generation'} for row in p['rows'])
+        assert all(set(row)=={'seq','admission_id','session_id','session_source','status','outcome','generation'} for row in p['rows'])
 
 def test_snapshot_caps_and_preserves_unknown_not_fake_empty(tmp_path):
     api=load();db(tmp_path)
@@ -56,6 +56,16 @@ def test_snapshot_exposes_preexisting_started_to_completed_transition(tmp_path):
     after=api.collect_snapshot(tmp_path,limit=20)['profiles'][0]
     b=next(x for x in before['rows'] if x['admission_id']=='pending');a=next(x for x in after['rows'] if x['admission_id']=='pending')
     assert b['seq']==a['seq']==2 and b['status']=='started' and a['status']=='terminal' and a['outcome']=='completed'
+
+def test_snapshot_classifies_cron_beyond_recent_session_limit(tmp_path):
+    api=load();db(tmp_path)
+    conn=sqlite3.connect(tmp_path/'state.db')
+    conn.execute("INSERT INTO sessions VALUES ('cron-old','cron')")
+    conn.execute("INSERT INTO session_admissions VALUES (5,'cron-turn','cron-old','terminal','completed',1)")
+    conn.executemany('INSERT INTO sessions VALUES (?,?)', [(f'extra-{i}','desktop') for i in range(250)])
+    conn.commit();conn.close()
+    row=next(r for r in api.collect_snapshot(tmp_path,limit=20)['profiles'][0]['rows'] if r['admission_id']=='cron-turn')
+    assert row['session_id']=='cron-old' and row['session_source']=='cron'
 
 
 def test_http_route_root_and_named_gate(monkeypatch,tmp_path):

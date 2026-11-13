@@ -12,7 +12,8 @@ let failOpen=false,dropWrites=false,saved={},holdWrite=null,writeEntered=null
 const host={state:{gateway,connectionId:atom('conn'),profile:atom('default')},profiles:{list:async()=>({profiles:routes.map(r=>({name:r.profile}))})},profileRoutes:async()=>routes,openSession:async()=>{if(failOpen)throw Error('open failed')},requestProfile:async(r,m)=>m==='session.active_list'?{sessions:structuredClone(active[r.profile])}:m==='subagent.roster'?{sessions:[]}:m==='session.list'?{sessions:[{id:'one',title:'One'},{id:'two',title:'Two'},{id:'read',title:'Read'}]}:{projects:[]}}
 const storage={get:async k=>saved[k],set:async(k,v)=>{if(holdWrite){const wait=holdWrite;holdWrite=null;writeEntered();await wait}if(!dropWrites)saved[k]=structuredClone(v)}}
 const snap={version:2,source_root:'default',source_id:'source',server_epoch:'epoch',profiles:routes.map(r=>({profile:r.profile,status:'ok',database_id:'db-'+r.profile,high_water:0,truncated:false,rows:[]}))}
-const rest=async(p,opts)=>p==='/status'?[]:p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,owners[id]])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,'cli']))}:structuredClone(snap)
+let activityTimes={one:30,two:20,read:10}
+const rest=async(p,opts)=>p==='/status'?[]:p==='/recent-activity'?{profile:opts.body.profile,activity:activityTimes}:p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,owners[id]])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,'cli']))}:structuredClone(snap)
 const sdk={host,useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
 let contribution;mod.namespace.default.register({storage,rest,register:x=>contribution=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
@@ -27,6 +28,9 @@ try{
  assert.ok(rows().every(r=>!mark(r)),'same session ids in another owner have no marker')
  await React.act(async()=>document.querySelectorAll('.profile-rail-hit')[0].click());await until(()=>rows().length===3)
  assert.equal(mark(rows()[0])?.textContent,'','unread completion has dot');assert.equal(mark(rows()[1])?.textContent,'');assert.equal(mark(rows()[2]),null,'read session has no marker')
+ activityTimes={one:30,two:20,read:40};await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','recent']}));await until(()=>rows()[0].textContent.includes('Read'))
+ assert.equal(mark(rows()[0]),null,'new activity does not create unread');assert.ok(mark(rows()[1])&&mark(rows()[2]),'unread follows its own session after reorder')
+ activityTimes={one:30,two:20,read:10};await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','recent']}));await until(()=>rows()[0].textContent.includes('One'))
  const record=(id,status)=>({id,session_key:id,source:'cli',status})
  active.alpha=[record('one','working'),record('hidden','waiting')]
  await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']});await client.refetchQueries({queryKey:['sessioncrew','row-activity']})})
