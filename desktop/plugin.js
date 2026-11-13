@@ -514,7 +514,7 @@ function ProfileAvatar({owner,rest,...props}){
  const tr=useTranslator(),waiting=useProfileInputWaiting(owner,rest),label=waiting?tr('sessionActivity.waiting'):''
  return jsx(AvatarLayers,{...props,waiting:waiting===true,triggerProps:{...props.triggerProps,'aria-label':[props.triggerProps['aria-label'],label].filter(Boolean).join(' · '),title:[props.triggerProps.title,label|| (props.unread?tr('completion.unread'):'')].filter(Boolean).join(' ')||undefined}})
 }
-function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:true}}){
+function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false}}){
  const tr=useTranslator()
  const [count,setCount]=useState(3),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
  async function open(id){if(rowLock.current)return;rowLock.current=true;setBusy(true);setError('');const watermark=completion.watermark(owner,id);try{await openOwned(owner,id);await completion.ack(owner,id,watermark);onOpened()}catch(e){setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}finally{rowLock.current=false;setBusy(false)}}
@@ -757,7 +757,7 @@ function validateSnapshot(data){
   if(p.status==='unavailable')continue
   if(!text(p.database_id)||!Number.isSafeInteger(p.high_water)||p.high_water<0||typeof p.truncated!=='boolean'||!Array.isArray(p.rows)||p.rows.length>2000)throw new LocalizedError('errors.completionDataFormat')
   const seqs=new Set(),ids=new Set()
-  for(const r of p.rows){if(!r||!Number.isSafeInteger(r.seq)||r.seq<1||r.seq>p.high_water||seqs.has(r.seq)||!text(r.admission_id)||ids.has(r.admission_id)||!text(r.session_id)||!['queued','started','unknown','terminal'].includes(r.status)||(r.outcome!==null&&typeof r.outcome!=='string')||(r.generation!==null&&(!Number.isSafeInteger(r.generation)||r.generation<1)))throw new LocalizedError('errors.completionEventFormat');seqs.add(r.seq);ids.add(r.admission_id)}
+  for(const r of p.rows){if(!r||!Number.isSafeInteger(r.seq)||r.seq<1||r.seq>p.high_water||seqs.has(r.seq)||!text(r.admission_id)||ids.has(r.admission_id)||!text(r.session_id)||(r.session_source!=null&&!text(r.session_source))||!['queued','started','unknown','terminal'].includes(r.status)||(r.outcome!==null&&typeof r.outcome!=='string')||(r.generation!==null&&(!Number.isSafeInteger(r.generation)||r.generation<1)))throw new LocalizedError('errors.completionEventFormat');seqs.add(r.seq);ids.add(r.admission_id)}
  }
  return data
 }
@@ -766,7 +766,7 @@ function validStoredLedger(saved){
   if(!saved||saved.version!==2||!Array.isArray(saved.rows)||saved.rows.length>5000)return false
   const keys=new Set(),text=x=>typeof x==='string'&&x.length>0&&x.length<=256
   for(const x of saved.rows){
-   if(!x||typeof x.key!=='string'||!text(x.owner)||!text(x.session)||!text(x.database)||typeof x.connection!=='string'||typeof x.source!=='string'||typeof x.read!=='boolean'||keys.has(x.key))return false
+   if(!x||typeof x.key!=='string'||!text(x.owner)||!text(x.session)||!text(x.database)||typeof x.connection!=='string'||typeof x.source!=='string'||(x.session_source!=null&&!text(x.session_source))||(x.last_known_session_source!=null&&!text(x.last_known_session_source))||(x.session_source_conflict!=null&&typeof x.session_source_conflict!=='boolean')||typeof x.read!=='boolean'||keys.has(x.key))return false
    const source=JSON.parse(x.source),key=JSON.parse(x.key)
    if(!Array.isArray(source)||source.length!==3||!(source[0]===null||text(source[0]))||!text(source[1])||!text(source[2])||JSON.stringify(source)!==x.source||JSON.stringify(source[0])!==x.connection||!Array.isArray(key)||key.length!==5||key[0]!==x.source||key[1]!==x.owner||key[2]!==x.database||key[3]!==x.session||!text(key[4])||JSON.stringify(key)!==x.key)return false
    keys.add(x.key)
@@ -776,7 +776,7 @@ function validStoredLedger(saved){
  }catch{return false}
 }
 function sameSnapshotDataset(a,b){try{const x=JSON.parse(a),y=JSON.parse(b);return x[0]===y[0]&&x[1]===y[1]}catch{return false}}
-function useCompletion(storage,rest,connection,profile){
+function useCompletion(storage,rest,connection,profile,showCron){
  const tr=useTranslator()
  const focusIdAtom=host.state.focusedStoredSessionId,focusOwnerAtom=host.state.focusedSessionOwner
  const focusedId=useSyncExternalStore(fn=>focusIdAtom?.subscribe?.(fn)||(()=>{}),()=>focusIdAtom?.get?.()??null,()=>null)
@@ -813,7 +813,10 @@ function useCompletion(storage,rest,connection,profile){
     if(reference){state.gap=true;rows=rows.filter(x=>!sameSnapshotDataset(x.source,source)||x.owner!==p.profile)}
     else rows=rows.filter(x=>{if(!sameSnapshotDataset(x.source,source)||x.owner!==p.profile)return true;const r=now.get(JSON.parse(x.key)[4]);return x.database===p.database_id&&r?.session_id===x.session&&r.status==='terminal'&&r.outcome==='completed'})
    }
-    if(before&&consistent)for(const r of p.rows){const previous=prior.get(r.admission_id);const becameComplete=r.status==='terminal'&&r.outcome==='completed'&&(!previous||previous.status!=='terminal'||previous.outcome!=='completed');if(!becameComplete)continue;const key=JSON.stringify([source,p.profile,p.database_id,r.session_id,r.admission_id]);if(!rows.some(x=>sameSnapshotDataset(x.source,source)&&x.owner===p.profile&&x.database===p.database_id&&x.session===r.session_id&&JSON.parse(x.key)[4]===r.admission_id))rows.push({key,connection:JSON.stringify(connection??null),source,owner:p.profile,database:p.database_id,session:r.session_id,read:focusedMatches(p.profile,r.session_id)})}
+    // Dataset identity is not the session source. Classify only against an
+    // owner/database-matched complete snapshot; disagreements stay unknown.
+    rows=rows.map(x=>{if(!sameSnapshotDataset(x.source,source)||x.owner!==p.profile||x.database!==p.database_id)return x;const r=now.get(JSON.parse(x.key)[4]),previous=prior.get(JSON.parse(x.key)[4]);if(!r||r.session_id!==x.session)return x;const s=r.session_source??null,known=[x.last_known_session_source,x.session_source,previous?.session_source,s].filter(Boolean),conflict=!!x.session_source_conflict||new Set(known).size>1;return {...x,session_source:conflict?null:s,last_known_session_source:s??previous?.session_source??x.session_source??x.last_known_session_source??null,session_source_conflict:conflict}})
+    if(before&&consistent)for(const r of p.rows){const previous=prior.get(r.admission_id);const becameComplete=r.status==='terminal'&&r.outcome==='completed'&&(!previous||previous.status!=='terminal'||previous.outcome!=='completed');if(!becameComplete)continue;const key=JSON.stringify([source,p.profile,p.database_id,r.session_id,r.admission_id]);const conflict=!!(r.session_source&&previous?.session_source&&previous.session_source!==r.session_source);if(!rows.some(x=>sameSnapshotDataset(x.source,source)&&x.owner===p.profile&&x.database===p.database_id&&x.session===r.session_id&&JSON.parse(x.key)[4]===r.admission_id))rows.push({key,connection:JSON.stringify(connection??null),source,owner:p.profile,database:p.database_id,session:r.session_id,session_source:conflict?null:r.session_source??null,last_known_session_source:r.session_source??previous?.session_source??null,session_source_conflict:conflict,read:focusedMatches(p.profile,r.session_id)})}
     const coverage={database_id:p.database_id,high_water:p.high_water,rows:p.rows};next.set(p.profile,coverage);known.set(p.profile,coverage)
    }
    if(rows.length>5000)throw Error('completion ledger full')
@@ -853,7 +856,7 @@ function useCompletion(storage,rest,connection,profile){
  }
  const covered=(x,owner)=>x.owner===owner?.name&&owner?.connectionId===connection&&sameSnapshotDataset(x.source,state.baseline?.source)&&x.connection===JSON.stringify(connection??null)&&x.database===state.baseline?.profiles.get(owner.name)?.database_id&&!x.read
  const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
- return {activityFor,childMetadataFor,ackAll,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:name=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read),watermark:(owner,id)=>usable()?state.rows.filter(x=>matches(x,owner,id)).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{state.failed=true;render(n=>n+1)});await state.queue}}
+ return {activityFor,childMetadataFor,ackAll,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:name=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read&&(showCron||x.session_source!=='cron')),watermark:(owner,id)=>usable()?state.rows.filter(x=>matches(x,owner,id)).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{state.failed=true;render(n=>n+1)});await state.queue}}
 }
 const activityLabel=(n,t=tr)=>t('activity.observed',n)
 // Activity inputs are tri-state: unknown does not invent a child or a count.
@@ -869,7 +872,7 @@ export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,o
  const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
  return jsx('span',{ref:box,style:{display:'block',width:'100%',height:37},children:jsxs('span',{'data-avatar-stack':true,style:{position:'relative',display:'block',margin:'0 auto',width:Math.min(natural,available),height:37},children:[jsx('span',{style:{position:'absolute',inset:0,overflow:'hidden',zIndex:0},children:Array.from({length:visible},(_,i)=>jsxs('span',{style:{position:'absolute',left:(i+1)*6,top:1.5,width:34,height:34,zIndex:-(i+1),opacity:Math.max(0,1-(i+1)/7),pointerEvents:'none'},children:[face(null,i+1),jsx('span',{'data-child-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:0,width:34,height:34,borderRadius:'22%',boxShadow:'inset 0 0 0 1px '+shadowColor(i),zIndex:-(i+1),pointerEvents:'none'}})]},i))}),jsx(PopoverTrigger,{asChild:true,children:jsx('button',{...triggerProps,ref:avatarRef,type:'button',className:'profile-rail-hit',style:{...s.hit,position:'absolute',left:0,top:1.5,width:34,height:34,zIndex:1},children:face(null)})}),offline?jsx('span',{'data-avatar-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:1.5,width:34,height:34,borderRadius:'22%',outline:'2px solid '+color,zIndex:2,pointerEvents:'none'}}):null,waiting||unread?jsx('span',{'data-completion-badge':unread&&!waiting||undefined,'data-avatar-waiting':waiting||undefined,'aria-hidden':true,style:{position:'absolute',left:26,top:-5,zIndex:3,pointerEvents:'none',...(waiting?{fontSize:14,lineHeight:1}:{...unreadCircle,left:28,top:-3})},children:waiting?'✋':undefined}):null,Number.isSafeInteger(runningCount)&&runningCount>=2?jsx('span',{'data-running-count':true,title:activityLabel(runningCount,tr),'aria-hidden':true,style:{position:'absolute',left:26,bottom:0,zIndex:3,borderRadius:'50%',minWidth:17,height:17,lineHeight:'17px',textAlign:'center',fontSize:9,color:'var(--ui-text-primary)',background:'var(--ui-bg-elevated)',border:'1px solid var(--ui-stroke-secondary)',pointerEvents:'none'},children:'x'+runningCount}):null]})})
 }
-const defaultPreferences={hideOffline:false,showCron:true,hiddenProfiles:[]}
+const defaultPreferences={hideOffline:false,showCron:false,hiddenProfiles:[]}
 const profileVisible=(p,settings)=>!settings.hiddenProfiles.includes(p.name)&&(!settings.hideOffline||p.status!=='offline')
 function createPreferences(storage){
  let value=defaultPreferences,ready=false,error='',pending=false,version=0
@@ -894,7 +897,7 @@ function Rail({storage,rest,preferences}){
  const tr=useTranslator()
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
- const completion=useCompletion(storage,rest,connectionId,profile)
+ const completion=useCompletion(storage,rest,connectionId,profile,settings.showCron)
  const [office,clock]=useRailSnapshot(rest,connectionId,profile)
  const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
  const select=value=>{const next=typeof value==='function'?value(selectedRef.current):value;if(next!==selectedRef.current){selectionEpoch.current++;setProjectOwner(null)}selectedRef.current=next;setSelected(next)}
