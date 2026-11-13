@@ -1,0 +1,65 @@
+name: Plugin validation
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out SessionCrew
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          path: plugin
+          persist-credentials: false
+
+      # Snapshot of upstream main with the catalog validator and PM bootstrap.
+      # Full history and tags let Hermes resolve its version as in catalog CI.
+      - name: Check out Hermes
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          repository: NousResearch/hermes-agent
+          ref: 6905478e5df01c2171f225e4eb40aa20fd6a9bd9
+          path: hermes
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Mirrors upstream .github/actions/plugin-validate's PM preparation,
+      # but explicitly enables dependency installation like catalog CI.
+      - name: Prepare isolated Hermes home
+        run: |
+          python3 -S "$GITHUB_WORKSPACE/hermes/scripts/ci/setup_toolchain.py" prepare \
+            --toolchain python --home "$RUNNER_TEMP/hermes-ci"
+
+      - name: Prepare locked Python toolchain
+        run: |
+          python3 -S "$GITHUB_WORKSPACE/hermes/scripts/ci/setup_toolchain.py" install \
+            --toolchain python --home "$RUNNER_TEMP/hermes-ci"
+
+      - name: Build validator runtime
+        id: runtime
+        working-directory: hermes
+        run: |
+          "$HERMES_PYTHON" - <<'PY'
+          import os
+          from pathlib import Path
+          from pm import build_environment
+          source = Path(os.environ['GITHUB_WORKSPACE']) / 'hermes'
+          python = build_environment(source=source, out=source / '.build/validator', explicit=True)
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'python={python}\n')
+          PY
+
+      - name: Validate plugin with dependencies
+        env:
+          VALIDATOR_PYTHON: ${{ steps.runtime.outputs.python }}
+        run: |
+          # Same CLI and --install-deps admission check as catalog CI.
+          "$VALIDATOR_PYTHON" -I -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/plugin" --install-deps
