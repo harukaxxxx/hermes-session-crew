@@ -445,10 +445,10 @@ def _read_profile(root: Path, name: str, home: Path, limit: int):
             # A subagent's completion is not the owning profile's turn.
             where = " FROM session_admissions a JOIN sessions s ON s.id=a.target_session_id WHERE s.source != 'subagent'"
             count, high = conn.execute('SELECT count(*), coalesce(max(a.seq),0)' + where).fetchone()
-            rows = conn.execute('SELECT a.seq,a.admission_id,a.target_session_id,a.status,a.outcome,a.generation' + where + ' ORDER BY a.seq DESC LIMIT ?', (limit,)).fetchall()
+            rows = conn.execute('SELECT a.seq,a.admission_id,a.target_session_id,a.status,a.outcome,a.generation,s.source' + where + ' ORDER BY a.seq DESC LIMIT ?', (limit,)).fetchall()
         finally:
             conn.close()
-        fields = ('seq', 'admission_id', 'session_id', 'status', 'outcome', 'generation')
+        fields = ('seq', 'admission_id', 'session_id', 'status', 'outcome', 'generation', 'session_source')
         return {'profile': name, 'status': 'ok', 'database_id': database_id, 'high_water': high, 'truncated': count > limit,
                 'rows': [dict(zip(fields, row)) for row in reversed(rows)]}
     except (OSError, sqlite3.Error):
