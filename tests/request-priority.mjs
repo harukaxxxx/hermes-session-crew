@@ -1,3 +1,4 @@
+import {activityResponse} from './recent-activity-fixture.mjs'
 // Public SDK boundary: UI intent versus SDK scheduled/focus refetch callbacks.
 import {createPopoverFixture} from './popover-fixture.mjs'
 import {readFile} from 'node:fs/promises'
@@ -24,7 +25,7 @@ const host={state:{connectionId:atom('c'),profile:atom('alpha')},profiles:{list:
 const sdk={host,useValue:a=>a.get(),useQuery:o=>{queries.set(o.queryKey[1],o);return useQuery(o)},...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'))
 await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate()
-let contribution;mod.namespace.default.register({register:c=>contribution=c})
+let contribution;mod.namespace.default.register({rest:async(path,opts)=>path==='/recent-activity'?activityResponse(opts):Promise.reject(Error('fixture unavailable')),register:c=>contribution=c})
 const client=new QueryClient(),root=createRoot(document.getElementById('root'))
 async function until(fn){const end=Date.now()+1500;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,5))});if(fn())return}throw Error('timeout '+document.body.textContent)}
 function assertPriority(method,priority){const rows=calls.filter(c=>c[1]===method);assert.ok(rows.length);for(const c of rows){assert.deepEqual(c[0],route);assert.equal(c[4]?.spawnPriority,priority)}}

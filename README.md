@@ -12,7 +12,7 @@ SessionCrew is a Hermes Desktop plugin that lets you view sessions from differen
 
 ## Features
 
-- **Browse conversations by profile**: Select an avatar to see recent sessions. Open an existing conversation or start one in Home or a related project.
+- **Browse conversations by profile**: Select an avatar to see recent sessions, ordered by the profile's recorded last activity across the fetched live and stored rows. Compressed session chains share their latest activity; missing timestamps remain after known ones in source order. If activity metadata cannot be retrieved or validated, the list shows an error and retry instead of presenting source order as a successful sort. This ordering is independent of unread completions. Open an existing conversation or start one in Home or a related project.
 - **View and create projects**: List projects associated with the selected profile's sessions, browse folders on the gateway, create folders, and add projects. Nonblank project ideas are saved as `IDEA.md` in the primary folder after creation, without overwriting an existing file.
 - **Observe status**: See available statuses such as working, waiting, or offline; the status is unknown when there isn't enough data. The activity count beside an avatar reflects only what has been observed, not a complete count of all running work.
 - **Session activity and badges**: A native-inspired arc marks positively identified working turns and some background work. A hand indicates waiting for input; a red dot indicates an unread completion. Waiting takes visual priority without clearing unread state. Unknown is not idle. The backend checks session IDs against the fleet's databases without reading messages.

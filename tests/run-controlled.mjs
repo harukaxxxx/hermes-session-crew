@@ -20,6 +20,7 @@ const mock='recent-live-stored recent-order-refresh roster recent-name-red owner
 const browser='browser-project-list browser-stack-centering browser-children-metadata browser-quotes-persistence browser-standalone-screenshot browser-actions browser-working browser-working-pixels browser-status-token browser-completion browser-quote-ascii browser-primary-anchor browser-recent browser-floating-geometry browser-offline-avatar browser-activity browser-project-layout browser-owner-project-dialog browser-rail-visual review-owner-dialog browser-dialog-visual browser-folder-ui browser-folder-integration browser-original-folder folder-comparison'.split(' ')
 mock.push('session-hand-regression')
 mock.push('cron-unread')
+mock.push('recent-activity-order')
 mock.push('mark-all-source-switch')
 mock.push('display-settings')
 mock.push('localization')

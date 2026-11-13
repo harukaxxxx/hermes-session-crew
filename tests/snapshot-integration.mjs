@@ -1,3 +1,4 @@
+import {activityResponse} from './recent-activity-fixture.mjs'
 import {createPopoverFixture} from './popover-fixture.mjs'
 import {readFile} from 'node:fs/promises'
 import {execFileSync} from 'node:child_process'
@@ -16,7 +17,7 @@ let dropWrites=false;const storage={get:async key=>value[key],set:async(key,val)
 const sdk={host,ackStoredSessionId:(...a)=>acks.push(a),useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
 
 let snapshot={version:2,source_root:'default',source_id:'source1',server_epoch:'epoch1',profiles:[{profile:'alpha',status:'ok',database_id:'db1',high_water:2,truncated:false,rows:[{seq:1,admission_id:'old',session_id:'s-one',status:'terminal',outcome:'completed',generation:1},{seq:2,admission_id:'pending',session_id:'s-one',status:'started',outcome:null,generation:2}]}]};let calls=0
-const rest=async(path,opts)=>{assert.equal(path,'/completion-snapshot');assert.deepEqual(opts,{method:'GET',timeoutMs:30000});calls++;return structuredClone(snapshot)}
+const rest=async(path,opts)=>{if(path==='/recent-activity')return activityResponse(opts);assert.equal(path,'/completion-snapshot');assert.deepEqual(opts,{method:'GET',timeoutMs:30000});calls++;return structuredClone(snapshot)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate();let contribution;mod.namespace.default.register({storage,rest,register:c=>contribution=c});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 async function until(fn){const end=Date.now()+3000;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,5))});if(fn())return}throw Error('timeout '+document.body.textContent)}
 await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())));await until(()=>document.querySelector('.profile-rail-hit'));await until(()=>calls===1);assert.equal(Boolean(document.querySelector('[data-completion-badge]')),false,'historical completion is baseline only')

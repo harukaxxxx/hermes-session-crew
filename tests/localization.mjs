@@ -1,3 +1,4 @@
+import {activityResponse} from './recent-activity-fixture.mjs'
 // Controlled React/SDK fixture: no installation, gateway or live Desktop.
 import {readFile} from 'node:fs/promises'
 import {createRequire} from 'node:module'
@@ -22,10 +23,11 @@ const sdk={host,useValue:a=>a.get(),useQuery,usePluginI18n:id=>{assert.equal(id,
 const element=tag=>({children,...props})=>React.createElement(tag,props,children)
 Object.assign(sdk,{Dialog:({children})=>children,DialogContent:element('section'),DialogHeader:element('header'),DialogTitle:element('h2'),DialogDescription:element('p'),DialogFooter:element('footer'),Input:props=>React.createElement('input',props),Textarea:props=>React.createElement('textarea',props),Button:element('button'),Codicon:()=>null})
 const source=await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8')
-const mod=new SourceTextModule(source+'\nexport {Settings,Recent,StatusQuote,ProjectDialog,LocalizedRoot,createPreferences,messages,localizeError,errorMessage,LocalizedError,LocalizedTimeoutError};')
+const mod=new SourceTextModule(source+'\nexport {Settings,Recent,StatusQuote,ProjectDialog,LocalizedRoot,createPreferences,messages,localizeError,errorMessage,LocalizedError,LocalizedTimeoutError,DialogRestContext};')
 await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})})
 await mod.evaluate()
-const {Settings,Recent,StatusQuote,ProjectDialog,LocalizedRoot,createPreferences,messages,localizeError,errorMessage,LocalizedError,LocalizedTimeoutError}=mod.namespace
+const {Settings,Recent,StatusQuote,ProjectDialog,LocalizedRoot,createPreferences,messages,localizeError,errorMessage,LocalizedError,LocalizedTimeoutError,DialogRestContext}=mod.namespace
+const rest=async(path,opts)=>activityResponse(opts)
 let saved=new Map();const storage={get:async k=>saved.get(k),set:async(k,v)=>saved.set(k,v)}
 let railContribution,settingsContribution
 mod.namespace.default.register({i18n,storage,register:x=>{railContribution=x},registerSettingsPage:x=>{settingsContribution=x}})
@@ -48,7 +50,7 @@ assert.equal(translate('en','session.newInProject','My project'),'New conversati
 assert.equal(translate('zh-hant','session.newInProject','My project'),'在 My project 新增對話')
 const prefs=createPreferences(storage),client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 const completion={watermark:()=>[],coverageReady:false,ackAll:()=>{}}
-function Fixture(){return React.createElement(React.Fragment,null,React.createElement(Settings,{preferences:prefs}),React.createElement(Recent,{owner:{name:'alpha',connectionId:'c',route:{}},completion}),React.createElement(StatusQuote,{storage,ownerKey:'quote',status:'working'}))}
+function Fixture(){return React.createElement(React.Fragment,null,React.createElement(Settings,{preferences:prefs}),React.createElement(DialogRestContext.Provider,{value:rest},React.createElement(Recent,{owner:{name:'alpha',connectionId:'c',route:{targetProfile:'alpha'}},completion})),React.createElement(StatusQuote,{storage,ownerKey:'quote',status:'working'}))}
 const wrap=child=>React.createElement(QueryClientProvider,{client},React.createElement(LocalizedRoot,null,child))
 await React.act(async()=>{root.render(wrap(React.createElement(Fixture)));await new Promise(r=>setTimeout(r,80))})
 async function waitFor(text){for(let i=0;i<40&&!document.body.textContent.includes(text);i++)await React.act(async()=>new Promise(r=>setTimeout(r,10)));assert.ok(document.body.textContent.includes(text),`missing ${text}: ${document.body.textContent}`)}

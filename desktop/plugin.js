@@ -131,6 +131,7 @@ const messages = {
       projectFormat: "Unsupported project response format",
       projectNoPath: "Project has no available folder path",
       sessionFormat: "Unsupported session response format",
+      activityUnavailable: "Session activity ordering unavailable; retry",
       missingProjectId: "Creation response lacks a project ID; outcome unknown",
       missingSessionId: "Creation response lacks a session ID",
       rootChangedDialog: "Backend root changed; reopen the dialog",
@@ -315,6 +316,7 @@ const messages = {
       projectFormat: "專案回應格式不支援",
       projectNoPath: "專案沒有可用的資料夾路徑",
       sessionFormat: "工作階段回應格式不支援",
+      activityUnavailable: "工作階段活動排序無法使用，請重試",
       missingProjectId: "建立回應缺少專案 ID，結果未知",
       missingSessionId: "建立回應缺少工作階段 ID",
       rootChangedDialog: "後端根目錄已變更，請重新開啟對話框",
@@ -409,7 +411,13 @@ async function requestOwner(owner,method,params,spawnPriority='background'){
  if(host.state.connectionId.get()===owner.connectionId && host.state.profile.get()===owner.name && typeof host.request==='function') return bounded(()=>host.request(method,params),method)
  throw new LocalizedError('errors.otherProfilesUnsupported')
 }
-async function recentData(owner,spawnPriority='background'){
+async function recentData(owner,spawnPriority='background',rest=null){
+ const connection=host.state.connectionId.get(),profile=host.state.profile.get();let changed=false
+ const dispose=[host.state.connectionId,host.state.profile].map(atom=>typeof atom.subscribe==='function'?atom.subscribe(()=>{if(host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)changed=true}):null)
+ const sameScope=()=>!changed&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile
+ try{return await recentDataScoped(owner,spawnPriority,rest,sameScope)}finally{for(const off of dispose)if(typeof off==='function')off()}
+}
+async function recentDataScoped(owner,spawnPriority,rest,sameScope){
  let result
  try { result=await requestOwner(owner,'session.list',{limit:200,scope:'stored'},spawnPriority); if(result?.error) throw result.error }
  catch(e){if(!scopeError(e)) throw e;result=await requestOwner(owner,'session.list',{limit:200},spawnPriority)}
@@ -421,9 +429,20 @@ async function recentData(owner,spawnPriority='background'){
   if(live?.error || live?.scope!=='live' || !Array.isArray(live.sessions)) throw new LocalizedError('errors.liveSessionFormat')
   sessions=[...live.sessions,...sessions]
  }
- // Both supported stored-list implementations return MRU order but omit the
- // activity timestamp. started_at is creation time, not a sorting substitute.
- const seen=new Set(), rows=sessions.filter(x=>typeof x?.id==='string'&&x.id&&!seen.has(x.id)&&seen.add(x.id)).slice(0,200).map(x=>({id:x.id,title:typeof x.title==='string'?x.title:'',source:typeof x.source==='string'?x.source:null,last_active:x.last_active,updated_at:x.updated_at,started_at:x.started_at}))
+ const seen=new Set(), unique=sessions.filter(x=>typeof x?.id==='string'&&x.id&&!seen.has(x.id)&&seen.add(x.id))
+ let activity={}
+ if(unique.length){
+  const profile=typeof owner.route==='string'?owner.name:owner.route?.targetProfile
+  if(!profile||!sameScope()||host.state.connectionId.get()!==owner.connectionId)throw new LocalizedError('errors.routingUnsupported')
+  if(typeof rest!=='function')throw new LocalizedError('errors.activityUnavailable')
+  let data
+  try{data=await rest('/recent-activity',{method:'POST',body:{profile,ids:unique.map(x=>x.id)},timeoutMs:10000})}catch{throw new LocalizedError('errors.activityUnavailable')}
+  if(!sameScope()||host.state.connectionId.get()!==owner.connectionId)throw new LocalizedError('errors.routingUnsupported')
+  if(data?.profile!==profile||!data.activity||typeof data.activity!=='object'||Array.isArray(data.activity)||unique.some(x=>!Object.hasOwn(data.activity,x.id)||(data.activity[x.id]!==null&&(typeof data.activity[x.id]!=='number'||!Number.isFinite(data.activity[x.id])||data.activity[x.id]<=0))))throw new LocalizedError('errors.activityUnavailable')
+  activity=data.activity
+ }
+ // Unknown timestamps retain input order after known activity; unread is independent.
+ const rows=unique.map((x,index)=>({x,index,time:typeof activity[x.id]==='number'&&Number.isFinite(activity[x.id])&&activity[x.id]>0?activity[x.id]:null})).sort((a,b)=>(b.time??-Infinity)-(a.time??-Infinity)||a.index-b.index).slice(0,200).map(({x,time})=>({id:x.id,title:typeof x.title==='string'?x.title:'',source:typeof x.source==='string'?x.source:null,last_activity_at:time,last_active:x.last_active,updated_at:x.updated_at,started_at:x.started_at}))
  return {rows}
 }
 async function projectData(owner,spawnPriority='background'){
@@ -517,12 +536,13 @@ function ProfileAvatar({owner,rest,attentionKey,onWaiting,...props}){
 }
 function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false}}){
  const tr=useTranslator()
+ const recentRest=useContext(DialogRestContext)
  const [count,setCount]=useState(3),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
  async function open(id){if(rowLock.current)return;rowLock.current=true;setBusy(true);setError('');const watermark=completion.watermark(owner,id);try{await openOwned(owner,id);await completion.ack(owner,id,watermark);onOpened()}catch(e){setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}finally{rowLock.current=false;setBusy(false)}}
  const route=owner?.route, key=[owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]
  // Consume the open/retry intent once; interval and focus callbacks stay background.
  const recentIntent=useRef(null),intentKey=JSON.stringify([...key,generation])
- const result=useQuery({queryKey:['sessioncrew','recent',...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
+ const result=useQuery({queryKey:['sessioncrew','recent',...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
  const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>settings.showCron||row.source!=='cron')}}:result
  const activity=useRowActivity(owner,q.data?.rows)
  const projectIntent=useRef(0)

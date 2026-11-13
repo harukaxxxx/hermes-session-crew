@@ -1,3 +1,4 @@
+import {activityResponse} from './recent-activity-fixture.mjs'
 // Plugin contract, not a test of a locally patched gateway's argument shape.
 // Official-host compatibility is a separate, mandatory gate: sdk-upstream-baseline.mjs.
 import {createPopoverFixture} from './popover-fixture.mjs'
@@ -20,7 +21,7 @@ async function scenario(routes,valid){
  const sdk={host,useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
  const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'))
  await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate()
- let contribution;mod.namespace.default.register({register:c=>contribution=c})
+ let contribution;mod.namespace.default.register({rest:async(path,opts)=>path==='/recent-activity'?activityResponse(opts):Promise.reject(Error('fixture unavailable')),register:c=>contribution=c})
  const client=new QueryClient(),root=createRoot(document.getElementById('root'))
  async function until(fn){const end=Date.now()+1500;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,5))});if(fn())return}throw Error('timeout '+document.body.textContent)}
  try{

@@ -86,6 +86,12 @@ class RowOwnerRequest(BaseModel):
     ids: list[StrictStr] = Field(max_length=200)
 
 
+class RecentActivityRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    profile: StrictStr = Field(pattern=r'^[a-z0-9][a-z0-9_-]{0,63}$')
+    ids: list[StrictStr] = Field(max_length=400)
+
+
 def folder_root():
     """Resolve the process's fleet root without importing private host helpers."""
     suffix = os.environ.get('HERMES_DATA_DIR_SUFFIX', '')
@@ -529,6 +535,41 @@ def _lineage_root(session_id, sessions):
         if previous[3] != 'compression':
             return session_id
         session_id = parent
+
+
+@router.post('/recent-activity')
+def recent_activity(request: RecentActivityRequest):
+    root = get_default_hermes_root()
+    try:
+        homes = dict(_profile_homes(root))
+        if get_hermes_home().resolve() not in {p.resolve() for p in homes.values()}:
+            raise HTTPException(status_code=403, detail='runtime outside profile inventory')
+        home = homes.get(request.profile)
+        if home is None:
+            raise HTTPException(status_code=404, detail='profile unavailable')
+        db = (home / 'state.db').resolve(strict=True)
+        if (not db.is_relative_to(root.resolve()) or not db.is_relative_to(home.resolve())
+                or any(name != request.profile and name != 'default' and db.is_relative_to(other.resolve())
+                       for name, other in homes.items())):
+            raise OSError('database outside selected profile')
+        conn = sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=1)
+        try:
+            conn.execute('PRAGMA query_only=ON')
+            rows = conn.execute('SELECT id,source,parent_session_id,end_reason,model_config,last_activity_at FROM sessions LIMIT ?', (_ACTIVITY_LIMIT + 1,)).fetchall()
+        finally:
+            conn.close()
+        if len(rows) > _ACTIVITY_LIMIT:
+            raise OSError('session inventory exceeds limit')
+        sessions = {r[0]: r[:5] for r in rows}
+        roots = {sid: _lineage_root(sid, sessions) for sid in sessions}
+        times = {}
+        for sid, _, _, _, _, value in rows:
+            lineage = roots[sid]
+            if lineage is not None and isinstance(value, (int, float)) and math.isfinite(value) and value > 0:
+                times[lineage] = max(times.get(lineage, 0), value)
+        return {'profile': request.profile, 'activity': {sid: times.get(roots.get(sid)) for sid in request.ids}}
+    except (OSError, sqlite3.Error) as exc:
+        raise HTTPException(status_code=503, detail='session activity unavailable') from exc
 
 
 def _collect_activity(root, homes):

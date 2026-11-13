@@ -1,3 +1,4 @@
+import {activityResponse} from './recent-activity-fixture.mjs'
 import {readFile} from 'node:fs/promises'
 import {createRequire} from 'node:module'
 import {SourceTextModule,SyntheticModule} from 'node:vm'
@@ -7,15 +8,16 @@ const React=require('react'),{createRoot}=require('react-dom/client'),{JSDOM}=re
 const dom=new JSDOM('<div id="root"></div>',{url:'https://fixture.invalid'});globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true
 const atom=value=>({get:()=>value}),host={state:{connectionId:atom('c'),profile:atom('alpha')},profiles:{list:async()=>({profiles:[{name:'alpha'},{name:'beta'},{name:'new'}]})},requestProfile:async(route,method)=>method==='session.list'?{sessions:[{id:'one',title:'cron-like title',source:'desktop'},{id:'two',title:'Scheduled',source:'cron'},{id:'three',title:'Unknown source'}]}:{projects:[]}}
 const sdk={host,useValue:a=>a.get(),useQuery,Popover:()=>null,PopoverContent:()=>null,PopoverTrigger:()=>null},source=await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8')
-const mod=new SourceTextModule(source+'\nexport {createPreferences,Settings,Recent,officeStatus,recentData,profileVisible};');await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate()
-const {createPreferences,Settings,Recent,officeStatus,recentData,profileVisible}=mod.namespace
+const mod=new SourceTextModule(source+'\nexport {createPreferences,Settings,Recent,officeStatus,recentData,profileVisible,DialogRestContext};');await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate()
+const {createPreferences,Settings,Recent,officeStatus,recentData,profileVisible,DialogRestContext}=mod.namespace
+const rest=async(path,opts)=>activityResponse(opts)
 assert.equal(officeStatus(undefined),'unknown');assert.equal(officeStatus({online:false}),'offline')
 assert.equal(profileVisible({name:'x',status:'unknown'},{hideOffline:true,hiddenProfiles:[]}),true);assert.equal(profileVisible({name:'x',status:'offline'},{hideOffline:true,hiddenProfiles:[]}),false);assert.equal(profileVisible({name:'x',status:'working'},{hideOffline:false,hiddenProfiles:['x']}),false)
-const owner={name:'alpha',connectionId:'c',route:{}};const rows=(await recentData(owner)).rows;assert.deepEqual(rows.map(x=>x.source),['desktop','cron',null])
+const owner={name:'alpha',connectionId:'c',route:{targetProfile:'alpha'}};const rows=(await recentData(owner,'background',rest)).rows;assert.deepEqual(rows.map(x=>x.source),['desktop','cron',null])
 let saved;const storage={get:async()=>saved,set:async(k,v)=>{saved=structuredClone(v)}};let prefs=createPreferences(storage)
 const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 const completion={watermark:()=>[],coverageReady:false,ackAll:()=>{}}
-const render=()=>React.createElement(QueryClientProvider,{client},React.createElement(React.Fragment,null,React.createElement(Settings,{preferences:prefs}),React.createElement(Recent,{owner,completion,settings:prefs.get()})))
+const render=()=>React.createElement(QueryClientProvider,{client},React.createElement(React.Fragment,null,React.createElement(Settings,{preferences:prefs}),React.createElement(DialogRestContext.Provider,{value:rest},React.createElement(Recent,{owner,completion,settings:prefs.get()}))))
 async function update(){await React.act(async()=>{root.render(render());await new Promise(r=>setTimeout(r,30))})}
 async function wait(fn){for(let i=0;i<30&&!fn();i++)await React.act(async()=>new Promise(r=>setTimeout(r,10)));assert.ok(fn())}
 await update();await wait(()=>prefs.get().ready&&document.body.textContent.includes('beta')&&document.body.textContent.includes('cron-like title'))
@@ -27,5 +29,5 @@ await change('beta');await change('Hide offline profiles');assert.deepEqual(save
 prefs=createPreferences(storage);await update();await wait(()=>prefs.get().ready);await update();assert.deepEqual(prefs.get().hiddenProfiles,['beta']);assert.equal(prefs.get().showCron,true,'previous explicit show choice survives reload');assert.match(document.body.textContent,/Scheduled/);assert.ok(!prefs.get().hiddenProfiles.includes('new'))
 await change('Show Cron sessions');assert.doesNotMatch(document.body.textContent,/Scheduled/);assert.match(document.body.textContent,/cron-like title/);assert.match(document.body.textContent,/Unknown source/)
 prefs=createPreferences(storage);await update();await wait(()=>prefs.get().ready);assert.equal(prefs.get().showCron,false,'previous explicit hide choice survives reload')
-await React.act(async()=>{root.render(React.createElement(QueryClientProvider,{client},React.createElement(Recent,{owner,completion})));await new Promise(r=>setTimeout(r,30))});assert.doesNotMatch(document.body.textContent,/Scheduled/,'Recent without settings hides Cron');assert.match(document.body.textContent,/cron-like title/)
+await React.act(async()=>{root.render(React.createElement(QueryClientProvider,{client},React.createElement(DialogRestContext.Provider,{value:rest},React.createElement(Recent,{owner,completion}))));await new Promise(r=>setTimeout(r,30))});assert.doesNotMatch(document.body.textContent,/Scheduled/,'Recent without settings hides Cron');assert.match(document.body.textContent,/cron-like title/)
 await React.act(async()=>root.unmount());client.clear();console.log('PASS display settings, durable reload, conservative cron source filtering and unknown/offline')

@@ -1,3 +1,4 @@
+import {activityResponse} from './recent-activity-fixture.mjs'
 import {createPopoverFixture} from './popover-fixture.mjs'
 import {readFile} from 'node:fs/promises'
 import {createRequire} from 'node:module'
@@ -10,7 +11,7 @@ const atom=get=>({get}),routes=()=>['alpha','beta'].map(profile=>({connectionId:
 const host={state:{connectionId:atom(()=>connection),profile:atom(()=>'default')},profiles:{list:async()=>({profiles:routes().map(r=>({name:r.profile}))})},profileRoutes:async()=>routes(),openSession:async()=>{},requestProfile:async(_r,m)=>m==='session.list'?{sessions:[{id:'same',title:'Same'}]}:{projects:[]}}
 const storage={get:async k=>saved[k],set:async(k,v)=>{if(hold){const p=hold;hold=null;entered();await p}saved[k]=structuredClone(v)}}
 const snapshot=()=>({version:2,source_root:'default',source_id:'dataset-a',server_epoch:'epoch',profiles:['alpha','beta'].map(profile=>({profile,status:'ok',database_id:'db-'+profile,high_water:0,truncated:false,rows:[]}))})
-let snap=snapshot();const rest=async p=>p==='/status'?[]:structuredClone(snap)
+let snap=snapshot();const rest=async (p,opts)=>p==='/recent-activity'?activityResponse(opts):p==='/status'?[]:structuredClone(snap)
 const sdk={host,useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
 let contribution;mod.namespace.default.register({storage,rest,register:x=>contribution=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
