@@ -73,6 +73,8 @@ const messages = {
     },
     settings: {
       cronHelp: "Cron is identified only by session source; sessions without a source remain visible.",
+      messagingHelp: "Hide identified messaging-platform sessions from bubbles and unread dots. Unknown sources remain visible; unread records are not cleared.",
+      hideMessaging: "Hide messaging-platform sessions",
       offlineHelp: "Only definitely offline profiles are hidden; profiles with unknown status remain visible.",
       visibleProfiles: "Visible profiles",
       storageHelp: "Settings are saved on this client and shared across connections; new profiles are visible by default.",
@@ -258,6 +260,8 @@ const messages = {
     },
     settings: {
       cronHelp: "僅依工作階段來源辨識 Cron，無來源時保留。",
+      messagingHelp: "從泡泡及未讀紅點中隱藏已辨識的訊息平台工作階段。來源未知時仍顯示；不會清除未讀紀錄。",
+      hideMessaging: "隱藏訊息平台工作階段",
       offlineHelp: "只隱藏確定離線的設定檔；狀態未知時仍會顯示。",
       visibleProfiles: "可見設定檔",
       storageHelp: "設定保存在此用戶端，所有連線共用；新設定檔預設顯示。",
@@ -429,7 +433,8 @@ async function recentDataScoped(owner,spawnPriority,rest,sameScope){
   if(live?.error || live?.scope!=='live' || !Array.isArray(live.sessions)) throw new LocalizedError('errors.liveSessionFormat')
   sessions=[...live.sessions,...sessions]
  }
- const seen=new Set(), unique=sessions.filter(x=>typeof x?.id==='string'&&x.id&&!seen.has(x.id)&&seen.add(x.id))
+ const seen=new Map(),unique=[]
+ for(const x of sessions){if(typeof x?.id!=='string'||!x.id)continue;const source=typeof x.source==='string'&&x.source?x.source:null,previous=seen.get(x.id);if(previous){if(previous.source!==source)previous.sourceConflict=true}else{const entry={...x,source,sourceConflict:false};seen.set(x.id,entry);unique.push(entry)}}
  let activity={}
  if(unique.length){
   const profile=typeof owner.route==='string'?owner.name:owner.route?.targetProfile
@@ -442,7 +447,7 @@ async function recentDataScoped(owner,spawnPriority,rest,sameScope){
   activity=data.activity
  }
  // Unknown timestamps retain input order after known activity; unread is independent.
- const rows=unique.map((x,index)=>({x,index,time:typeof activity[x.id]==='number'&&Number.isFinite(activity[x.id])&&activity[x.id]>0?activity[x.id]:null})).sort((a,b)=>(b.time??-Infinity)-(a.time??-Infinity)||a.index-b.index).slice(0,200).map(({x,time})=>({id:x.id,title:typeof x.title==='string'?x.title:'',source:typeof x.source==='string'?x.source:null,last_activity_at:time,last_active:x.last_active,updated_at:x.updated_at,started_at:x.started_at}))
+ const rows=unique.map((x,index)=>({x,index,time:typeof activity[x.id]==='number'&&Number.isFinite(activity[x.id])&&activity[x.id]>0?activity[x.id]:null})).sort((a,b)=>(b.time??-Infinity)-(a.time??-Infinity)||a.index-b.index).slice(0,200).map(({x,time})=>({id:x.id,title:typeof x.title==='string'?x.title:'',source:x.source,sourceConflict:x.sourceConflict,last_activity_at:time,last_active:x.last_active,updated_at:x.updated_at,started_at:x.started_at}))
  return {rows}
 }
 async function projectData(owner,spawnPriority='background'){
@@ -534,7 +539,10 @@ function ProfileAvatar({owner,rest,attentionKey,onWaiting,...props}){
  useEffect(()=>{onWaiting(attentionKey,waiting===true);return()=>onWaiting(attentionKey,false)},[attentionKey,onWaiting,waiting])
  return jsx(AvatarLayers,{...props,waiting:waiting===true,triggerProps:{...props.triggerProps,'aria-label':[props.triggerProps['aria-label'],label].filter(Boolean).join(' · '),title:[props.triggerProps.title,label|| (props.unread?tr('completion.unread'):'')].filter(Boolean).join(' ')||undefined}})
 }
-function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false}}){
+// Explicit known messaging adapter sources; unknown/plugin sources stay visible.
+const messagingSources=new Set(['telegram','discord','whatsapp','whatsapp_cloud','slack','signal','mattermost','matrix','email','sms','dingtalk','feishu','wecom','wecom_callback','weixin','bluebubbles','qqbot','yuanbao','line','google_chat','teams','irc','simplex'])
+const isMessagingSource=source=>messagingSources.has(source)
+function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false,hideMessaging:false}}){
  const tr=useTranslator()
  const recentRest=useContext(DialogRestContext)
  const [count,setCount]=useState(3),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
@@ -543,7 +551,7 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
  // Consume the open/retry intent once; interval and focus callbacks stay background.
  const recentIntent=useRef(null),intentKey=JSON.stringify([...key,generation])
  const result=useQuery({queryKey:['sessioncrew','recent',...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
- const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>settings.showCron||row.source!=='cron')}}:result
+ const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>row.sourceConflict||(settings.showCron||row.source!=='cron')&&(!settings.hideMessaging||!isMessagingSource(row.source)))}}:result
  const activity=useRowActivity(owner,q.data?.rows)
  const projectIntent=useRef(0)
  const projects=useQuery({queryKey:['sessioncrew','projects',...key,projectGeneration],queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner,retry:false})
@@ -797,7 +805,7 @@ function validStoredLedger(saved){
  }catch{return false}
 }
 function sameSnapshotDataset(a,b){try{const x=JSON.parse(a),y=JSON.parse(b);return x[0]===y[0]&&x[1]===y[1]}catch{return false}}
-function useCompletion(storage,rest,connection,profile,showCron){
+function useCompletion(storage,rest,connection,profile,showCron,hideMessaging){
  const tr=useTranslator()
  const focusIdAtom=host.state.focusedStoredSessionId,focusOwnerAtom=host.state.focusedSessionOwner
  const focusedId=useSyncExternalStore(fn=>focusIdAtom?.subscribe?.(fn)||(()=>{}),()=>focusIdAtom?.get?.()??null,()=>null)
@@ -879,7 +887,7 @@ function useCompletion(storage,rest,connection,profile,showCron){
  const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
  // Source classification comes from the scoped completion ledger, not the
  // bounded recent list. Unknown/conflicting evidence stays visible.
- const visible=x=>x.session_source_conflict===true||(x.session_source!=='oneshot'&&(showCron||x.session_source!=='cron'))
+ const visible=x=>x.session_source_conflict===true||(x.session_source!=='oneshot'&&(showCron||x.session_source!=='cron')&&(!hideMessaging||!isMessagingSource(x.session_source)))
  return {activityFor,childMetadataFor,ackAll,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:name=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read&&visible(x)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{state.failed=true;render(n=>n+1)});await state.queue}}
 }
 const activityLabel=(n,t=tr)=>t('activity.observed',n)
@@ -896,14 +904,14 @@ export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,o
  const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
  return jsx('span',{ref:box,style:{display:'block',width:'100%',height:37},children:jsxs('span',{'data-avatar-stack':true,style:{position:'relative',display:'block',margin:'0 auto',width:Math.min(natural,available),height:37},children:[jsx('span',{style:{position:'absolute',inset:0,overflow:'hidden',zIndex:0},children:Array.from({length:visible},(_,i)=>jsxs('span',{style:{position:'absolute',left:(i+1)*6,top:1.5,width:34,height:34,zIndex:-(i+1),opacity:Math.max(0,1-(i+1)/7),pointerEvents:'none'},children:[face(null,i+1),jsx('span',{'data-child-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:0,width:34,height:34,borderRadius:'22%',boxShadow:'inset 0 0 0 1px '+shadowColor(i),zIndex:-(i+1),pointerEvents:'none'}})]},i))}),jsx(PopoverTrigger,{asChild:true,children:jsx('button',{...triggerProps,ref:avatarRef,type:'button',className:'profile-rail-hit',style:{...s.hit,position:'absolute',left:0,top:1.5,width:34,height:34,zIndex:1},children:face(null)})}),offline?jsx('span',{'data-avatar-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:1.5,width:34,height:34,borderRadius:'22%',outline:'2px solid '+color,zIndex:2,pointerEvents:'none'}}):null,waiting||unread?jsx('span',{'data-completion-badge':unread&&!waiting||undefined,'data-avatar-waiting':waiting||undefined,'aria-hidden':true,style:{position:'absolute',left:26,top:-5,zIndex:3,pointerEvents:'none',...(waiting?{fontSize:14,lineHeight:1}:{...unreadCircle,left:28,top:-3})},children:waiting?'✋':undefined}):null,Number.isSafeInteger(runningCount)&&runningCount>=2?jsx('span',{'data-running-count':true,title:activityLabel(runningCount,tr),'aria-hidden':true,style:{position:'absolute',left:26,bottom:0,zIndex:3,borderRadius:'50%',minWidth:17,height:17,lineHeight:'17px',textAlign:'center',fontSize:9,color:'var(--ui-text-primary)',background:'var(--ui-bg-elevated)',border:'1px solid var(--ui-stroke-secondary)',pointerEvents:'none'},children:'x'+runningCount}):null]})})
 }
-const defaultPreferences={hideOffline:false,showCron:false,hiddenProfiles:[]}
+const defaultPreferences={hideOffline:false,showCron:false,hideMessaging:false,hiddenProfiles:[]}
 const profileVisible=(p,settings)=>!settings.hiddenProfiles.includes(p.name)&&(!settings.hideOffline||p.status!=='offline')
 function createPreferences(storage){
  let value=defaultPreferences,ready=false,error='',pending=false,version=0
  let snapshot={...value,ready,error,pending};const listeners=new Set()
  const emit=()=>{snapshot={...value,ready,error,pending};for(const fn of listeners)fn()}
- const valid=x=>x&&typeof x.hideOffline==='boolean'&&typeof x.showCron==='boolean'&&Array.isArray(x.hiddenProfiles)&&x.hiddenProfiles.every(v=>typeof v==='string'&&v.length>0)
- Promise.resolve().then(async()=>{if(!storage?.get||!storage?.set)throw Error();const saved=await storage.get('display-settings-v1');if(saved!==undefined&&saved!==null){if(!valid(saved))throw Error();value={hideOffline:saved.hideOffline,showCron:saved.showCron,hiddenProfiles:[...new Set(saved.hiddenProfiles)]}}ready=true;emit()}).catch(()=>{error={translationKey:'settings.readFailed'};emit()})
+ const valid=x=>x&&typeof x.hideOffline==='boolean'&&typeof x.showCron==='boolean'&&(x.hideMessaging===undefined||typeof x.hideMessaging==='boolean')&&Array.isArray(x.hiddenProfiles)&&x.hiddenProfiles.every(v=>typeof v==='string'&&v.length>0)
+ Promise.resolve().then(async()=>{if(!storage?.get||!storage?.set)throw Error();const saved=await storage.get('display-settings-v1');if(saved!==undefined&&saved!==null){if(!valid(saved))throw Error();value={hideOffline:saved.hideOffline,showCron:saved.showCron,hideMessaging:saved.hideMessaging??false,hiddenProfiles:[...new Set(saved.hiddenProfiles)]}}ready=true;emit()}).catch(()=>{error={translationKey:'settings.readFailed'};emit()})
  return {get:()=>snapshot,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},save:async next=>{if(!ready||pending||!valid(next))return;pending=true;error='';emit();const n=++version;try{await storage.set('display-settings-v1',next);const saved=await storage.get('display-settings-v1');if(JSON.stringify(saved)!==JSON.stringify(next))throw Error();if(n===version)value=next}catch{error={translationKey:'settings.saveFailed'}}finally{pending=false;emit()}}}
 }
 function Settings({preferences}){
@@ -911,17 +919,17 @@ function Settings({preferences}){
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const q=useQuery({queryKey:['sessioncrew','settings-roster',connectionId,profile],enabled:!!profile,retry:false,queryFn:async()=>{const r=await bounded(()=>host.profiles.list({connectionId,profile}),'settings.profileList');if(!Array.isArray(r?.profiles)||host.state.connectionId.get()!==connectionId||host.state.profile.get()!==profile)throw new LocalizedError('settings.profileUnavailable');return r.profiles.filter(p=>typeof p.name==='string'&&p.name)}})
- const save=patch=>preferences.save({hideOffline:settings.hideOffline,showCron:settings.showCron,hiddenProfiles:settings.hiddenProfiles,...patch})
+ const save=patch=>preferences.save({hideOffline:settings.hideOffline,showCron:settings.showCron,hideMessaging:settings.hideMessaging,hiddenProfiles:settings.hiddenProfiles,...patch})
  const disabled=!settings.ready||settings.pending
  const description={fontSize:12,lineHeight:1.5,color:'var(--ui-text-secondary)',margin:'3px 0 0'}
  const toggle=(label,detail,checked,onChange)=>jsxs('div',{style:{display:'flex',gap:16,alignItems:'center',justifyContent:'space-between',padding:'12px 0'},children:[jsxs('div',{style:{minWidth:0},children:[jsx('div',{style:{fontSize:13,fontWeight:600,color:'var(--ui-text-primary)'},children:label}),jsx('p',{style:description,children:detail})]}),jsx('button',{type:'button',role:'switch','aria-label':label,'aria-checked':checked,disabled,onClick:()=>onChange(!checked),style:{position:'relative',flex:'0 0 auto',width:32,height:18,padding:0,border:0,borderRadius:9,cursor:disabled?'default':'pointer',background:checked?'var(--ui-accent)':'var(--ui-stroke-secondary)',opacity:disabled?0.55:1},children:jsx('span',{'aria-hidden':true,style:{position:'absolute',top:2,left:checked?16:2,width:14,height:14,borderRadius:'50%',background:'var(--ui-bg-elevated)'}})})]})
- return jsxs('div',{style:{padding:20,width:'100%',boxSizing:'border-box'},children:[jsx('h2',{children:'SessionCrew'}),toggle(tr('settings.hideOffline'),tr('settings.offlineHelp'),settings.hideOffline,v=>save({hideOffline:v})),toggle(tr('settings.showCron'),tr('settings.cronHelp'),settings.showCron,v=>save({showCron:v})),jsxs('section',{style:{padding:'12px 0'},children:[jsx('div',{style:{fontSize:13,fontWeight:600,color:'var(--ui-text-primary)'},children:tr('settings.visibleProfiles')}),jsx('p',{style:description,children:tr('settings.storageHelp')}),q.isPending?jsx('p',{children:tr('settings.loadingProfiles')}):q.isError?jsx('p',{role:'alert',children:tr('settings.profileLoadFailed')}):jsx('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginTop:10},children:(q.data||[]).map(p=>{const visible=!settings.hiddenProfiles.includes(p.name);return jsx('button',{type:'button','aria-pressed':visible,disabled,onClick:()=>save({hiddenProfiles:visible?[...settings.hiddenProfiles,p.name]:settings.hiddenProfiles.filter(x=>x!==p.name)}),style:{minHeight:30,maxWidth:'100%',overflowWrap:'anywhere',padding:'5px 10px',border:'1px solid '+(visible?'var(--ui-accent)':'var(--ui-stroke-secondary)'),borderRadius:5,background:visible?'var(--ui-accent)':'var(--ui-bg-elevated)',color:visible?'var(--dt-midground-foreground, var(--ui-bg-editor))':'var(--ui-text-primary)',fontSize:12,cursor:disabled?'default':'pointer',opacity:disabled?0.55:1},children:p.name},p.name)})})]}),settings.error?jsx('p',{role:'alert',children:settings.error.translationKey?tr(settings.error.translationKey):localizeError(settings.error)}):null]})
+ return jsxs('div',{style:{padding:20,width:'100%',boxSizing:'border-box'},children:[jsx('h2',{children:'SessionCrew'}),toggle(tr('settings.hideOffline'),tr('settings.offlineHelp'),settings.hideOffline,v=>save({hideOffline:v})),toggle(tr('settings.showCron'),tr('settings.cronHelp'),settings.showCron,v=>save({showCron:v})),toggle(tr('settings.hideMessaging'),tr('settings.messagingHelp'),settings.hideMessaging,v=>save({hideMessaging:v})),jsxs('section',{style:{padding:'12px 0'},children:[jsx('div',{style:{fontSize:13,fontWeight:600,color:'var(--ui-text-primary)'},children:tr('settings.visibleProfiles')}),jsx('p',{style:description,children:tr('settings.storageHelp')}),q.isPending?jsx('p',{children:tr('settings.loadingProfiles')}):q.isError?jsx('p',{role:'alert',children:tr('settings.profileLoadFailed')}):jsx('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginTop:10},children:(q.data||[]).map(p=>{const visible=!settings.hiddenProfiles.includes(p.name);return jsx('button',{type:'button','aria-pressed':visible,disabled,onClick:()=>save({hiddenProfiles:visible?[...settings.hiddenProfiles,p.name]:settings.hiddenProfiles.filter(x=>x!==p.name)}),style:{minHeight:30,maxWidth:'100%',overflowWrap:'anywhere',padding:'5px 10px',border:'1px solid '+(visible?'var(--ui-accent)':'var(--ui-stroke-secondary)'),borderRadius:5,background:visible?'var(--ui-accent)':'var(--ui-bg-elevated)',color:visible?'var(--dt-midground-foreground, var(--ui-bg-editor))':'var(--ui-text-primary)',fontSize:12,cursor:disabled?'default':'pointer',opacity:disabled?0.55:1},children:p.name},p.name)})})]}),settings.error?jsx('p',{role:'alert',children:settings.error.translationKey?tr(settings.error.translationKey):localizeError(settings.error)}):null]})
 }
 function Rail({storage,rest,preferences}){
  const tr=useTranslator()
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
- const completion=useCompletion(storage,rest,connectionId,profile,settings.showCron)
+ const completion=useCompletion(storage,rest,connectionId,profile,settings.showCron,settings.hideMessaging)
  const [office,clock]=useRailSnapshot(rest,connectionId,profile)
  const [hands,setHands]=useState({})
  const onWaiting=useCallback((key,value)=>setHands(previous=>{if(!!previous[key]===value)return previous;const next={...previous};if(value)next[key]=true;else delete next[key];return next}),[])

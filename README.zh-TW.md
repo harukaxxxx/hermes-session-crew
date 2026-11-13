@@ -44,6 +44,8 @@ SessionCrew 包含 Desktop 介面與自己的 Python backend，兩者都需要�
 
 ## 限制
 
+- 「隱藏訊息平台工作階段」預設關閉；開啟後只在設定檔泡泡與未讀紅點彙總中隱藏已辨識的訊息平台來源（例如 Discord、Telegram）。未讀紀錄會保留，關閉設定後再次顯示。未知、缺少、衝突或新加入的插件來源會保守顯示，不依標題猜測。明確操作「全部已讀」仍包含隱藏紀錄；執行與等待狀態不受影響。
+
 - 狀態與活動數量是有限範圍的觀察；未知或未觀察到活動不等於沒有工作。
 - 列狀態需要連線正常、同名且唯一的 owner route，以及符合 authority 形狀的 `session.active_list`：ID 等於 `session_key`，非空 `source` 與唯一歸屬的資料庫紀錄一致。受檢查 Hermes 版本的 authority 由持久 live entry 產生此形狀；跨 profile 的舊版列表沒有 `source`，即使 fallback ID 等於 key 也不足以證明。這是版本限定的形狀檢查，並非 producer 明確認證。嚴格 inventory 遇到不支援的 profile 項目或無法讀取的資料庫即不顯示；重複 ID、source 或 owner 不符、紀錄缺失、資料過期或請求失敗亦不顯示。不推測 lineage 別名。`subagent.roster` 背景工作僅在已識別且非等待的 active 列顯示；starting 本身不是執行中。這些觀察不涵蓋所有原生狀態或背景工作，尚未 live 驗證。
 - 對話清單不是跨來源的完整時間排序，且受後端回傳數量與權限限制。

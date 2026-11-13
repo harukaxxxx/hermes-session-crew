@@ -25,7 +25,7 @@ assert.equal(prefs.get().hideOffline,false);assert.equal(prefs.get().showCron,fa
 assert.equal(saved,undefined,'reading defaults must not write client settings');assert.doesNotMatch(document.body.textContent,/Scheduled/);assert.match(document.body.textContent,/Unknown source/)
 async function change(label){const el=[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')===label||x.textContent===label);assert.ok(el,label);assert.ok(el.getAttribute('role')==='switch'||el.hasAttribute('aria-pressed'),label+' exposes state');await React.act(async()=>{el.click();await new Promise(r=>setTimeout(r,10))});await update()}
 await change('Show Cron sessions');assert.match(document.body.textContent,/Scheduled/)
-await change('beta');await change('Hide offline profiles');assert.deepEqual(saved,{hideOffline:true,showCron:true,hiddenProfiles:['beta']})
+await change('beta');await change('Hide offline profiles');assert.deepEqual(saved,{hideOffline:true,showCron:true,hideMessaging:false,hiddenProfiles:['beta']})
 prefs=createPreferences(storage);await update();await wait(()=>prefs.get().ready);await update();assert.deepEqual(prefs.get().hiddenProfiles,['beta']);assert.equal(prefs.get().showCron,true,'previous explicit show choice survives reload');assert.match(document.body.textContent,/Scheduled/);assert.ok(!prefs.get().hiddenProfiles.includes('new'))
 await change('Show Cron sessions');assert.doesNotMatch(document.body.textContent,/Scheduled/);assert.match(document.body.textContent,/cron-like title/);assert.match(document.body.textContent,/Unknown source/)
 prefs=createPreferences(storage);await update();await wait(()=>prefs.get().ready);assert.equal(prefs.get().showCron,false,'previous explicit hide choice survives reload')
