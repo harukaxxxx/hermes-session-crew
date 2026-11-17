@@ -228,7 +228,7 @@ atexit.register(_close_all_ro_conns)
 
 _STATS_SQL = (
     "SELECT "
-    "SUM(CASE WHEN last_activity_at IS NOT NULL AND last_activity_at >= ? "
+    "SUM(CASE WHEN ended_at IS NULL AND last_activity_at IS NOT NULL AND last_activity_at >= ? "
     "THEN 1 ELSE 0 END), "
     "SUM(CASE WHEN ended_at IS NULL THEN 1 ELSE 0 END), "
     "SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), "
@@ -359,7 +359,7 @@ def _count_live_subagent_sessions() -> int:
         try:
             row = con.execute(
                 "SELECT COUNT(*) FROM sessions "
-                "WHERE source = 'subagent' AND last_activity_at >= ?",
+                "WHERE source = 'subagent' AND ended_at IS NULL AND last_activity_at >= ?",
                 (time.time() - 90.0,),
             ).fetchone()
         except Exception:
@@ -444,6 +444,9 @@ def _read_profile_base(
         entry["online"] = True
         entry["busy"] = True
         entry["state"] = "working"
+        # Compatibility field: this is recency, not execution evidence. The
+        # Desktop rail must resolve it against its owner-scoped live activity.
+        entry["status_observation"] = "recent_session_activity"
 
     # Delegated subagent attribution: a specialist desk lights up while a
     # delegation routed to it has live subagent activity (managed workers
@@ -458,6 +461,7 @@ def _read_profile_base(
             entry["online"] = True
             entry["busy"] = True
             entry["state"] = "working"
+            entry["status_observation"] = "recent_delegated_activity"
 
     liveness = resolve_gateway_liveness(
         profile_dir=Path(path).parent,

@@ -499,60 +499,46 @@ function RecentScroll({style,children,revision}){
 }
 // Adapted from Hermes Desktop styles.css, commit 2bd378e; see HERMES-ARC-LICENSE.
 const rowArcCss=`[data-session-waiting]{width:14px;text-align:center;transform:scale(.75);transform-origin:top left}@keyframes sessioncrew-arc{to{transform:translate(-50%,-50%)}}[data-session-arc]{position:absolute;inset:0;overflow:hidden;border-radius:7px;padding:.078125rem;pointer-events:none;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}[data-session-arc]::before{content:'';position:absolute;top:0;left:0;width:240%;height:240%;background:repeating-linear-gradient(160deg,transparent 0%,transparent 18.75%,var(--dt-foreground,var(--ui-text-primary)) 25%,color-mix(in srgb,var(--dt-foreground,var(--ui-text-primary)) 45%,transparent) 31.25%,transparent 43.75%,transparent 50%);will-change:transform;animation:sessioncrew-arc 2.23s linear infinite}@media(prefers-reduced-motion:reduce){[data-session-arc]::before{animation:none}}`
-function useRowActivity(owner,rows){
- const rest=useContext(DialogRestContext),gatewayAtom=host.state.gateway
- const instance=useRef({scope:null,version:0,id:Math.random()})
- const [,forceScope]=useState(0)
- const subscribe=useCallback((atom,fn)=>{let last=atom?.get?.();return atom?.subscribe?.(()=>{const next=atom.get();if(next!==last){last=next;instance.current.version++;forceScope(n=>n+1)}fn()})||(()=>{})},[])
- const subGateway=useCallback(fn=>subscribe(gatewayAtom,fn),[subscribe,gatewayAtom])
- const subConnection=useCallback(fn=>subscribe(host.state.connectionId,fn),[subscribe])
- const subProfile=useCallback(fn=>subscribe(host.state.profile,fn),[subscribe])
- const gateway=useSyncExternalStore(subGateway,()=>gatewayAtom?.get?.()??null,()=>null)
- const connection=useSyncExternalStore(subConnection,()=>host.state.connectionId?.get?.()??null,()=>null)
- const profile=useSyncExternalStore(subProfile,()=>host.state.profile?.get?.()??null,()=>null)
- const epoch=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
- const observedScope=JSON.stringify([gateway,connection,profile,epoch]);if(instance.current.scope!==observedScope){instance.current.scope=observedScope;instance.current.version++}
- const version=instance.current.version,route=owner?.route, ids=(rows||[]).map(r=>r.id), key=JSON.stringify([instance.current.id,version,connection,profile,epoch,owner?.name,route,ids])
- const supported=!!owner&&!!rest&&gateway==='open'&&connection===owner.connectionId&&typeof route==='object'&&route?.connectionId===connection&&route.profile===owner.name&&route.targetProfile===owner.name
- const q=useQuery({queryKey:['sessioncrew','row-activity',key],enabled:supported,retry:false,refetchOnWindowFocus:true,refetchInterval:10000,queryFn:async()=>{
-  const started=Date.now(),sameScope=()=>instance.current.version===version&&host.state.gateway?.get?.()==='open'&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
-  const [active,roster,ownership]=await Promise.all([requestOwner(owner,'session.active_list',{profile:route.targetProfile}),requestOwner(owner,'subagent.roster',{profile:route.targetProfile}).catch(()=>null),rest('/row-owners',{method:'POST',body:{ids},timeoutMs:10000})])
-  if(!sameScope()||!Array.isArray(active?.sessions)||!ownership?.owners||typeof ownership.owners!=='object'||Date.now()-started>20000)throw Error('activity unavailable')
-  const states=Object.create(null);for(const r of active.sessions){if(!r||typeof r.session_key!=='string'||!ids.includes(r.session_key))continue;const id=r.session_key;if(states[id]||r.id!==id||typeof r.source!=='string'||!r.source||!Object.hasOwn(ownership.sources||{},id)||ownership.sources[id]!==r.source||!Object.hasOwn(ownership.owners,id)||ownership.owners[id]!==route.targetProfile||!['working','waiting','starting','idle'].includes(r.status))states[id]='conflict';else states[id]=r.status}
-  if(Array.isArray(roster?.sessions))for(const r of roster.sessions){const id=r?.session_id;if(!ids.includes(id)||ownership.owners[id]!==route.targetProfile||!['idle','starting','working'].includes(states[id]))continue;if((Number.isFinite(r.background)&&r.background>0)||(Number.isFinite(r.subagents)&&r.subagents>0))states[id]='background'}
-  return {states,started}
- }})
- const [,tick]=useState(0)
- useEffect(()=>{if(!q.data)return;const timer=setTimeout(()=>tick(n=>n+1),Math.max(0,q.data.started+20000-Date.now()));return()=>clearTimeout(timer)},[q.data])
- useEffect(()=>{if(!supported||typeof host.onEvent!=='function')return;return host.onEvent('gateway.ready',()=>{void q.refetch()})},[supported,key])
- return supported&&!q.isError&&q.data&&Date.now()-q.data.started<20000?q.data.states:{}
+// One generation per host scope, shared by all observers and retained across
+// unmounts so an A→B→A transition cannot revive an in-flight A response.
+const activityScope={generation:0,listeners:new Set(),initialized:false}
+function initActivityScope(){
+ if(activityScope.initialized)return;activityScope.initialized=true
+ for(const atom of [host.state.gateway,host.state.connectionId,host.state.profile]){let last=atom?.get?.();atom?.subscribe?.(()=>{const next=atom.get();if(next===last)return;last=next;activityScope.generation++;for(const fn of activityScope.listeners)fn()})}
 }
-function useProfileInputWaiting(owner,rest){
- const gatewayAtom=host.state.gateway,instance=useRef({scope:null,version:0,id:Math.random()}),[,force]=useState(0)
- const subscribe=useCallback((atom,fn)=>{let last=atom?.get?.();return atom?.subscribe?.(()=>{const next=atom.get();if(next!==last){last=next;instance.current.version++;force(n=>n+1)}fn()})||(()=>{})},[])
- const subGateway=useCallback(fn=>subscribe(gatewayAtom,fn),[subscribe,gatewayAtom]),subConnection=useCallback(fn=>subscribe(host.state.connectionId,fn),[subscribe]),subProfile=useCallback(fn=>subscribe(host.state.profile,fn),[subscribe])
- const gateway=useSyncExternalStore(subGateway,()=>gatewayAtom?.get?.()??null,()=>null),connection=useSyncExternalStore(subConnection,()=>host.state.connectionId?.get?.()??null,()=>null),profile=useSyncExternalStore(subProfile,()=>host.state.profile?.get?.()??null,()=>null)
- const epoch=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null,scope=JSON.stringify([gateway,connection,profile,epoch]);if(instance.current.scope!==scope){instance.current.scope=scope;instance.current.version++}
- const version=instance.current.version,route=owner?.route,key=JSON.stringify([instance.current.id,version,connection,profile,epoch,owner?.name,route])
+const subscribeActivityScope=fn=>(activityScope.listeners.add(fn),()=>activityScope.listeners.delete(fn))
+const getActivityGeneration=()=>activityScope.generation
+function useActivityScope(){
+ initActivityScope();const generation=useSyncExternalStore(subscribeActivityScope,getActivityGeneration,getActivityGeneration)
+ const epoch=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
+ return {generation,epoch,gateway:host.state.gateway?.get?.()??null,connection:host.state.connectionId?.get?.()??null,profile:host.state.profile?.get?.()??null}
+}
+function useRowActivity(owner,rows){
+ const rest=useContext(DialogRestContext),activity=useProfileInputWaiting(owner,rest,false),states=activity?.states||{}
+ return Object.fromEntries((rows||[]).filter(r=>Object.hasOwn(states,r.id)).map(r=>[r.id,states[r.id]]))
+}
+function useProfileInputWaiting(owner,rest,poll=true){
+ const {generation,epoch,gateway,connection,profile}=useActivityScope(),route=owner?.route,key=JSON.stringify([generation,connection,profile,epoch,owner?.name,route])
  const supported=!!owner&&!!rest&&gateway==='open'&&connection===owner.connectionId&&typeof route==='object'&&route?.connectionId===connection&&route.profile===owner.name&&route.targetProfile===owner.name
- const q=useQuery({queryKey:['sessioncrew','profile-input-waiting',key],enabled:supported,retry:false,refetchOnWindowFocus:true,refetchInterval:10000,queryFn:async()=>{
-  const started=Date.now(),sameScope=()=>instance.current.version===version&&host.state.gateway?.get?.()==='open'&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
+ const q=useQuery({queryKey:['sessioncrew','profile-input-waiting',key],enabled:supported,retry:false,staleTime:10000,refetchOnMount:poll,refetchOnWindowFocus:poll,refetchInterval:poll?10000:false,queryFn:async()=>{
+  const started=Date.now(),sameScope=()=>activityScope.generation===generation&&host.state.gateway?.get?.()==='open'&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
   const [active,roster]=await Promise.all([requestOwner(owner,'session.active_list',{profile:owner.name}),requestOwner(owner,'subagent.roster',{profile:owner.name}).catch(()=>null)]);if(!sameScope()||!Array.isArray(active?.sessions)||active.sessions.length>200)throw Error('activity unavailable')
   const ids=[],seen=new Set();for(const r of active.sessions){if(!r||typeof r.session_key!=='string'||!r.session_key||r.session_key.length>256||r.id!==r.session_key||typeof r.source!=='string'||!r.source||!['working','waiting','starting','idle'].includes(r.status)||seen.has(r.session_key))throw Error('invalid activity');seen.add(r.session_key);ids.push(r.session_key)}
-  if(!ids.length){if(Date.now()-started>20000)throw Error('stale activity');return {waiting:false,background:[],started}}
+  if(!ids.length){if(Date.now()-started>20000)throw Error('stale activity');return {states:{},waiting:false,background:[],started}}
   const ownership=await rest('/row-owners',{method:'POST',body:{ids},timeoutMs:10000});if(!sameScope()||Date.now()-started>20000||!ownership?.owners||!ownership?.sources)throw Error('ownership unavailable')
   for(const r of active.sessions)if(!Object.hasOwn(ownership.owners,r.id)||ownership.owners[r.id]!==owner.name||!Object.hasOwn(ownership.sources,r.id)||ownership.sources[r.id]!==r.source)throw Error('ownership mismatch')
   const eligible=new Set(active.sessions.filter(r=>['idle','starting','working'].includes(r.status)).map(r=>r.id)),background=[]
   if(Array.isArray(roster?.sessions))for(const r of roster.sessions)if(eligible.has(r?.session_id)&&((Number.isFinite(r.background)&&r.background>0)||(Number.isFinite(r.subagents)&&r.subagents>0)))background.push(r.session_id)
-  return {waiting:active.sessions.some(r=>r.status==='waiting'),background:[...new Set(background)].sort(),started}
+  const uniqueBackground=[...new Set(background)].sort(),backgroundSet=new Set(uniqueBackground),states=Object.fromEntries(active.sessions.map(r=>[r.id,backgroundSet.has(r.id)?'background':r.status]))
+  return {states,waiting:active.sessions.some(r=>r.status==='waiting'),working:active.sessions.some(r=>r.status==='working'||r.status==='starting'),background:uniqueBackground,started}
  }})
  const [,tick]=useState(0);useEffect(()=>{if(!q.data)return;const timer=setTimeout(()=>tick(n=>n+1),Math.max(0,q.data.started+20000-Date.now()));return()=>clearTimeout(timer)},[q.data])
- useEffect(()=>{if(!supported||typeof host.onEvent!=='function')return;return host.onEvent('gateway.ready',()=>{void q.refetch()})},[supported,key])
+ useEffect(()=>{if(!poll||!supported||typeof host.onEvent!=='function')return;return host.onEvent('gateway.ready',()=>{void q.refetch({cancelRefetch:false})})},[poll,supported,key])
  return supported&&!q.isError&&q.data&&Date.now()-q.data.started<20000?q.data:null
 }
 function ProfileAvatar({owner,rest,attentionKey,onWaiting,...props}){
- const tr=useTranslator(),activity=useProfileInputWaiting(owner,rest),waiting=activity?.waiting===true,label=waiting?tr('sessionActivity.waiting'):'',background=JSON.stringify(activity?.background||[])
- useEffect(()=>{onWaiting(attentionKey,waiting,background);return()=>onWaiting(attentionKey,false,'[]')},[attentionKey,onWaiting,waiting,background])
+ const tr=useTranslator(),activity=useProfileInputWaiting(owner,rest),waiting=activity?.waiting===true,label=waiting?tr('sessionActivity.waiting'):'',background=JSON.stringify(activity?.background||[]),working=activity?.working===true,hasBackground=background!=='[]'
+ useEffect(()=>{onWaiting(attentionKey,waiting,background,working,hasBackground);return()=>onWaiting(attentionKey,false,'[]',false,false)},[attentionKey,onWaiting,waiting,background,working,hasBackground])
  return jsx(AvatarLayers,{...props,waiting,triggerProps:{...props.triggerProps,'aria-label':[props.triggerProps['aria-label'],label].filter(Boolean).join(' · '),title:[props.triggerProps.title,label|| (props.unread?tr('completion.unread'):'')].filter(Boolean).join(' ')||undefined}})
 }
 // Explicit known messaging adapter sources; unknown/plugin sources stay visible.
@@ -748,7 +734,7 @@ function useRailSnapshot(rest,connection,profile){
  const starts=history.current.starts
  if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data)){starts.clear();return [[],clock]}
  const rows=q.data.map(row=>{const status=officeStatus(row),value=row.idle_since,valid=typeof value==='number'&&Number.isFinite(value)&&value>0&&value*1000<=Date.now();if(status==='idle'&&valid)return {...row,presentationIdleSince:value};if(status==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'&&starts.has(row.profile))return {...row,presentationIdleSince:starts.get(row.profile),historicalIdle:true};return row})
- return [rows,clock]
+ return [rows,clock,history.current.starts]
 }
 function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
 const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
@@ -982,9 +968,9 @@ function Rail({storage,rest,preferences}){
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
  const completion=useCompletion(storage,rest,connectionId,profile,settings.showCron,settings.hiddenMessagingSources,preferences)
- const [office,clock]=useRailSnapshot(rest,connectionId,profile)
- const [hands,setHands]=useState({}),[backgrounds,setBackgrounds]=useState({})
- const onWaiting=useCallback((key,value,background)=>{setHands(previous=>{if(!!previous[key]===value)return previous;const next={...previous};if(value)next[key]=true;else delete next[key];return next});setBackgrounds(previous=>{if((previous[key]||'[]')===background)return previous;const next={...previous};if(background!=='[]')next[key]=background;else delete next[key];return next})},[])
+ const [office,clock,idleStarts]=useRailSnapshot(rest,connectionId,profile),activityScopeNow=useActivityScope()
+ const [hands,setHands]=useState({}),[backgrounds,setBackgrounds]=useState({}),[activityMap,setActivityMap]=useState({}),invalidIdle=useRef(new Map())
+ const onWaiting=useCallback((key,value,background,working,hasBackground)=>{setHands(previous=>{if(!!previous[key]===value)return previous;const next={...previous};if(value)next[key]=true;else delete next[key];return next});setBackgrounds(previous=>{if((previous[key]||'[]')===background)return previous;const next={...previous};if(background!=='[]')next[key]=background;else delete next[key];return next});const summary=working?'working':hasBackground?'background':'';setActivityMap(previous=>{if((previous[key]||'')===summary)return previous;const next={...previous};if(summary)next[key]=summary;else delete next[key];return next})},[])
  const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
  const select=value=>{const next=typeof value==='function'?value(selectedRef.current):value;if(next!==selectedRef.current){selectionEpoch.current++;setProjectOwner(null)}selectedRef.current=next;setSelected(next)}
  useEffect(()=>{select(null)},[connectionId,profile])
@@ -1004,7 +990,7 @@ function Rail({storage,rest,preferences}){
  if(q.isError) return jsxs('div',{children:[jsx('p',{children:tr('settings.profilesUnknown')}),jsx('button',{onClick:()=>q.refetch(),children:tr('common.retry')})]})
  if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const byName=new Map(office.map(row=>[row.profile,row]))
- const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>({...p,index,attentionKey:JSON.stringify([connectionId,profile,p.name,routes.data]),office:byName.get(p.name),status:officeStatus(byName.get(p.name))})).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
+ const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>{const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);let row=byName.get(p.name);const base=officeStatus(row),observed=activityMap[attentionKey],recent=base==='working'&&['recent_session_activity','recent_delegated_activity'].includes(row?.status_observation);let status=recent?'online_unobserved':base;if(base!=='offline'&&observed==='working')status='working';else if(base!=='offline'&&observed==='background'&&base!=='waiting')status='working';if(observed){invalidIdle.current.set(attentionKey,Date.now()/1000);idleStarts?.delete(p.name)}if(row?.presentationIdleSince&&row.presentationIdleSince<=(invalidIdle.current.get(attentionKey)||0))row={...row,presentationIdleSince:null,historicalIdle:false};return {...p,index,attentionKey,office:row,status}}).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
  const order=p=>p.status==='online_unobserved'&&p.office?.historicalIdle?statusOrder.idle:statusOrder[p.status],rank=order(a)-order(b);if(rank)return rank
  const attention=p=>hands[p.attentionKey]?0:completion.has(p.name,JSON.parse(backgrounds[p.attentionKey]||'[]'))?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
   if(order(a)===statusOrder.idle){const when=p=>Math.max(p.office?.presentationIdleSince||0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
