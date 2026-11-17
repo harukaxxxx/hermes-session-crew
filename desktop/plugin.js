@@ -114,6 +114,7 @@ const messages = {
       waiting: "waiting",
       idle: "idle",
       onlineUnobserved: "online · no activity observed",
+      historicalIdle: "Elapsed since last confirmed idle; current activity unknown",
       offline: "offline",
       unknown: "unknown",
       label: value => `Status: ${value}`,
@@ -307,6 +308,7 @@ const messages = {
       waiting: "等待中",
       idle: "閒置",
       onlineUnobserved: "在線・未觀察到活動",
+      historicalIdle: "自上次確認閒置起經過的時間；目前活動狀態未知",
       offline: "離線",
       unknown: "未知",
       label: value => `狀態：${value}`,
@@ -730,17 +732,23 @@ const STATUS_TTL=15000
 function useRailSnapshot(rest,connection,profile){
  const epoch=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const scope=JSON.stringify([connection,profile,epoch]), current=useRef(scope);current.current=scope
+ const history=useRef({scope,starts:new Map()});if(history.current.scope!==scope)history.current={scope,starts:new Map()}
  const [clock,tick]=useState(()=>Date.now())
  const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch],enabled:!!profile&&typeof rest==='function',retry:false,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async()=>{
+ try{
   const data=await rest('/status',{method:'GET',timeoutMs:10000})
   if(current.current!==scope||host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)throw new LocalizedError('errors.connectionChanged')
   if(!Array.isArray(data))throw new LocalizedError('errors.statusFormat')
   const names=new Set();for(const row of data){if(!row||typeof row.profile!=='string'||!row.profile||names.has(row.profile)||typeof row.online!=='boolean'||typeof row.state!=='string')throw new LocalizedError('errors.statusFormat');names.add(row.profile)}
+  const starts=history.current.starts,now=Date.now();if(history.current.lastAt&&now-history.current.lastAt>STATUS_TTL)starts.clear();history.current.lastAt=now;for(const row of data){const status=officeStatus(row),value=row.idle_since,valid=typeof value==='number'&&Number.isFinite(value)&&value>0&&value*1000<=now;if(status==='idle'&&valid)starts.set(row.profile,value);else if(!(status==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'))starts.delete(row.profile)}for(const name of starts.keys())if(!names.has(name))starts.delete(name)
   return data
+ }catch(error){if(current.current===scope)history.current.starts.clear();throw error}
  }})
  useEffect(()=>{const update=()=>{if(!document.hidden)tick(Date.now())};const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update)}},[])
- if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data))return [[],clock]
- return [q.data,clock]
+ const starts=history.current.starts
+ if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data)){starts.clear();return [[],clock]}
+ const rows=q.data.map(row=>{const status=officeStatus(row),value=row.idle_since,valid=typeof value==='number'&&Number.isFinite(value)&&value>0&&value*1000<=Date.now();if(status==='idle'&&valid)return {...row,presentationIdleSince:value};if(status==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'&&starts.has(row.profile))return {...row,presentationIdleSince:starts.get(row.profile),historicalIdle:true};return row})
+ return [rows,clock]
 }
 function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
 const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
@@ -997,9 +1005,9 @@ function Rail({storage,rest,preferences}){
  if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const byName=new Map(office.map(row=>[row.profile,row]))
  const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>({...p,index,attentionKey:JSON.stringify([connectionId,profile,p.name,routes.data]),office:byName.get(p.name),status:officeStatus(byName.get(p.name))})).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
- const rank=statusOrder[a.status]-statusOrder[b.status];if(rank)return rank
+ const order=p=>p.status==='online_unobserved'&&p.office?.historicalIdle?statusOrder.idle:statusOrder[p.status],rank=order(a)-order(b);if(rank)return rank
  const attention=p=>hands[p.attentionKey]?0:completion.has(p.name,JSON.parse(backgrounds[p.attentionKey]||'[]'))?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
-  if(a.status==='idle'){const valid=v=>typeof v==='number'&&Number.isFinite(v)&&v>0,when=p=>Math.max(valid(p.office?.idle_since)?p.office.idle_since:0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
+  if(order(a)===statusOrder.idle){const when=p=>Math.max(p.office?.presentationIdleSince||0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
   return a.index-b.index
  })
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
@@ -1009,7 +1017,7 @@ function Rail({storage,rest,preferences}){
   let owner=null,phase=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
   if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(selectedRef.current===selectionKey)select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
-   jsx(ProfileAvatar,{owner,rest,attentionKey:p.attentionKey,onWaiting,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',idleMinutes:settings.developerMode&&p.status==='idle'&&typeof p.office?.idle_since==='number'&&Number.isFinite(p.office.idle_since)&&p.office.idle_since>0&&p.office.idle_since*1000<=clock?Math.floor((clock-p.office.idle_since*1000)/60000):null,unread:completion.has(p.name,JSON.parse(backgrounds[p.attentionKey]||'[]')),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,JSON.parse(backgrounds[p.attentionKey]||'[]')),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
+   jsx(ProfileAvatar,{owner,rest,attentionKey:p.attentionKey,onWaiting,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',idleMinutes:settings.developerMode&&p.office?.presentationIdleSince&&p.office.presentationIdleSince*1000<=clock?Math.floor((clock-p.office.presentationIdleSince*1000)/60000):null,unread:completion.has(p.name,JSON.parse(backgrounds[p.attentionKey]||'[]')),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,JSON.parse(backgrounds[p.attentionKey]||'[]')),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel,settings.developerMode&&p.office?.historicalIdle?tr('status.historicalIdle'):''].filter(Boolean).join(' ')||undefined}}),
   jsxs(PopoverContent,{ref:contentRef,onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,position:'relative'},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }
