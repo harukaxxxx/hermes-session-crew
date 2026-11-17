@@ -829,7 +829,7 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
  const activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const [generation,retry]=useState(0),[,render]=useState(0),ref=useRef(null)
  const scope=JSON.stringify([connection??null,profile,activation,generation])
- if(!ref.current||ref.current.scope!==scope)ref.current={scope,ready:false,failed:false,baseline:null,known:null,gap:false,rows:[],queue:Promise.resolve()}
+ if(!ref.current||ref.current.scope!==scope)ref.current={scope,ready:false,failed:false,baseline:null,known:null,gap:false,rows:[],cleared:new Map(),queue:Promise.resolve()}
  const state=ref.current
  const q=useQuery({queryKey:['sessioncrew','completion-snapshot',connection,profile,activation,generation],enabled:!!profile&&typeof rest==='function',retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false,refetchInterval:query=>query.state.status==='success'&&query.state.fetchFailureCount===0?15000:false,queryFn:async()=>{const data=validateSnapshot(await rest('/completion-snapshot',{method:'GET',timeoutMs:30000}));if(host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)throw new LocalizedError('errors.connectionChanged');return data}})
  const queryClient=typeof sdk.useQueryClient==='function'?sdk.useQueryClient():null
@@ -876,8 +876,22 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
    state.rows=rows;state.baseline=baseline;state.known=knownCoverage;render(n=>n+1)
   }).catch(()=>{if(ref.current===state){state.failed=true;state.baseline=null;render(n=>n+1)}})
  },[q.data,q.dataUpdatedAt,q.isError,q.isFetching,state,storage,connection])
- const usable=()=>ref.current===state&&state.ready&&!state.failed&&!!state.baseline&&!q.isError&&!!profile
+ state.queryError=q.isError
+ const usable=()=>ref.current===state&&state.ready&&!state.failed&&!!state.baseline&&!state.queryError&&!!profile&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile
  const matches=(x,owner,id)=>sameSnapshotDataset(x.source,state.baseline?.source)&&x.database===state.baseline?.profiles.get(owner?.name)?.database_id&&x.connection===JSON.stringify(owner?.connectionId??null)&&x.owner===owner?.name&&x.session===id&&!x.read
+ // Record only a durable acknowledgement of the last presentation-relevant
+ // unread event. Background suppression and waiting hands never alter ledger
+ // relevance; a future settings change is not itself an acknowledgement.
+ const visible=x=>x.session_source_conflict===true||(x.session_source!=='oneshot'&&(showCron||x.session_source!=='cron')&&sourceVisible(x.session_source,hiddenMessagingSources))
+ state.visible=visible
+ const clearKey=owner=>JSON.stringify([state.baseline?.source,owner.name,state.baseline?.profiles.get(owner.name)?.database_id])
+ const commitAck=async(owner,rows)=>{
+  const relevant=x=>covered(x,owner)&&state.visible(x),readKeys=new Set(rows.filter(x=>x.read).map(x=>x.key))
+  const changed=state.rows.some(x=>relevant(x)&&readKeys.has(x.key))
+  const last=changed&&!rows.some(relevant),key=clearKey(owner)
+  await writeSnapshotLedger(storage,rows,state.known)
+  if(ref.current===state){if(last&&usable()&&key===clearKey(owner))state.cleared.set(key,Date.now()/1000);state.rows=rows;render(n=>n+1)}
+ }
  useEffect(()=>{
   if(!usable()||!focusedOwner||!focusedId||!focusedMatches(focusedOwner.profile,focusedId))return
   const owner={name:focusedOwner.profile,connectionId:focusedOwner.connectionId}
@@ -886,8 +900,7 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
   state.queue=queueSnapshotStorage(async()=>{
    if(!usable()||!focusedMatches(owner.name,focusedId))return
    const rows=state.rows.map(x=>keys.has(x.key)&&matches(x,owner,focusedId)?{...x,read:true}:x)
-   await writeSnapshotLedger(storage,rows,state.known)
-   if(ref.current===state){state.rows=rows;render(n=>n+1)}
+   await commitAck(owner,rows)
   }).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}})
  },[focusedId,focusedOwner,state,state.rows,state.baseline,q.isError,storage])
  const activityFor=name=>{
@@ -905,11 +918,10 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
   return m
  }
  const covered=(x,owner)=>x.owner===owner?.name&&owner?.connectionId===connection&&sameSnapshotDataset(x.source,state.baseline?.source)&&x.connection===JSON.stringify(connection??null)&&x.database===state.baseline?.profiles.get(owner.name)?.database_id&&!x.read
- const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
+ const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
  // Source classification comes from the scoped completion ledger, not the
  // bounded recent list. Unknown/conflicting evidence stays visible.
- const visible=x=>x.session_source_conflict===true||(x.session_source!=='oneshot'&&(showCron||x.session_source!=='cron')&&sourceVisible(x.session_source,hiddenMessagingSources))
- return {activityFor,childMetadataFor,ackAll,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read&&visible(x)&&!background.includes(x.session)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await writeSnapshotLedger(storage,rows,state.known);if(ref.current===state){state.rows=rows;render(n=>n+1)}}).catch(()=>{state.failed=true;render(n=>n+1)});await state.queue}}
+ return {activityFor,childMetadataFor,ackAll,clearedAt:name=>usable()&&state.baseline.profiles.has(name)?state.cleared.get(clearKey({name})):null,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read&&visible(x)&&!background.includes(x.session)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}}
 }
 const activityLabel=(n,t=tr)=>t('activity.observed',n)
 // Activity inputs are tri-state: unknown does not invent a child or a count.
@@ -982,7 +994,7 @@ function Rail({storage,rest,preferences}){
  const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>({...p,index,attentionKey:JSON.stringify([connectionId,profile,p.name,routes.data]),office:byName.get(p.name),status:officeStatus(byName.get(p.name))})).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
  const rank=statusOrder[a.status]-statusOrder[b.status];if(rank)return rank
  const attention=p=>hands[p.attentionKey]?0:completion.has(p.name,JSON.parse(backgrounds[p.attentionKey]||'[]'))?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
-  if(a.status==='idle'){const x=a.office?.idle_since,y=b.office?.idle_since,valid=v=>typeof v==='number'&&Number.isFinite(v)&&v>0; if(valid(x)&&valid(y)&&x!==y)return y-x;if(valid(x)!==valid(y))return valid(x)?-1:1}
+  if(a.status==='idle'){const valid=v=>typeof v==='number'&&Number.isFinite(v)&&v>0,when=p=>Math.max(valid(p.office?.idle_since)?p.office.idle_since:0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
   return a.index-b.index
  })
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)

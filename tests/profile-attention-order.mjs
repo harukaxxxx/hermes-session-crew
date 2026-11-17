@@ -41,11 +41,11 @@ try{
  await until(()=>document.querySelector('[data-completion-read-all]'))
  await React.act(async()=>document.querySelector('[data-completion-read-all]').click())
  await until(()=>!entries().find(x=>x.name==='dot')?.dot)
- assert.deepEqual(order(),['working','office wait','hand','both','idle new','plain','dot','idle old','offline'],'acknowledgement reorders without clearing another profile')
+ assert.deepEqual(order(),['working','office wait','hand','both','dot','idle new','plain','idle old','offline'],'final acknowledgement uses the clear time without clearing another profile')
  active.hand=[]
  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
  await until(()=>!entries().some(x=>x.hand))
- assert.deepEqual(order(),['working','office wait','both','idle new','plain','dot','hand','idle old','offline'],'last hand removal restores idle tie-break')
+ assert.deepEqual(order(),['working','office wait','both','dot','idle new','plain','hand','idle old','offline'],'last hand removal restores idle tie-break')
  active.offline=[record('offline')]
  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
  await until(()=>entries().find(x=>x.name==='offline')?.hand)
