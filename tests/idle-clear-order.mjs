@@ -21,9 +21,9 @@ try{
  // Populate and observe history in each old scope before changing exactly one dimension.
  for(const [label,change] of [['connection',()=>connection.set('conn2')],['profile',()=>profile.set('second')],['epoch',()=>epoch.set(2)]]){
   Object.assign(status[0],{state:'idle',idle_since:40,busy:false,status_observation:'fresh_shared_gateway_zero_observed_work'});await refetch('status');await until(()=>order()[0]==='alpha')
-  Object.assign(status[0],{state:'online_unobserved',idle_since:null,busy:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'});await refetch('status');await until(()=>order()[0]==='alpha');assert.equal(client.getQueryData(['sessioncrew','status',connection.get(),profile.get(),epoch.get()])[0].state,'online_unobserved',`${label}: history is visible after unobserved response`)
+  Object.assign(status[0],{state:'online_unobserved',idle_since:null,busy:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'});await refetch('status');await until(()=>order()[0]==='alpha');assert.equal(client.getQueriesData({queryKey:['sessioncrew','status',connection.get(),profile.get(),epoch.get()],type:'active'})[0]?.[1][0].state,'online_unobserved',`${label}: history is visible after unobserved response`)
   await React.act(async()=>change());await refetch('status');await until(()=>order().join(',')==='newer,other,alpha')
-  assert.deepEqual(client.getQueryData(['sessioncrew','status',connection.get(),profile.get(),epoch.get()])[0],status[0],`${label}: new scope received fresh unobserved, not cached idle`)
+  assert.deepEqual(client.getQueriesData({queryKey:['sessioncrew','status',connection.get(),profile.get(),epoch.get()],type:'active'})[0]?.[1][0],status[0],`${label}: new scope received fresh unobserved, not cached idle`)
   assert.deepEqual(order(),['newer','other','alpha'],`${label}: fresh unobserved must not inherit old history`)
  }
  await React.act(async()=>{connection.set('conn');profile.set('default');epoch.set(1)});Object.assign(status[0],{state:'idle',idle_since:10,busy:false,status_observation:'fresh_shared_gateway_zero_observed_work'});await refetch('status');await until(()=>order().join(',')==='newer,other,alpha')

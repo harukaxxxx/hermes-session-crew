@@ -45,6 +45,44 @@ try{
  await page.evaluate(()=>{const q=window.officeClient.getQueryCache().getAll().find(x=>x.queryKey[0]==='sessioncrew'&&x.queryKey[1]==='status');window.officeClient.setQueryData(q.queryKey,q.state.data,{updatedAt:Date.now()-16000})});await page.waitForFunction(()=>![...document.querySelectorAll('.profile-rail-hit')].find(x=>x.getAttribute('aria-label').startsWith('Aster ·'))?.closest('[data-avatar-stack]').querySelector('[data-idle-minutes]'));await page.evaluate(async()=>window.officeClient.refetchQueries({queryKey:['sessioncrew','status']}));assert.equal((await railRows()).find(x=>x.name==='Aster').minutes,null,'stale history cannot revive')
  await transition(false);await page.waitForFunction(()=>document.querySelectorAll('[data-idle-minutes]').length===12)
 
+ // Exercise the real rail with positive session evidence while /status is still recency-only.
+ await page.clock.install()
+ await page.addInitScript(()=>{
+  window.fixtureActivityRequest=(route,method)=>Promise.resolve({sessions:method==='session.active_list'&&route.profile==='Aster'?structuredClone(window.observedSessions||[]):[]})
+  window.fixtureOwners={id0:'Aster',id1:'Aster'};window.fixtureSources={id0:'desktop',id1:'desktop'}
+ })
+ await page.goto(url+'?office&gallery&snapshot&developer&locale=en');await hit.waitFor()
+ const apply=async rows=>page.evaluate(async rows=>{
+  window.observedSessions=rows.map(([id,status])=>({id,session_key:id,source:'desktop',status}))
+  await window.officeClient.refetchQueries({queryKey:['sessioncrew','profile-input-waiting'],type:'active'})
+ },rows)
+ const hasState=state=>hit.and(page.locator(`[data-state-name="${state}"]`)).waitFor()
+ const stack=hit.locator('xpath=ancestor::*[@data-avatar-stack]'),dot=stack.locator('[data-completion-badge]'),hand=stack.locator('[data-avatar-waiting]')
+ await page.evaluate(async()=>{
+  window.fixtureStatus=window.fixtureProfiles.map(({name})=>name==='Aster'?{profile:name,online:true,state:'working',status_observation:'recent_session_activity'}:name==='Mika'?{profile:name,online:true,state:'working'}:{profile:name,online:true,state:'idle',idle_since:Date.now()/1000-125})
+  await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})
+ })
+ await apply([['id0','idle']]);await hasState('online_unobserved');assert.equal(await label.count(),0,'cold explicit idle is not a transition')
+ await apply([['id0','working'],['id1','working']]);await hasState('working')
+ await apply([['id0','idle'],['id1','working']]);assert.equal(await hit.getAttribute('data-state-name'),'working');assert.equal(await label.count(),0,'remaining work blocks timer')
+ await apply([['id0','idle']]);await hasState('online_unobserved');assert.equal(await label.count(),0,'missing known worker is not idle')
+ await apply([]);assert.equal(await label.count(),0,'empty list is not idle')
+ await apply([['id0','idle'],['id1','idle']]);await label.waitFor();assert.equal(await label.innerText(),'0h0m')
+ assert.deepEqual((await railRows()).slice(0,2).map(x=>x.name),['Mika','Aster'],'observed and confirmed idle share raw timestamp order without an unread dot')
+ assert.match(await hit.getAttribute('title'),/observed to end.*unknown/)
+ const observedBounds=await label.evaluate(e=>{const b=e.getBoundingClientRect(),r=e.closest('[data-profile-rail]').getBoundingClientRect();return b.width>0&&b.height>0&&b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom});assert.ok(observedBounds,'observed timer is visible inside the narrow rail')
+ await page.waitForFunction(()=>window.fixtureStorage?.['completion-snapshot-v2']?.coverage)
+ await page.evaluate(async()=>{const p=window.fixtureSnapshot.profiles[0];p.rows=[{seq:1,admission_id:'observed-test',session_id:'id0',session_source:'desktop',status:'terminal',outcome:'completed',generation:1}];p.high_water=1;await window.refreshFixtureSnapshot()});await dot.waitFor()
+ await page.screenshot({path:path.resolve('evidence/developer-idle-observed-mixed.png')})
+ await page.clock.runFor(61000);assert.equal(await label.innerText(),'0h1m','repeated idle polls must not reset observed start');assert.equal(await dot.count(),1,'working→idle did not acknowledge the unread dot')
+ await set('idle',await page.evaluate(()=>Date.now()/1000-85));assert.equal(await label.innerText(),'0h1m');assert.match(await hit.getAttribute('title'),/observed to end.*unknown/,'older backend idle did not replace observed start')
+ await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'working',status_observation:'recent_session_activity',idle_since:null});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})})
+ await apply([['id0','waiting'],['id1','idle']]);await hand.waitFor();assert.equal(await dot.count(),0);assert.equal(await label.count(),0,'waiting hides observed timer and takes priority over the dot')
+ await apply([['id0','idle'],['id1','idle']]);await dot.waitFor();assert.equal(await label.count(),0,'leaving input wait does not invent a completion')
+ await apply([['id0','working']]);await hasState('working');await apply([['id0','idle']]);await label.waitFor();assert.equal(await label.innerText(),'0h0m','new work establishes a separate fresh start')
+ await page.evaluate(()=>{const previous=window.fixtureActivityRequest;window.fixtureActivityRequest=(route,method)=>route.profile==='Aster'?Promise.reject(Error('activity unavailable')):previous(route,method)})
+ await apply([['id0','idle']]);await label.waitFor({state:'detached'});assert.equal(await dot.count(),1,'activity failure does not acknowledge unread')
+
  await page.goto(url+'?office&geometry&locale=en');await page.locator('#geometry-fixture [data-idle-minutes]').waitFor()
  const fixture=page.locator('#geometry-fixture'), measure=()=>fixture.evaluate(root=>{const rect=e=>{const b=e.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,width:b.width,height:b.height}},label=root.querySelector('[data-idle-minutes]'),marker=root.querySelector('[data-avatar-waiting],[data-completion-badge]'),count=root.querySelector('[data-running-count]'),rail=rect(root),l=label?rect(label):null,m=rect(marker),faces=[...root.querySelectorAll('[data-avatar]')].map(rect);return {rail,label:l,marker:m,count:count?rect(count):null,faces,scrollWidth:label?.scrollWidth,clientWidth:label?.clientWidth,font:label?getComputedStyle(label).fontSize:null}}), failures=[]
  await page.evaluate(()=>window.fixtureGeometry(null,'waiting',false,false));await page.locator('#geometry-fixture [data-idle-minutes]').waitFor({state:'detached'});const baseline=await measure();assert.equal(await fixture.locator('[data-geometry-rail]').evaluate(e=>getComputedStyle(e).rowGap),'10px');assert.equal(baseline.faces[1].top-baseline.faces[0].top,47,'off geometry remains unchanged')
