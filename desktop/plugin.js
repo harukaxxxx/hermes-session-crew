@@ -787,10 +787,10 @@ function lastActivityEstimate(row,now){
  const recency=recentWork(row)&&row.status_observation==='recent_session_activity'&&shared==='positive'&&row.idle_since==null
  return explicit||recency?row.last_session_activity:null
 }
-const fenceEstimate=(fences,name,at)=>fences.set(name,Math.max(fences.get(name)||0,at))
+const fenceAt=(fences,name,at)=>fences.set(name,Math.max(fences.get(name)||0,at))
 function useRailSnapshot(rest,connection,profile,{epoch,generation}){
  const scope=JSON.stringify([connection,profile,epoch,generation]), current=useRef(scope);current.current=scope
- const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),estimateFences:new Map(),oneshotFences:new Map()}
+ const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),idleFences:new Map(),estimateFences:new Map(),oneshotFences:new Map()}
  const [clock,tick]=useState(()=>Date.now())
  const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch,generation],enabled:!!profile&&typeof rest==='function',retry:false,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async({signal}={})=>{
  try{
@@ -803,28 +803,29 @@ function useRailSnapshot(rest,connection,profile,{epoch,generation}){
   const rows=data.map(row=>{
    const status=railStatus(row),since=backendIdleStart(row)
    const proof=oneshotProof(row,sampledAt,now)
-   if(proof&&row.online&&row.waiting!==true&&status!=='idle'&&status!=='waiting')fenceEstimate(history.current.oneshotFences,row.profile,sampledAt)
+   if(proof&&row.online&&row.waiting!==true&&status!=='idle'&&status!=='waiting')fenceAt(history.current.oneshotFences,row.profile,sampledAt)
    if(row.online&&ownBusyStatus(row,status)){
-    fenceEstimate(history.current.estimateFences,row.profile,sampledAt)
+    fenceAt(history.current.estimateFences,row.profile,sampledAt)
     starts.delete(row.profile)
    }else if(status==='idle'&&validIdleStart(since,now))starts.set(row.profile,{since,sampledAt})
    else if(status!=='online_unobserved'||!sharedIdleHistory(row))starts.delete(row.profile)
-   return proof?{...row,oneshotProof:proof}:row
+   const sample=proof?{...row,oneshotProof:proof}:row
+   return status==='idle'?{...sample,idleSampledAt:sampledAt}:sample
   })
   for(const name of starts.keys())if(!names.has(name))starts.delete(name)
   return rows
  }catch(error){if(!signal?.aborted&&current.current===scope)history.current.starts.clear();throw error}
  }})
  useEffect(()=>{const update=()=>{if(!document.hidden)tick(Date.now())};const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update)}},[])
- const {starts,estimateFences,oneshotFences}=history.current
- if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data)){starts.clear();return [[],clock,starts,estimateFences,oneshotFences]}
+ const {starts,idleFences,estimateFences,oneshotFences}=history.current
+ if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data)){starts.clear();return [[],clock,starts,idleFences,estimateFences,oneshotFences]}
  const rows=q.data.map(row=>{
   const status=railStatus(row),since=backendIdleStart(row),start=starts.get(row.profile)
-  if(status==='idle'&&validIdleStart(since,Date.now()))return {...row,presentationIdleSince:since,idleSampledAt:start?.sampledAt}
+  if(status==='idle'&&validIdleStart(since,Date.now()))return {...row,presentationIdleSince:since}
   if(status==='online_unobserved'&&sharedIdleHistory(row)&&start)return {...row,presentationIdleSince:start.since,idleSampledAt:start.sampledAt,historicalIdle:true}
   return row
  })
- return [rows,clock,starts,estimateFences,oneshotFences]
+ return [rows,clock,starts,idleFences,estimateFences,oneshotFences]
 }
 function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
 const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
@@ -1058,21 +1059,23 @@ function Rail({storage,rest,preferences}){
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
  const completion=useCompletion(storage,rest,connectionId,profile,settings.showCron,settings.hiddenMessagingSources,preferences)
- const activityScopeNow=useActivityScope(),[office,clock,idleStarts,estimateFences,oneshotFences]=useRailSnapshot(rest,connectionId,profile,activityScopeNow)
+ const activityScopeNow=useActivityScope(),[office,clock,idleStarts,idleFences,estimateFences,oneshotFences]=useRailSnapshot(rest,connectionId,profile,activityScopeNow)
  const [activityMap,setActivityMap]=useState({})
  const onActivity=useCallback((name,key,activity,since,conflict=false)=>{
-  const invalidatesIdle=activity&&(activity.working||activity.background.length||activity.waiting)
-  if(invalidatesIdle&&idleStarts.get(name)?.sampledAt<=activity.observedAt)idleStarts.delete(name)
-  if(invalidatesIdle)fenceEstimate(estimateFences,name,activity.observedAt)
+  if(activity&&(activity.working||activity.background.length||activity.waiting)){
+   fenceAt(idleFences,name,activity.observedAt)
+   if(idleStarts.get(name)?.sampledAt<=activity.observedAt)idleStarts.delete(name)
+   fenceAt(estimateFences,name,activity.observedAt)
+  }
   setActivityMap(previous=>{
   const old=previous[key]
   if(!activity&&!conflict&&!old||old?.activity===activity&&old?.since===since&&old?.conflict===conflict)return previous
   const next={...previous}
   if(activity===undefined)delete next[key]
-  else next[key]={activity,since,conflict,invalidAt:invalidatesIdle?Math.max(old?.invalidAt||0,activity.observedAt):old?.invalidAt||0}
+  else next[key]={activity,since,conflict}
   return next
   })
- },[idleStarts,estimateFences])
+ },[idleStarts,idleFences,estimateFences])
  const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
  const launchEpoch=useRef(null),[,refreshLaunch]=useState(0)
  const select=useCallback(value=>{if(value!==selectedRef.current){selectionEpoch.current++;setProjectOwner(null)}selectedRef.current=value;setSelected(value)},[])
@@ -1118,7 +1121,8 @@ function Rail({storage,rest,preferences}){
   const canShowIdle=idleAllowed&&!waiting&&!ownBusyStatus(row,base)&&['idle','online_unobserved'].includes(status)
   // Last activity is an elapsed-time origin, not the time idle was observed.
   // Only a new observation can supersede a prior execution sample.
-  const backendSince=canShowIdle&&(!evidence?.invalidAt||row?.idleSampledAt>evidence.invalidAt)?row?.presentationIdleSince:null
+  const invalidAt=idleFences.get(p.name)
+  const backendSince=canShowIdle&&(!invalidAt||row?.idleSampledAt>invalidAt)?row?.presentationIdleSince:null
   const observedSince=canShowIdle&&observedIdleAt>=(oneshotFences.get(p.name)||0)?evidence?.since:null,confirmedSince=Math.max(backendSince||0,observedSince||0)||null
   // Estimates only fill a gap; they cannot replace stronger evidence or
   // reuse an activity origin at or before observed work/waiting in this scope.

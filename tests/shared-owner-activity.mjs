@@ -8,21 +8,27 @@ const dom=new JSDOM('<div id="root"></div>',{url:'https://fixture.invalid'});glo
 const atom=v=>{const listeners=new Set();return {get:()=>v,subscribe:f=>(listeners.add(f),()=>listeners.delete(f)),set:x=>{v=x;for(const f of listeners)f()}}}
 const gateway=atom('open'),epoch=atom(1),route={connectionId:'conn',mode:'remote',profile:'alpha',targetProfile:'alpha'},active=[],calls=[]
 let office={profile:'alpha',online:true,state:'working',status_observation:'recent_session_activity'},owners={one:'alpha',four:'alpha'},sources={one:'cli',four:'cli'},roster=[]
-const host={state:{gateway,connectionId:atom('conn'),profile:atom('default')},profiles:{list:async()=>({profiles:[{name:'alpha'}]})},profileRoutes:async()=>[route],request:async()=>({found:false}),requestProfile:async(r,m)=>{calls.push(m);return m==='session.active_list'?{sessions:structuredClone(active)}:m==='subagent.roster'?{sessions:structuredClone(roster)}:m==='session.list'?{sessions:['one','two','three','four'].map(id=>({id,title:id,source:'cli'}))}:{projects:[]}}}
+const names=['alpha','beta']
+const host={state:{gateway,connectionId:atom('conn'),profile:atom('default')},profiles:{list:async()=>({profiles:names.map(name=>({name}))})},profileRoutes:async()=>names.map(name=>({...route,profile:name,targetProfile:name})),request:async()=>({found:false}),requestProfile:async(r,m)=>{calls.push(m);if(r.profile!=='alpha')return {sessions:[]};return m==='session.active_list'?{sessions:structuredClone(active)}:m==='subagent.roster'?{sessions:structuredClone(roster)}:m==='session.list'?{sessions:['one','two','three','four'].map(id=>({id,title:id,source:'cli'}))}:{projects:[]}}}
 let statusReads=0,holdStatus
-const rest=async(p,opts)=>p==='/status'?(++statusReads,holdStatus?holdStatus(office):[office]):p==='/recent-activity'?{profile:'alpha',activity:{one:40,two:30,three:20,four:10}}:p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,owners[id]])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,sources[id]]))}:{version:2,source_root:'default',source_id:'source',server_epoch:'epoch',profiles:[]}
+let betaOffice
+const snapshot={version:2,source_root:'default',source_id:'source',server_epoch:'epoch',profiles:names.map(profile=>({profile,status:'ok',database_id:'db-'+profile,high_water:0,truncated:false,rows:[]}))}
+const rest=async(p,opts)=>p==='/status'?(++statusReads,holdStatus?holdStatus(office):[office,...(betaOffice?[betaOffice]:[])]):p==='/recent-activity'?{profile:'alpha',activity:{one:40,two:30,three:20,four:10}}:p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,owners[id]])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,sources[id]]))}:structuredClone(snapshot)
 const useValue=a=>React.useSyncExternalStore(a.subscribe,a.get,a.get)
 const sdk={host,useValue,useGatewayActivationEpoch:()=>useValue(epoch),gatewayActivationEpoch:epoch.get,useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
-let contribution;mod.namespace.default.register({storage:{get:async key=>key==='display-settings-v1'?{hideOffline:false,showCron:false,developerMode:true,hiddenProfiles:[]}:null,set:async()=>{}},rest,register:x=>contribution=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
-async function until(fn){const end=Date.now()+3000;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,10))});if(fn())return}throw Error('timeout: '+document.body.innerHTML.slice(0,1000))}
-const button=()=>document.querySelector('.profile-rail-hit'),timer=()=>document.querySelector('[data-idle-minutes]')?.textContent??null,refresh=(key='profile-input-waiting')=>React.act(async()=>client.refetchQueries({queryKey:['sessioncrew',key],type:'active'})),record=(id,status)=>({id,session_key:id,source:'cli',status})
+const saved={'display-settings-v1':{hideOffline:false,showCron:false,developerMode:true,hiddenProfiles:[]}}
+let contribution,settingsPage;mod.namespace.default.register({storage:{get:async key=>saved[key],set:async(key,value)=>{saved[key]=structuredClone(value)}},rest,register:x=>contribution=x,registerSettingsPage:x=>settingsPage=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
+async function until(fn){const end=performance.now()+3000;while(performance.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,10))});if(fn())return}throw Error('timeout: '+document.body.innerHTML.slice(0,1000))}
+const buttons=()=>[...document.querySelectorAll('.profile-rail-hit')],label=x=>x.getAttribute('aria-label').split(' · ')[0].toLowerCase(),button=(name='alpha')=>buttons().find(x=>label(x)===name)
+const badge=(name,selector)=>button(name)?.closest('[data-avatar-stack]').querySelector(selector),timer=(name='alpha')=>badge(name,'[data-idle-minutes]')?.textContent??null
+const refresh=(key='profile-input-waiting')=>React.act(async()=>client.refetchQueries({queryKey:['sessioncrew',key],type:'active'})),record=(id,status)=>({id,session_key:id,source:'cli',status})
 const setStatus=async(state,reason)=>{office={...office,state,status_observation:reason};await refresh('status')}
 const apply=async (...sessions)=>{active.splice(0,active.length,...sessions);await refresh()}
 try{
  const coldActivity=Date.now()/1000-125
  office={profile:'alpha',online:true,state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work',last_session_activity:coldActivity}
- await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
+ await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render(),settingsPage.render())))
  await until(()=>button()&&calls.includes('session.active_list'))
  await until(()=>button().getAttribute('data-state-name')==='online_unobserved')
  assert.equal(timer(),'0h2m','cold legacy shared-positive status uses the owner timestamp without asserting idle')
@@ -122,4 +128,48 @@ try{
  await estimate({active_turn:true});await until(()=>timer()===null)
  await estimate();assert.equal(timer(),null,'an owner lease invalidates retained shared-host history too')
  console.log('PASS shared activity, provenance, unloaded session, ownership, observed idle and scope/expiry fences')
+
+ // Both owners have unread dots, so only the idle timestamp can swap their rank.
+ await until(()=>saved['completion-snapshot-v2']?.coverage)
+ for(const p of snapshot.profiles){p.high_water=1;p.rows=[{seq:1,admission_id:p.profile,session_id:p.profile,status:'terminal',outcome:'completed',generation:1}]}
+ await refresh('completion-snapshot')
+ const at=Date.now(),alphaIdle={profile:'alpha',online:true,state:'idle',idle_since:at/1000-90}
+ betaOffice={profile:'beta',online:true,state:'idle',idle_since:at/1000-150}
+ const rail=()=>({order:buttons().map(label),timers:names.map(timer),unread:names.map(name=>!!badge(name,'[data-completion-badge]'))})
+ const confirmed={order:['alpha','beta'],timers:['0h1m','0h2m'],unread:[true,true]}
+ const fenced={...confirmed,order:['beta','alpha'],timers:[null,'0h2m']}
+ office=alphaIdle;await refresh('status');await until(()=>rail().unread.every(Boolean)&&timer()==='0h1m'&&timer('beta')==='0h2m')
+ assert.deepEqual(rail(),confirmed,'confirmed idle sets the initial rank')
+ const toggleAlpha=()=>[...document.querySelectorAll('button[aria-pressed]')].find(x=>x.textContent==='alpha')
+ const setVisible=async visible=>{await until(()=>!toggleAlpha()?.disabled&&!!toggleAlpha());await React.act(async()=>toggleAlpha().click());await until(()=>!!button()===visible)}
+ const reads=statusReads
+ await waitForInput();await clearInput();assert.deepEqual(rail(),fenced,'waiting clear reveals unread without restoring stale idle rank')
+ await setVisible(false);await setVisible(true)
+ assert.equal(statusReads,reads,'hide and re-show do not refresh /status')
+ const afterRemount=rail()
+ await refresh('status');await until(()=>timer()==='0h1m');assert.deepEqual(rail(),confirmed,'later request restores the original idle timestamp and rank')
+
+ // Deliver a pre-wait response after clear and after the avatar has unmounted.
+ holdStatus=row=>new Promise(resolve=>{releaseStatus=()=>resolve([row,betaOffice])})
+ releaseStatus=null
+ await React.act(async()=>{pendingStatus=client.refetchQueries({queryKey:['sessioncrew','status'],type:'active'})})
+ await until(()=>releaseStatus)
+ await waitForInput();await clearInput();await setVisible(false)
+ holdStatus=null
+ await React.act(async()=>{releaseStatus();await pendingStatus})
+ await setVisible(true)
+ const afterLateReply=rail()
+ assert.deepEqual({afterRemount,afterLateReply},{afterRemount:fenced,afterLateReply:fenced},'visibility must not revive cached or late pre-wait idle timers or rank, or change unread')
+ await refresh('status');await until(()=>timer()==='0h1m');assert.deepEqual(rail(),confirmed,'later request with unchanged idle origin restores timer and rank after a late reply')
+
+ // A request at the same clock tick cannot clear the fence until scope changes.
+ const wallClock=Date.now;const tick=wallClock();try{
+  Date.now=()=>tick
+  await waitForInput();await clearInput();await refresh('status')
+  assert.deepEqual(rail(),fenced,'a request started at the invalidation time is not newer')
+  await React.act(async()=>epoch.set(3))
+  await until(()=>timer()==='0h1m'&&rail().unread.every(Boolean))
+  assert.deepEqual(rail(),confirmed,'a new activation scope does not inherit the prior idle fence')
+ }finally{Date.now=wallClock}
+ console.log('PASS visibility retains owner idle fences for cached and late samples without changing unread or sibling state; newer requests and scope reset restore the original timer and rank')
 }finally{await React.act(async()=>root.unmount());client.clear()}
