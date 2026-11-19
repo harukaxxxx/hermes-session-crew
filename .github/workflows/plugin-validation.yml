@@ -10,6 +10,25 @@ permissions:
   contents: read
 
 jobs:
+  session-launch:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.23.1'
+      - name: Test uncertain session creation
+        env:
+          HERMES_CHECKOUT: ${{ runner.temp }}/launch-fixture
+        run: |
+          npm install --prefix "$HERMES_CHECKOUT" --ignore-scripts --no-audit --no-fund \
+            react@19.3.0 react-dom@19.3.0 jsdom@29.1.1 @tanstack/react-query@5.104.1
+          node --experimental-vm-modules tests/actions.mjs
+
   validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

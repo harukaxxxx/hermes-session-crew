@@ -11,12 +11,12 @@ url.searchParams.set('locale','en')
 try{
  for(const [source,interference] of [
   ['quick','focus'],['project','focus'],['quick','geometry'],['quick','close'],['quick','pointer'],
-  ['project','escape'],['project','pointer'],['quick','profile'],['quick','connection'],['quick','switch'],['project','reject'],
+  ['project','escape'],['project','pointer'],['quick','profile'],['quick','connection'],['quick','switch'],['project','reject'],['project','missing-id'],
  ]){
   const page=await browser.newPage({viewport:{width:1100,height:700},reducedMotion:'reduce'})
   try{
    await page.addInitScript(()=>{
-    window.fixtureCreateSession=()=>new Promise(resolve=>{window.releaseCreate=()=>resolve({stored_session_id:'delayed-id'})})
+    window.fixtureCreateSession=()=>new Promise(resolve=>{window.releaseCreate=(reply={stored_session_id:'delayed-id'})=>resolve(reply)})
     window.fixtureOpenSession=()=>{if(window.rejectFixtureOpen)throw Error('fixture gateway unavailable')}
    })
    await page.goto(url.href)
@@ -31,6 +31,24 @@ try{
    assert.equal(await quick.isDisabled(),true)
    const expectedCreate={route:{connectionId:'fixture',mode:'remote',profile:'Aster',targetProfile:'Aster'},params:source==='project'?{source:'desktop',cwd:'/fixture/project',cwd_explicit:true}:{source:'desktop'}}
    assert.deepEqual(await page.evaluate(()=>window.createCalls),[expectedCreate])
+   if(interference==='missing-id'){
+    await page.getByRole('button',{name:'Close panel'}).click()
+    await panel.waitFor({state:'hidden'})
+    await page.evaluate(()=>window.releaseCreate({}))
+    const other=page.locator('.profile-rail-hit').nth(1)
+    await other.click();await quick.waitFor()
+    assert.equal(await quick.isEnabled(),true,'unknown outcome does not block another owner')
+    await avatar.click()
+    await page.getByRole('alert').filter({hasText:/creation could not be confirmed.*check.*session list/i}).waitFor()
+    assert.equal(await quick.isDisabled(),true)
+    await page.getByRole('button',{name:/Open projects?/i}).click()
+    assert.equal(await page.locator('[data-project-row] button').isDisabled(),true)
+    assert.equal(await retry.count(),0)
+    assert.deepEqual(await page.evaluate(()=>window.openCalls||[]),[])
+    assert.deepEqual(await page.evaluate(()=>window.createCalls),[expectedCreate])
+    console.log(`PASS ${source}/${interference}`)
+    continue
+   }
    const incidental=['focus','geometry','reject'].includes(interference)
    if(interference==='focus')await page.evaluate(()=>{const button=document.createElement('button');document.body.append(button);button.focus()})
    if(interference==='geometry')await page.evaluate(()=>{

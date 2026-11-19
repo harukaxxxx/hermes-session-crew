@@ -1,7 +1,9 @@
 import * as sdk from '@hermes/plugin-sdk'
 import { host, useValue, useQuery, Popover, PopoverContent, PopoverTrigger } from '@hermes/plugin-sdk'
-import { useState, useEffect, useRef, useCallback, useSyncExternalStore, createContext, useContext } from 'react'
+import * as React from 'react'
 import { jsx, jsxs } from 'react/jsx-runtime'
+
+const { useState, useEffect, useRef, useCallback, useSyncExternalStore, createContext, useContext }=React
 
 // Plugin-owned copy; zh-hant is the SDK normalized ID for zh-TW.
 const messages = {
@@ -144,7 +146,6 @@ const messages = {
       sessionFormat: "Unsupported session response format",
       activityUnavailable: "Session activity ordering unavailable; retry",
       missingProjectId: "Creation response lacks a project ID; outcome unknown",
-      missingSessionId: "Creation response lacks a session ID",
       rootChangedDialog: "Backend root changed; reopen the dialog",
       rootChangedBrowser: "Backend root changed; reopen the browser",
       routeNotUnique: "Could not find a unique profile route",
@@ -194,6 +195,7 @@ const messages = {
       empty: "No sessions",
       loading: "Loading sessions…",
       retryOpen: "Retry opening",
+      createUnconfirmed: "Session creation could not be confirmed. Check this profile’s session list and open the session if it appears. Quick create and project launches are paused for this profile until SessionCrew reloads.",
       showMore: "Show more sessions",
       openFailure: error => `Could not open: ${error}; try again`,
       loadFailure: error => `Could not load sessions: ${error}`,
@@ -340,7 +342,6 @@ const messages = {
       sessionFormat: "工作階段回應格式不支援",
       activityUnavailable: "工作階段活動排序無法使用，請重試",
       missingProjectId: "建立回應缺少專案 ID，結果未知",
-      missingSessionId: "建立回應缺少工作階段 ID",
       rootChangedDialog: "後端根目錄已變更，請重新開啟對話框",
       rootChangedBrowser: "後端根目錄已變更，請重新開啟瀏覽器",
       routeNotUnique: "找不到唯一的設定檔路由",
@@ -390,6 +391,7 @@ const messages = {
       empty: "沒有工作階段",
       loading: "載入工作階段…",
       retryOpen: "重試開啟",
+      createUnconfirmed: "無法確認會話是否已建立。請查看此角色的會話清單；若找到該會話，請直接開啟。重新載入 SessionCrew 前，此角色暫停快速建立及從專案啟動會話。",
       showMore: "顯示更多工作階段",
       openFailure: error => `開啟失敗：${error}，請再試一次`,
       loadFailure: error => `工作階段無法載入：${error}`,
@@ -485,6 +487,8 @@ function routeFor(name,connectionId,activeProfile,routes){
  if(matches.length!==1) throw new LocalizedError('errors.routeNotUnique')
  return matches[0]
 }
+const launchOwnerKey=({connectionId,name,route})=>JSON.stringify([route?.connectionId??connectionId,name])
+const launchDestination=({connectionId,route})=>JSON.stringify(typeof route==='string'?[connectionId,route]:[route.connectionId,route.profile,route.targetProfile])
 async function openOwned(owner,id){
  if(typeof host.openSession!=='function') throw new LocalizedError('errors.openUnsupported')
  if(typeof owner.route==='string'){
@@ -670,17 +674,22 @@ function ProjectDialog({owner:ownerProp,ownerName,isCurrent,onClose,onCreated,on
  const D=sdk.Dialog,C=sdk.DialogContent,H=sdk.DialogHeader,T=sdk.DialogTitle,Desc=sdk.DialogDescription,F=sdk.DialogFooter,B=sdk.Button,I=sdk.Input,A=sdk.Textarea,G=sdk.Codicon
  return jsxs('div',{children:[jsx(D,{open:true,onOpenChange:open=>{if(!open&&!lock.current)onClose()},children:jsxs(C,{className:'max-w-md',onInteractOutside:e=>e.preventDefault(),children:[jsxs(H,{children:[jsx(T,{children:tr('project.newForOwner',ownerName)}),jsx(Desc,{children:tr('project.createDescription')})]}),jsxs('div',{style:{display:'flex',flexDirection:'column',gap:8},children:[jsx(I,{'aria-label':tr('project.name'),placeholder:tr('project.name'),value:name,disabled:busy||!!created,onChange:e=>setName(e.target.value)}),jsx('span',{children:tr('project.folders')}),...paths.map((item,index)=>jsxs('div',{className:'flex items-center gap-2 rounded-md bg-(--ui-control-hover-background) px-2 py-1 text-[0.75rem]',children:[jsx(G,{name:'folder',size:'0.75rem',className:'shrink-0 text-(--ui-text-tertiary)'}),jsx('span',{className:'min-w-0 flex-1 truncate',title:item.path,children:item.path}),index===0?jsx('span',{className:'shrink-0 text-[0.625rem] uppercase text-(--ui-text-quaternary)',children:tr('common.primary')}):null,jsx(B,{type:'button',variant:'ghost',size:'icon-xs',className:'size-5 shrink-0 text-(--ui-text-quaternary) hover:text-foreground',disabled:busy||!!created,'aria-label':tr('folder.remove',item.path),onClick:()=>setPaths(old=>old.filter(x=>x.path!==item.path)),children:jsx(G,{name:'close',size:'0.75rem'})})]},item.path)),jsx(B,{type:'button',disabled:busy||!!created||!dialogRest||!scopeValid(),onClick:()=>setBrowsing(true),children:tr('folder.browse')}),!dialogRest||scopeLost||!scopeValid()?jsx('small',{children:tr('folder.backendUnavailable')}):null,jsxs('div',{style:{display:'flex',flexDirection:'column',gap:6},children:[jsx('span',{children:tr('project.idea')}),jsx(A,{'aria-label':tr('project.idea'),value:idea,disabled:generating||busy||ideaState==='saved',onChange:e=>setIdea(e.target.value)}),jsx('small',{children:tr('project.ideaCopyHelp')}),jsx(B,{type:'button',disabled:busy||generating||!!created,onClick:generate,children:generating?tr('project.generating'):tr('project.generateIdea')}),jsxs('div',{style:{display:'flex',flexWrap:'wrap',gap:4},children:[...Array.from({length:3},(_,i)=>groups[(round+i)%groups.length]).map(([label,text])=>jsx(B,{type:'button',variant:'ghost',disabled:busy||generating||!!created,onClick:()=>setIdea(text),children:label},label)),jsx(B,{type:'button',variant:'ghost','aria-label':tr('project.refreshIdeas'),onClick:()=>setRound(n=>(n+3)%groups.length),children:jsx(G,{name:'refresh',size:'0.75rem'})})]})]}),created?jsx('div',{children:tr('project.created',created.label,created.id)}):null,ideaState==='failed'?jsx('div',{role:'alert',children:tr('project.ideaSaveFailure',ideaError)}):ideaState==='saved'?jsx('div',{children:tr('project.ideaSaved')}):null,error?jsx('div',{role:'alert',children:localizeError(error)}):null,jsxs(F,{children:[jsx(B,{type:'button',variant:'ghost',disabled:busy,onClick:onClose,children:created?tr('common.close'):tr('common.cancel')}),ideaState==='failed'?jsx(B,{type:'button',disabled:busy||!scopeValid(),onClick:retryIdea,children:tr('project.ideaRetry')}):null,refreshFailed?jsx(B,{type:'button',disabled:busy,onClick:retryRefresh,children:tr('common.retryRefresh')}):!created?jsx(B,{type:'button',disabled:busy||generating||!paths.length||!scopeValid()||unknownProjects.current.has(unknownKey),onClick:submit,children:busy?tr('common.creating'):tr('common.create')}):null]})]})]})}),browsing?jsx(FolderBrowser,{rest:dialogRest,valid:scopeValid,mkdirUnknown,onCancel:()=>setBrowsing(false),onSelect:item=>{if(!scopeValid())return;if(paths.length&&paths[0].rootId!==item.rootId){setError({message:()=>tr('errors.rootChangedDialog')});return}setPaths(old=>old.some(x=>x.path===item.path)?old:[...old,item]);setName(old=>old.trim()||item.path.split('/').filter(Boolean).pop()||old);setBrowsing(false)}}):null]})
 }
-function Launchers({owner,ownerName,isCurrent,isLaunching,beginLaunch,onDismiss,onOpened,pending,projectOpen,setProjectOpen,createdProjects,dialogActive,unknownProjects,parentContentRef}){
+function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss,onOpened,pending,projectOpen,setProjectOpen,createdProjects,dialogActive,unknownProjects,parentContentRef}){
  const tr=useTranslator()
  const [error,setError]=useState(''),[projectGeneration,setProjectGeneration]=useState(0),[dialogOpen,setDialogOpen]=useState(false),projectTrigger=useRef(null),[projectLayout,setProjectLayout]=useState({side:'bottom',maxHeight:220})
  useEffect(()=>{if(!projectOpen)return;const update=()=>{const r=parentContentRef.current?.getBoundingClientRect();if(!r)return;const desired=Math.min(220,innerHeight*.325-7.5),available=Math.max(0,Math.max(r.top,innerHeight-r.bottom)-12),room=innerWidth-r.right>=r.width+12,horizontal=available<desired&&room,overlay=available<76&&!room;setProjectLayout({side:horizontal?'right':'bottom',maxHeight:horizontal||overlay?desired:Math.min(desired,available),overlay,sideOffset:overlay?Math.max(0,Math.min(r.top,innerHeight-desired))-r.bottom:undefined,alignOffset:overlay?Math.max(0,Math.min(r.left,innerWidth-r.width-2))-r.left:undefined})};update();window.addEventListener('resize',update);window.addEventListener('scroll',update,true);return()=>{window.removeEventListener('resize',update);window.removeEventListener('scroll',update,true)}},[projectOpen])
  const dialogAvailable=!!owner&&typeof owner.route==='object'&&!!owner.route&&typeof host.requestProfile==='function'&&['Dialog','DialogContent','DialogHeader','DialogTitle','DialogDescription','DialogFooter','Button','Input','Textarea'].every(k=>!!sdk[k])
  useEffect(()=>()=>{dialogActive.current=false},[dialogActive])
- const route=owner?.route, queryKey=['sessioncrew','projects',owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode,projectGeneration]
+ const route=owner?.route, ownerScope=[owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]
+ const queryKey=['sessioncrew','projects',...ownerScope,projectGeneration]
  const projectIntent=useRef(0)
  const projects=useQuery({queryKey,queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner,retry:false})
  const key=JSON.stringify([owner?.connectionId,owner?.name,owner?.route])
- const busy=!!pending.current.get(key)?.inflight
+ const launchKey=owner&&launchOwnerKey(owner),destination=owner&&launchDestination(owner)
+ const launch=pending.current.get(launchKey),busy=!!launch?.inflight
+ const unconfirmed=!busy&&launch?.phase==='dispatched'
+ const retryable=launch?.phase==='acknowledged'&&launch.destination===destination
+ const launchDisabled=busy||unconfirmed||launch?.phase==='acknowledged'&&!retryable
  const unknownKey=JSON.stringify([route?.connectionId,route?.targetProfile])
  const unknownWarning=tr('project.unknownWarning')
  const choices=[...(projects.data?.choices||[])];for(const project of createdProjects.current.get(key)||[])if(!choices.some(p=>p.id===project.id))choices.push(project)
@@ -689,36 +698,40 @@ function Launchers({owner,ownerName,isCurrent,isLaunching,beginLaunch,onDismiss,
  function rememberProject(project){const rows=createdProjects.current.get(key)||[];createdProjects.current.set(key,[...rows.filter(x=>x.id!==project.id),project]);try{Promise.resolve(sdk.queryClient?.invalidateQueries?.({queryKey:queryKey.slice(0,-1),refetchType:'none'})).catch(()=>{})}catch{}if(isCurrent())setProjectGeneration(n=>n+1)}
  async function refreshProjects(){if(sdk.queryClient?.invalidateQueries)await sdk.queryClient.invalidateQueries({queryKey:queryKey.slice(0,-1),refetchType:'none'});if(isCurrent())setProjectGeneration(n=>n+1)}
  async function create(project=null){
-  if(!owner||!isCurrent())return
-  let record=pending.current.get(key)
-  if(record?.inflight){setError({message:()=>tr('project.inProgress')});return}
-  record=record||{id:null,inflight:false};pending.current.set(key,record);record.inflight=true
+  const dispatchOwner=owner&&getLiveOwner(destination)
+  if(!dispatchOwner)return
+  const record=pending.current.get(launchKey)||{phase:'pre-dispatch',inflight:false,destination}
+  if(record.inflight||record.phase==='dispatched'||record.destination!==destination)return
+  pending.current.set(launchKey,record);record.inflight=true
   const finishLaunch=beginLaunch();setError('')
-  let id=record.id
   try{
-   if(!id){
+   if(record.phase==='pre-dispatch'){
     if(project&&!project.path)throw new LocalizedError('errors.projectNoPath')
     const params=project?{source:'desktop',cwd:project.path,cwd_explicit:true}:{source:'desktop'}
-    let result
-    if(typeof owner.route==='string'&&(host.state.connectionId.get()!==owner.connectionId||host.state.profile.get()!==owner.name))throw new LocalizedError('errors.createOtherUnsupported')
-    if(typeof host.requestProfile==='function') result=await host.requestProfile(owner.route,'session.create',params,undefined,{spawnPriority:'foreground'})
-    else if(host.state.connectionId.get()===owner.connectionId&&host.state.profile.get()===owner.name) result=await host.request('session.create',params)
-    else throw new LocalizedError('errors.createOtherUnsupported')
-    if(result?.error) throw Error(result.error.message||result.error.detail||String(result.error))
-    id=result?.stored_session_id||result?.session_key||result?.session_id
-    if(!id)throw new LocalizedError('errors.missingSessionId')
-    record.id=id
+    const sameOwner=host.state.connectionId.get()===dispatchOwner.connectionId&&host.state.profile.get()===dispatchOwner.name
+    const routed=typeof host.requestProfile==='function'
+    if(((typeof dispatchOwner.route==='string'||!routed)&&!sameOwner)||(!routed&&typeof host.request!=='function'))throw new LocalizedError('errors.createOtherUnsupported')
+    record.phase='dispatched'
+    const result=routed?await host.requestProfile(dispatchOwner.route,'session.create',params,undefined,{spawnPriority:'foreground'}):await host.request('session.create',params)
+    if(result?.error)return
+    const id=[result?.stored_session_id,result?.session_key,result?.session_id].find(value=>typeof value==='string'&&value.trim())
+    if(!id)return
+    record.id=id;record.phase='acknowledged'
    }
-   if(!isCurrent())return
-   await openOwned(owner,id)
-   pending.current.delete(key)
-   if(isCurrent())onOpened()
-  }catch(e){if(!id)pending.current.delete(key);if(isCurrent())setError({message:()=>(id?tr('session.createdOpenFailure',id,errorMessage(e,tr)||tr('errors.unknown')):tr('common.creationFailure',errorMessage(e,tr)||tr('errors.unknown')))})}
+   const liveOwner=getLiveOwner(record.destination)
+   if(!liveOwner)return
+   await openOwned(liveOwner,record.id)
+   pending.current.delete(launchKey)
+   if(getLiveOwner(record.destination))onOpened()
+  }catch(e){
+   if(record.phase==='pre-dispatch')pending.current.delete(launchKey)
+   if(record.phase!=='dispatched'&&getLiveOwner(record.destination))setError({message:()=>record.phase==='acknowledged'?tr('session.createdOpenFailure',record.id,errorMessage(e,tr)||tr('errors.unknown')):tr('common.creationFailure',errorMessage(e,tr)||tr('errors.unknown'))})
+  }
   finally{record.inflight=false;finishLaunch()}
  }
  const ellipsis={display:'block',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}
  const Glyph=sdk.Codicon||'span'
- return jsxs('div',{style:{flexShrink:0},children:[dialogOpen?jsx(ProjectDialog,{owner,ownerName,isCurrent,onClose:closeDialog,onCreated:rememberProject,onRefresh:refreshProjects,unknownProjects}):null,jsxs('div',{style:s.footer,children:[jsx('button',{type:'button',disabled:busy||!owner,onClick:()=>create(),style:{...s.button,flex:1,minWidth:0},children:pending.current.get(key)?.id?tr('session.retryOpen'):jsxs('span',{style:{display:'inline-flex',alignItems:'center',gap:4},children:[jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true}),tr('session.quickCreate')]})}),jsxs(Popover,{open:projectOpen,onOpenChange:open=>{if(!open&&isLaunching())onDismiss();else if(open||!dialogActive.current)setProjectOpen(open)},children:[jsx(PopoverTrigger,{asChild:true,children:jsx('span',{'aria-hidden':true,tabIndex:-1,style:{position:'absolute',inset:0,pointerEvents:'none'}})}),jsx('button',{ref:projectTrigger,type:'button',disabled:busy||!owner,'aria-expanded':projectOpen,'aria-haspopup':'dialog',onClick:()=>setProjectOpen(!projectOpen),style:{...s.button,flex:1,minWidth:0},children:tr('project.open')}),jsxs(PopoverContent,{side:projectLayout.side,align:'start',avoidCollisions:!projectLayout.overlay,sideOffset:projectLayout.sideOffset,alignOffset:projectLayout.alignOffset,onCloseAutoFocus:e=>{e.preventDefault();if(isCurrent())projectTrigger.current?.focus({preventScroll:true})},onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||parentContentRef.current?.contains(e.target))e.preventDefault()},style:{...s.bubble,padding:'min(16px, 2vh)',maxHeight:projectLayout.maxHeight,overflow:'hidden'},children:[jsxs('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,height:30},children:[jsx('strong',{children:tr('project.title')}),jsx('button',{type:'button','aria-label':tr('project.new'),title:unknownProjects.current.has(unknownKey)?tr('project.unknownList'):dialogAvailable?tr('project.newForProfile'):tr('errors.projectUiUnsupported'),disabled:busy||!dialogAvailable||unknownProjects.current.has(unknownKey),onClick:()=>void createProject(),style:{...s.button,border:0},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]}),unknownProjects.current.has(unknownKey)?jsx('div',{role:'alert',children:unknownWarning,style:{fontSize:12,overflowY:'auto',flexShrink:1}}):null,projects.isPending&&!choices.length?tr('project.loadingList'):projects.isError&&!choices.length?jsxs('div',{role:'alert',children:[tr('project.loadFailed'),jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')})]}):!choices.length?tr('project.empty'):jsx('div',{'data-project-list':true,style:{minHeight:0,maxHeight:96,overflowY:'auto',flex:'0 1 auto'},children:choices.map(project=>jsxs('div',{'data-project-row':true,style:{height:32,boxSizing:'border-box',flexShrink:0,display:'flex',alignItems:'center',gap:8,minWidth:0},children:[project.color&&!project.icon?jsx('span',{'data-project-icon':'color','aria-hidden':true,style:{width:14,height:14,display:'grid',placeItems:'center',flex:'none'},children:jsx('span',{style:{width:4,height:4,borderRadius:'50%',background:project.color}})}):jsx('span',{'data-project-icon':project.icon||(project.isAuto?'repo':'folder-library'),'aria-hidden':true,style:{color:project.color||'var(--ui-text-tertiary)',width:14,flex:'none'},children:jsx(Glyph,{name:project.icon||(project.isAuto?'repo':'folder-library'),size:'0.875rem'})}),jsx('div',{style:{minWidth:0,flex:'1 1 auto'},children:jsx('strong',{'data-project-name':true,title:typeof project.label==='object'?tr(project.label.fallback):project.label,style:{...ellipsis,fontSize:12},children:typeof project.label==='object'?tr(project.label.fallback):project.label})}),jsx('button',{type:'button',disabled:busy,'aria-label':tr('session.newInProject',typeof project.label==='object'?tr(project.label.fallback):project.label),onClick:()=>create(project),style:{...s.button,border:0,flex:'none'},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]},project.id))})]})]})]}),error?jsx('div',{role:'alert',children:localizeError(error)}):null]})
+ return jsxs('div',{style:{flexShrink:0},children:[dialogOpen?jsx(ProjectDialog,{owner,ownerName,isCurrent,onClose:closeDialog,onCreated:rememberProject,onRefresh:refreshProjects,unknownProjects}):null,jsxs('div',{style:s.footer,children:[jsx('button',{type:'button',disabled:launchDisabled||!owner,onClick:()=>create(),style:{...s.button,flex:1,minWidth:0},children:retryable?tr('session.retryOpen'):jsxs('span',{style:{display:'inline-flex',alignItems:'center',gap:4},children:[jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true}),tr('session.quickCreate')]})}),jsxs(Popover,{open:projectOpen,onOpenChange:open=>{if(!open&&isLaunching())onDismiss();else if(open||!dialogActive.current)setProjectOpen(open)},children:[jsx(PopoverTrigger,{asChild:true,children:jsx('span',{'aria-hidden':true,tabIndex:-1,style:{position:'absolute',inset:0,pointerEvents:'none'}})}),jsx('button',{ref:projectTrigger,type:'button',disabled:busy||!owner,'aria-expanded':projectOpen,'aria-haspopup':'dialog',onClick:()=>setProjectOpen(!projectOpen),style:{...s.button,flex:1,minWidth:0},children:tr('project.open')}),jsxs(PopoverContent,{side:projectLayout.side,align:'start',avoidCollisions:!projectLayout.overlay,sideOffset:projectLayout.sideOffset,alignOffset:projectLayout.alignOffset,onCloseAutoFocus:e=>{e.preventDefault();if(isCurrent())projectTrigger.current?.focus({preventScroll:true})},onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||parentContentRef.current?.contains(e.target))e.preventDefault()},style:{...s.bubble,padding:'min(16px, 2vh)',maxHeight:projectLayout.maxHeight,overflow:'hidden'},children:[jsxs('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,height:30},children:[jsx('strong',{children:tr('project.title')}),jsx('button',{type:'button','aria-label':tr('project.new'),title:unknownProjects.current.has(unknownKey)?tr('project.unknownList'):dialogAvailable?tr('project.newForProfile'):tr('errors.projectUiUnsupported'),disabled:busy||!dialogAvailable||unknownProjects.current.has(unknownKey),onClick:()=>void createProject(),style:{...s.button,border:0},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]}),unknownProjects.current.has(unknownKey)?jsx('div',{role:'alert',children:unknownWarning,style:{fontSize:12,overflowY:'auto',flexShrink:1}}):null,projects.isPending&&!choices.length?tr('project.loadingList'):projects.isError&&!choices.length?jsxs('div',{role:'alert',children:[tr('project.loadFailed'),jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')})]}):!choices.length?tr('project.empty'):jsx('div',{'data-project-list':true,style:{minHeight:0,maxHeight:96,overflowY:'auto',flex:'0 1 auto'},children:choices.map(project=>jsxs('div',{'data-project-row':true,style:{height:32,boxSizing:'border-box',flexShrink:0,display:'flex',alignItems:'center',gap:8,minWidth:0},children:[project.color&&!project.icon?jsx('span',{'data-project-icon':'color','aria-hidden':true,style:{width:14,height:14,display:'grid',placeItems:'center',flex:'none'},children:jsx('span',{style:{width:4,height:4,borderRadius:'50%',background:project.color}})}):jsx('span',{'data-project-icon':project.icon||(project.isAuto?'repo':'folder-library'),'aria-hidden':true,style:{color:project.color||'var(--ui-text-tertiary)',width:14,flex:'none'},children:jsx(Glyph,{name:project.icon||(project.isAuto?'repo':'folder-library'),size:'0.875rem'})}),jsx('div',{style:{minWidth:0,flex:'1 1 auto'},children:jsx('strong',{'data-project-name':true,title:typeof project.label==='object'?tr(project.label.fallback):project.label,style:{...ellipsis,fontSize:12},children:typeof project.label==='object'?tr(project.label.fallback):project.label})}),jsx('button',{type:'button',disabled:launchDisabled,'aria-label':tr('session.newInProject',typeof project.label==='object'?tr(project.label.fallback):project.label),onClick:()=>create(project),style:{...s.button,border:0,flex:'none'},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]},project.id))})]})]})]}),unconfirmed||error?jsx('div',{role:'alert',children:unconfirmed?tr('session.createUnconfirmed'):localizeError(error)}):null]})
 }
 function statusText(value){
  const text=typeof value==='string'?value.replace(/\s+/gu,' ').trim():''
@@ -1073,6 +1086,8 @@ function Rail({storage,rest,preferences}){
   return()=>{dispose.forEach(fn=>fn?.());selectionEpoch.current++}
  },[select])
  const routes=useQuery({queryKey:['sessioncrew','routes',connectionId,profile,routeGeneration],queryFn:()=>typeof host.profileRoutes==='function'?bounded(()=>host.profileRoutes(),'common.routeLookup'):Promise.resolve(null),enabled:!!profile,retry:false})
+ const liveRoutes=useRef(null)
+ React.useLayoutEffect(()=>{liveRoutes.current=routes.isSuccess?{connectionId,profile,data:routes.data}:null},[connectionId,profile,routes.isSuccess,routes.data])
  const q=useQuery({queryKey:['sessioncrew','roster',connectionId,profile],queryFn:async()=>{
   const result=await bounded(()=>host.profiles.list({connectionId,profile}),'settings.profileList')
   if(!Array.isArray(result?.profiles)) throw new Error('Invalid profile response')
@@ -1122,6 +1137,11 @@ function Rail({storage,rest,preferences}){
  return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'}),...profiles.map(p=>{
   const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected===selectionKey
   const isCurrent=()=>selectedRef.current===selectionKey&&selectionEpoch.current===epoch&&host.state.connectionId.get()===connectionId&&host.state.profile.get()===profile
+  const getLiveOwner=destination=>{
+   const live=liveRoutes.current
+   if(!isCurrent()||!live||live.connectionId!==connectionId||live.profile!==profile)return null
+   try{const owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,live.data)};return launchDestination(owner)===destination?owner:null}catch{return null}
+  }
   const isLaunching=()=>isCurrent()&&launchEpoch.current===epoch
   const beginLaunch=()=>{
    launchEpoch.current=epoch
@@ -1132,7 +1152,7 @@ function Rail({storage,rest,preferences}){
   if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(selectedRef.current===selectionKey)select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
    jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',idleMinutes:settings.developerMode&&p.idleSince?Math.max(0,Math.floor((clock-p.idleSince*1000)/60000)):null,unread:completion.has(p.name,p.background),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,p.background),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel,settings.developerMode&&p.idleKind?tr('status.'+p.idleKind):''].filter(Boolean).join(' ')||undefined}}),
-  jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,position:'relative'},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,isLaunching,beginLaunch,onDismiss:()=>{if(isCurrent())select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
+  jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,position:'relative'},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }
 export default {id:'sessioncrew',name:'SessionCrew',defaultEnabled:true,register(ctx){pluginI18n=typeof ctx.i18n?.register==='function'&&typeof ctx.i18n?.t==='function'?ctx.i18n:null;pluginI18n?.register(messages);const rest=typeof ctx.rest==='function'?(path,opts)=>ctx.rest(path,opts):null;const preferences=createPreferences(ctx.storage);ctx.registerSettingsPage?.({id:'settings',title:'SessionCrew',icon:'account',render:()=>jsx(LocalizedRoot,{children:jsx(Settings,{preferences})})});ctx.register({id:'rail',area:'panes',title:'SessionCrew',data:{placement:'left',dock:{pane:'workspace',pos:'left'},width:'80px',minWidth:'80px'},render:()=>jsx(LocalizedRoot,{children:jsx(DialogRestContext.Provider,{value:rest,children:jsx(Rail,{storage:ctx.storage,rest,preferences})})})})}}
