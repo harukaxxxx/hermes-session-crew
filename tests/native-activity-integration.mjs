@@ -20,9 +20,22 @@ async function until(fn){const end=Date.now()+5000;while(Date.now()<end){await R
 let root,client
 try{
  assert.equal((await receive()).ready,true)
- const rest=async(path,opts)=>{assert.equal(path,'/completion-snapshot');assert.equal(opts.method,'GET');calls++;const response=await request('snapshot');assert.equal(response.status,200);return response.body}
+ const rest=async(path,opts)=>{assert.ok(['/status','/completion-snapshot'].includes(path));assert.equal(opts.method,'GET');calls++;const response=await request(path==='/status'?'oneshot-status':'snapshot');assert.equal(response.status,200);return response.body}
  const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const obj=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(obj),function(){for(const [k,v] of Object.entries(obj))this.setExport(k,v)})});await mod.evaluate();let contribution;mod.namespace.default.register({storage,rest,register:c=>contribution=c});client=new QueryClient();root=createRoot(document.getElementById('root'))
  await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())));await until(()=>saved['completion-snapshot-v2']?.coverage);assert.equal(Boolean(document.querySelector('[data-completion-badge]')),false,'real started row is baseline, not completion')
+ const refresh=key=>React.act(async()=>client.refetchQueries({queryKey:['sessioncrew',key]}))
+ const hit=()=>document.querySelector('.profile-rail-hit'),shadows=()=>document.querySelectorAll('[data-child-outline]').length
+ assert.equal((await request('oneshot')).active,true)
+ await refresh('status');await refresh('completion-snapshot');await until(()=>shadows()===1)
+ assert.equal(hit().dataset.stateName,'working','a CLI oneshot outside the owner RPC inventory drives the main outline')
+ assert.match(hit().querySelector('[data-avatar]').style.outline,/2px solid var\(--ui-green/)
+ assert.equal(document.querySelector('[data-running-count]'),null,'one root is not a second frame')
+ assert.equal((await request('oneshot-end-child')).released,true)
+ await refresh('completion-snapshot');await until(()=>shadows()===0)
+ assert.equal(hit().dataset.stateName,'working','losing only the child is not losing the root')
+ assert.equal((await request('oneshot-release')).released,true)
+ await refresh('status');await until(()=>hit().dataset.stateName==='online_unobserved')
+ assert.equal(document.querySelector('[data-completion-badge]'),null)
  assert.equal((await request('activity')).active,true)
  await React.act(async()=>{await client.refetchQueries({queryKey:['sessioncrew','completion-snapshot']})});await until(()=>Boolean(document.querySelector('[data-running-count]')))
  assert.equal(document.querySelector('[data-running-count]').textContent,'x2');assert.equal(document.querySelectorAll('[data-child-shadow]').length,3)

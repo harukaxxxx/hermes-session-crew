@@ -9,7 +9,8 @@ const atom=v=>{const listeners=new Set();return {get:()=>v,subscribe:f=>(listene
 const gateway=atom('open'),epoch=atom(1),route={connectionId:'conn',mode:'remote',profile:'alpha',targetProfile:'alpha'},active=[],calls=[]
 let office={profile:'alpha',online:true,state:'working',status_observation:'recent_session_activity'},owners={one:'alpha',four:'alpha'},sources={one:'cli',four:'cli'},roster=[]
 const host={state:{gateway,connectionId:atom('conn'),profile:atom('default')},profiles:{list:async()=>({profiles:[{name:'alpha'}]})},profileRoutes:async()=>[route],request:async()=>({found:false}),requestProfile:async(r,m)=>{calls.push(m);return m==='session.active_list'?{sessions:structuredClone(active)}:m==='subagent.roster'?{sessions:structuredClone(roster)}:m==='session.list'?{sessions:['one','two','three','four'].map(id=>({id,title:id,source:'cli'}))}:{projects:[]}}}
-const rest=async(p,opts)=>p==='/status'?[office]:p==='/recent-activity'?{profile:'alpha',activity:{one:40,two:30,three:20,four:10}}:p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,owners[id]])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,sources[id]]))}:{version:2,source_root:'default',source_id:'source',server_epoch:'epoch',profiles:[]}
+let statusReads=0,holdStatus
+const rest=async(p,opts)=>p==='/status'?(++statusReads,holdStatus?holdStatus(office):[office]):p==='/recent-activity'?{profile:'alpha',activity:{one:40,two:30,three:20,four:10}}:p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,owners[id]])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,sources[id]]))}:{version:2,source_root:'default',source_id:'source',server_epoch:'epoch',profiles:[]}
 const useValue=a=>React.useSyncExternalStore(a.subscribe,a.get,a.get)
 const sdk={host,useValue,useGatewayActivationEpoch:()=>useValue(epoch),gatewayActivationEpoch:epoch.get,useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
@@ -19,10 +20,48 @@ const button=()=>document.querySelector('.profile-rail-hit'),timer=()=>document.
 const setStatus=async(state,reason)=>{office={...office,state,status_observation:reason};await refresh('status')}
 const apply=async (...sessions)=>{active.splice(0,active.length,...sessions);await refresh()}
 try{
- active.push(record('one','idle'))
+ const coldActivity=Date.now()/1000-125
+ office={profile:'alpha',online:true,state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work',last_session_activity:coldActivity}
  await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
  await until(()=>button()&&calls.includes('session.active_list'))
  await until(()=>button().getAttribute('data-state-name')==='online_unobserved')
+ assert.equal(timer(),'0h2m','cold legacy shared-positive status uses the owner timestamp without asserting idle')
+ assert.match(button().title,/last recorded session activity.*idle not confirmed/i)
+ sources.one='mismatch';await apply(record('one','working'))
+ await until(()=>timer()===null) // Conflicting ownership/source is not an empty live list.
+ sources.one='cli';await apply();await until(()=>timer()==='0h2m')
+
+ // RPC waiting alone must fence confirmed idle, even though /status has not changed.
+ const idleOffice={profile:'alpha',online:true,state:'idle',idle_since:Date.now()/1000-85}
+ office=idleOffice;await refresh('status');await until(()=>timer()==='0h1m')
+ const hand=()=>document.querySelector('[data-avatar-waiting]')
+ const waitForInput=async()=>{await apply(record('one','waiting'));await until(()=>hand()&&timer()===null)}
+ const clearInput=async()=>{await apply(record('one','idle'));await until(()=>!hand())}
+ const beforeWait=statusReads
+ await waitForInput();await clearInput()
+ assert.equal(statusReads,beforeWait,'/status stays fixed through RPC waiting and clear')
+ assert.equal(timer(),null,'RPC waiting clear cannot revive cached /status idle')
+ await refresh('status');await until(()=>timer()==='0h1m')
+ console.log('PASS RPC waiting fences cached idle until a newer /status poll')
+
+ // A pre-wait request must not revive idle just because it returns after clear.
+ await setStatus('unknown',null);await until(()=>button().getAttribute('data-state-name')==='unknown')
+ office=idleOffice
+ let releaseStatus,pendingStatus
+ holdStatus=row=>new Promise(resolve=>{releaseStatus=()=>resolve([row])})
+ await React.act(async()=>{pendingStatus=client.refetchQueries({queryKey:['sessioncrew','status'],type:'active'})})
+ await until(()=>releaseStatus)
+ await waitForInput();await clearInput()
+ holdStatus=null
+ await React.act(async()=>{releaseStatus();await pendingStatus})
+ await until(()=>button().getAttribute('data-state-name')==='idle')
+ assert.equal(timer(),null,'a late pre-wait /status response cannot revive idle')
+ await refresh('status');await until(()=>timer()==='0h1m')
+ console.log('PASS RPC waiting fences in-flight idle until a newer /status poll')
+
+ office={profile:'alpha',online:true,state:'working',status_observation:'recent_session_activity'}
+ await refresh('status');await apply(record('one','idle'))
+ await until(()=>timer()===null) // Recency without fresh shared-positive evidence is not enough.
  await React.act(async()=>button().click());await until(()=>document.querySelectorAll('[data-recent-row]').length===3)
  assert.equal(document.querySelectorAll('[data-session-arc]').length,0,'idle does not animate')
  const before=calls.filter(x=>x==='session.active_list').length;await new Promise(r=>setTimeout(r,100));assert.equal(calls.filter(x=>x==='session.active_list').length,before,'dialog does not start a second activity poller')
@@ -59,5 +98,28 @@ try{
  await start();sources.one='different';await finish();await until(()=>button().getAttribute('data-state-name')==='online_unobserved');assert.equal(timer(),null,'ownership/source error is not completion');sources.one='cli';await finish();assert.equal(timer(),null,'an error breaks the observation chain')
  await start();roster=[{session_id:'four',subagents:1,background:0}];await finish();await until(()=>button().getAttribute('data-state-name')==='online_unobserved');assert.equal(timer(),null,'unmatched roster work blocks idle without promoting unrelated indicators');roster=[];await finish();await until(()=>timer()==='0h0m')
  await setStatus('waiting',null);await until(()=>button().getAttribute('data-state-name')==='waiting');assert.equal(timer(),null,'backend waiting hides observed timer');await setStatus('working','recent_session_activity');await finish();assert.equal(timer(),null,'backend wait cannot revive old start')
+
+ // Reproduce the shared host fallback using the public response shapes: a
+ // session may leave active_list; neither that nor a positive counter is idle.
+ const publish=async fields=>{office={profile:'alpha',online:true,...fields};await refresh('status');await React.act(async()=>{await new Promise(r=>setTimeout(r,10))})}
+ const last=Date.now()/1000-85
+ const recent=observation=>publish({state:'working',busy:true,status_observation:'recent_session_activity',last_session_activity:last,shared_gateway_observation:observation})
+ await start();await apply();await recent('positive');await until(()=>button().getAttribute('data-state-name')==='online_unobserved');assert.equal(timer(),null,'a first positive shared sample cannot time a missing worker')
+ await recent('zero');assert.equal(timer(),'0h1m','fresh zero recovers idle before recency expires, with an empty public live list')
+ await recent('positive');assert.equal(button().getAttribute('data-state-name'),'online_unobserved');assert.equal(timer(),'0h1m','recency must not erase a historical start when the host becomes busy');assert.match(button().title,/last confirmed idle.*unknown/i)
+ await publish({state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'});assert.equal(timer(),'0h1m','crossing the recency cutoff does not drop the start')
+ await publish({state:'unknown',busy:null,idle_since:last});await recent('positive');assert.equal(timer(),null,'unavailable backend evidence breaks historical continuity')
+ await start();await recent('zero');assert.equal(button().getAttribute('data-state-name'),'working','positive owner RPC still wins over a shared zero');assert.equal(timer(),null)
+ await recent('positive');await start();await apply();await recent('positive');assert.equal(timer(),null,'a new poll alone cannot revive the pre-work timestamp as an estimate')
+ await React.act(async()=>{await new Promise(r=>setTimeout(r,20))})
+ const newer=Date.now()/1000
+ const estimate=(fields={})=>publish({state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work',last_session_activity:newer,...fields})
+ await estimate();await until(()=>timer()==='0h0m');assert.match(button().title,/last recorded session activity.*idle not confirmed/i)
+ await estimate({active_turn:true});await until(()=>timer()===null)
+ await estimate();assert.equal(timer(),null,'an owner lease in /status also fences an estimate after it clears')
+ await publish({state:'idle',idle_since:last});await until(()=>timer()==='0h1m')
+ await estimate();assert.match(button().title,/last confirmed idle.*unknown/i)
+ await estimate({active_turn:true});await until(()=>timer()===null)
+ await estimate();assert.equal(timer(),null,'an owner lease invalidates retained shared-host history too')
  console.log('PASS shared activity, provenance, unloaded session, ownership, observed idle and scope/expiry fences')
 }finally{await React.act(async()=>root.unmount());client.clear()}

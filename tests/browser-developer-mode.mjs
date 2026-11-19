@@ -83,6 +83,22 @@ try{
  await page.evaluate(()=>{const previous=window.fixtureActivityRequest;window.fixtureActivityRequest=(route,method)=>route.profile==='Aster'?Promise.reject(Error('activity unavailable')):previous(route,method)})
  await apply([['id0','idle']]);await label.waitFor({state:'detached'});assert.equal(await dot.count(),1,'activity failure does not acknowledge unread')
 
+ // The public live list can drop a finished session. A newer confirmed backend
+ // state (not the missing row) must restore timing even with an old idle origin.
+ await page.goto(url+'?office&gallery&snapshot&developer&locale=en');await hit.waitFor()
+ await set('idle',await page.evaluate(()=>Date.now()/1000-125));await label.waitFor()
+ await apply([['id0','working']]);await hasState('working')
+ await apply([]);await hasState('idle');assert.equal(await label.count(),0,'absence cannot reuse the pre-work status sample')
+ await page.clock.runFor(20)
+ const oldOrigin=await page.evaluate(()=>Date.now()/1000-125)
+ await set('idle',oldOrigin)
+ await page.clock.runFor(1000)
+ assert.equal((await railRows()).find(x=>x.name==='Aster').minutes,'0h2m','later confirmed idle accepts the old backend origin without a remount')
+ await page.clock.runFor(61000)
+ assert.equal(await label.innerText(),'0h3m','the accepted origin survives identical status polls')
+ await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'online_unobserved',status_observation:'fresh_shared_gateway_no_observed_owner_work',busy:null,idle_since:null});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})})
+ assert.equal(await label.innerText(),'0h3m','shared work retains the recovered idle origin');assert.match(await hit.getAttribute('title'),/last confirmed idle.*unknown/i)
+
  await page.goto(url+'?office&geometry&locale=en');await page.locator('#geometry-fixture [data-idle-minutes]').waitFor()
  const fixture=page.locator('#geometry-fixture'), measure=()=>fixture.evaluate(root=>{const rect=e=>{const b=e.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,width:b.width,height:b.height}},label=root.querySelector('[data-idle-minutes]'),marker=root.querySelector('[data-avatar-waiting],[data-completion-badge]'),count=root.querySelector('[data-running-count]'),rail=rect(root),l=label?rect(label):null,m=rect(marker),faces=[...root.querySelectorAll('[data-avatar]')].map(rect);return {rail,label:l,marker:m,count:count?rect(count):null,faces,scrollWidth:label?.scrollWidth,clientWidth:label?.clientWidth,font:label?getComputedStyle(label).fontSize:null}}), failures=[]
  await page.evaluate(()=>window.fixtureGeometry(null,'waiting',false,false));await page.locator('#geometry-fixture [data-idle-minutes]').waitFor({state:'detached'});const baseline=await measure();assert.equal(await fixture.locator('[data-geometry-rail]').evaluate(e=>getComputedStyle(e).rowGap),'10px');assert.equal(baseline.faces[1].top-baseline.faces[0].top,47,'off geometry remains unchanged')

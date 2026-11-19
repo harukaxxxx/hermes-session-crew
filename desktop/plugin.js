@@ -116,6 +116,7 @@ const messages = {
       onlineUnobserved: "online · no activity observed",
       historicalIdle: "Elapsed since last confirmed idle; current activity unknown",
       observedIdle: "Elapsed since work was observed to end; other activity may be unknown",
+      lastActivityElapsed: "Elapsed since last recorded session activity; idle not confirmed",
       offline: "offline",
       unknown: "unknown",
       label: value => `Status: ${value}`,
@@ -311,6 +312,7 @@ const messages = {
       onlineUnobserved: "在線・未觀察到活動",
       historicalIdle: "自上次確認閒置起經過的時間；目前活動狀態未知",
       observedIdle: "自觀察到工作結束起經過的時間；其他活動可能未知",
+      lastActivityElapsed: "距上次記錄的工作階段活動已過的時間；未確認閒置",
       offline: "離線",
       unknown: "未知",
       label: value => `狀態：${value}`,
@@ -516,10 +518,11 @@ function useActivityScope(){
  return {generation,epoch,gateway:host.state.gateway?.get?.()??null,connection:host.state.connectionId?.get?.()??null,profile:host.state.profile?.get?.()??null}
 }
 function useRowActivity(owner,rows){
- const rest=useContext(DialogRestContext),activity=useProfileInputWaiting(owner,rest,false),states=activity?.states||{}
+ const rest=useContext(DialogRestContext),{activity}=useProfileInputWaiting(owner,rest,false),states=activity?.states||{}
  return Object.fromEntries((rows||[]).filter(r=>Object.hasOwn(states,r.id)).map(r=>[r.id,states[r.id]]))
 }
 const ACTIVITY_TTL=20000
+class OwnerActivityConflict extends Error{}
 function useProfileInputWaiting(owner,rest,poll=true){
  const {generation,epoch,gateway,connection,profile}=useActivityScope(),route=owner?.route,key=JSON.stringify([generation,connection,profile,epoch,owner?.name,route])
  const supported=!!owner&&!!rest&&gateway==='open'&&connection===owner.connectionId&&typeof route==='object'&&route?.connectionId===connection&&route.profile===owner.name&&route.targetProfile===owner.name
@@ -529,7 +532,7 @@ function useProfileInputWaiting(owner,rest,poll=true){
   const ids=[],seen=new Set();for(const r of active.sessions){if(!r||typeof r.session_key!=='string'||!r.session_key||r.session_key.length>256||r.id!==r.session_key||typeof r.source!=='string'||!r.source||!['working','waiting','starting','idle'].includes(r.status)||seen.has(r.session_key))throw Error('invalid activity');seen.add(r.session_key);ids.push(r.session_key)}
   const ownership=ids.length?await rest('/row-owners',{method:'POST',body:{ids},timeoutMs:10000}):null
   if(!sameScope()||Date.now()-started>=ACTIVITY_TTL||ids.length&&(!ownership?.owners||!ownership?.sources))throw Error('ownership unavailable')
-  for(const r of active.sessions)if(!Object.hasOwn(ownership.owners,r.id)||ownership.owners[r.id]!==owner.name||!Object.hasOwn(ownership.sources,r.id)||ownership.sources[r.id]!==r.source)throw Error('ownership mismatch')
+  for(const r of active.sessions)if(!Object.hasOwn(ownership.owners,r.id)||ownership.owners[r.id]!==owner.name||!Object.hasOwn(ownership.sources,r.id)||ownership.sources[r.id]!==r.source)throw new OwnerActivityConflict('ownership mismatch')
   const eligible=new Set(active.sessions.filter(r=>['idle','starting','working'].includes(r.status)).map(r=>r.id)),background=[]
   let rosterKnown=Array.isArray(roster?.sessions),unmatchedBackground=false
   if(rosterKnown)for(const r of roster.sessions){
@@ -545,7 +548,7 @@ function useProfileInputWaiting(owner,rest,poll=true){
  const [,tick]=useState(0);useEffect(()=>{if(!q.data)return;const timer=setTimeout(()=>tick(n=>n+1),Math.max(0,q.data.started+ACTIVITY_TTL-Date.now()));return()=>clearTimeout(timer)},[q.data])
  useEffect(()=>{if(!poll||!supported||typeof host.onEvent!=='function')return;return host.onEvent('gateway.ready',()=>{void q.refetch({cancelRefetch:false})})},[poll,supported,key])
  const age=Date.now()-q.data?.started
- return supported&&!q.isError&&age>=0&&age<ACTIVITY_TTL?q.data:null
+ return {activity:supported&&!q.isError&&age>=0&&age<ACTIVITY_TTL?q.data:null,conflict:supported&&q.isError&&q.error instanceof OwnerActivityConflict}
 }
 // Absence is not completion: retain the known executing cohort across partial
 // lists, and require explicit idle for every member with the same source.
@@ -568,9 +571,9 @@ function observeIdle(previous,activity,allowed){
  return {executing:history?.since&&!allIdle?executing:cohort,since:allIdle?(history?.since??activity.observedAt/1000):null,activity}
 }
 function ProfileAvatar({owner,ownerName,rest,attentionKey,idleAllowed,onActivity,...props}){
- const tr=useTranslator(),activity=useProfileInputWaiting(owner,rest),waiting=activity?.waiting===true,label=waiting?tr('sessionActivity.waiting'):'',history=useRef(null)
+ const tr=useTranslator(),{activity,conflict}=useProfileInputWaiting(owner,rest),waiting=activity?.waiting===true,label=waiting?tr('sessionActivity.waiting'):'',history=useRef(null)
  useEffect(()=>()=>onActivity(ownerName,attentionKey,undefined,null),[ownerName,attentionKey,onActivity])
- useEffect(()=>{const next=observeIdle(history.current?.key===attentionKey?history.current:null,activity,idleAllowed);history.current={...next,key:attentionKey};onActivity(ownerName,attentionKey,activity,next.since)},[ownerName,attentionKey,onActivity,activity,idleAllowed])
+ useEffect(()=>{const next=observeIdle(history.current?.key===attentionKey?history.current:null,activity,idleAllowed);history.current={...next,key:attentionKey};onActivity(ownerName,attentionKey,activity,next.since,conflict)},[ownerName,attentionKey,onActivity,activity,idleAllowed,conflict])
  return jsx(AvatarLayers,{...props,waiting,triggerProps:{...props.triggerProps,'aria-label':[props.triggerProps['aria-label'],label].filter(Boolean).join(' · '),title:[props.triggerProps.title,label|| (props.unread?tr('completion.unread'):'')].filter(Boolean).join(' ')||undefined}})
 }
 // Explicit known messaging adapter sources; unknown/plugin sources stay visible.
@@ -748,25 +751,67 @@ function StatusQuoteEntry({storage,ownerKey,state}){
 }
 // SessionCrew's own namespace; never depends on Office being mounted.
 const STATUS_TTL=15000
+const validIdleStart=(value,now)=>typeof value==='number'&&Number.isFinite(value)&&value>0&&value*1000<=now
+const recentWork=row=>row?.online===true&&row.state==='working'&&['recent_session_activity','recent_delegated_activity'].includes(row.status_observation)
+// Recency and fresh gateway observation are independent. Only zero can
+// confirm idle; a positive count can carry history, not confirm a new start.
+const railStatus=row=>recentWork(row)?row.status_observation==='recent_session_activity'&&row.shared_gateway_observation==='zero'?'idle':'online_unobserved':officeStatus(row)
+const backendIdleStart=row=>recentWork(row)?row.last_session_activity:row.idle_since
+const sharedIdleHistory=row=>recentWork(row)?row.shared_gateway_observation==='positive':row?.state==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'
+const ownBusyStatus=(row,status)=>row.active_turn===true||row.waiting===true||status==='working'||status==='waiting'
+function oneshotProof(row,sampledAt,now){
+ const {observed_at,expires_at}=row.oneshot_activity||{},observed=observed_at*1000,expires=expires_at*1000
+ if(row.active_turn!==true||typeof observed_at!=='number'||typeof expires_at!=='number'||!Number.isFinite(observed)||!Number.isFinite(expires)||observed<=0||expires<=observed||observed<sampledAt-1000||observed>now+1000)return null
+ // Bound validity by the sampled lease, not by a fresh cache delivery. Use
+ // the request start for a conservative expiry even with minor clock skew.
+ const validUntil=Math.min(expires,sampledAt+expires-observed,sampledAt+STATUS_TTL)
+ return now<validUntil?{sampledAt,validUntil}:null
+}
+function lastActivityEstimate(row,now){
+ if(!row?.online||row.active_turn===true||row.waiting===true||!validIdleStart(row.last_session_activity,now))return null
+ const shared=row.shared_gateway_observation
+ const explicit=row.state==='online_unobserved'&&sharedIdleHistory(row)&&(shared===undefined||shared==='positive')
+ const recency=recentWork(row)&&row.status_observation==='recent_session_activity'&&shared==='positive'&&row.idle_since==null
+ return explicit||recency?row.last_session_activity:null
+}
+const fenceEstimate=(fences,name,at)=>fences.set(name,Math.max(fences.get(name)||0,at))
 function useRailSnapshot(rest,connection,profile,{epoch,generation}){
  const scope=JSON.stringify([connection,profile,epoch,generation]), current=useRef(scope);current.current=scope
- const history=useRef({scope,starts:new Map()});if(history.current.scope!==scope)history.current={scope,starts:new Map()}
+ const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),estimateFences:new Map(),oneshotFences:new Map()}
  const [clock,tick]=useState(()=>Date.now())
- const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch,generation],enabled:!!profile&&typeof rest==='function',retry:false,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async()=>{
+ const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch,generation],enabled:!!profile&&typeof rest==='function',retry:false,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async({signal}={})=>{
  try{
+  const sampledAt=Date.now()
   const data=await rest('/status',{method:'GET',timeoutMs:10000})
-  if(current.current!==scope||activityScope.generation!==generation||host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)throw new LocalizedError('errors.connectionChanged')
+  if(signal?.aborted||current.current!==scope||activityScope.generation!==generation||host.state.connectionId.get()!==connection||host.state.profile.get()!==profile||(typeof sdk.gatewayActivationEpoch==='function'&&sdk.gatewayActivationEpoch()!==epoch))throw new LocalizedError('errors.connectionChanged')
   if(!Array.isArray(data))throw new LocalizedError('errors.statusFormat')
   const names=new Set();for(const row of data){if(!row||typeof row.profile!=='string'||!row.profile||names.has(row.profile)||typeof row.online!=='boolean'||typeof row.state!=='string')throw new LocalizedError('errors.statusFormat');names.add(row.profile)}
-  const starts=history.current.starts,now=Date.now();if(history.current.lastAt&&now-history.current.lastAt>STATUS_TTL)starts.clear();history.current.lastAt=now;for(const row of data){const status=officeStatus(row),value=row.idle_since,valid=typeof value==='number'&&Number.isFinite(value)&&value>0&&value*1000<=now;if(status==='idle'&&valid)starts.set(row.profile,value);else if(!(status==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'))starts.delete(row.profile)}for(const name of starts.keys())if(!names.has(name))starts.delete(name)
-  return data
- }catch(error){if(current.current===scope)history.current.starts.clear();throw error}
+  const starts=history.current.starts,now=Date.now();if(history.current.lastAt&&now-history.current.lastAt>STATUS_TTL)starts.clear();history.current.lastAt=now
+  const rows=data.map(row=>{
+   const status=railStatus(row),since=backendIdleStart(row)
+   const proof=oneshotProof(row,sampledAt,now)
+   if(proof&&row.online&&row.waiting!==true&&status!=='idle'&&status!=='waiting')fenceEstimate(history.current.oneshotFences,row.profile,sampledAt)
+   if(row.online&&ownBusyStatus(row,status)){
+    fenceEstimate(history.current.estimateFences,row.profile,sampledAt)
+    starts.delete(row.profile)
+   }else if(status==='idle'&&validIdleStart(since,now))starts.set(row.profile,{since,sampledAt})
+   else if(status!=='online_unobserved'||!sharedIdleHistory(row))starts.delete(row.profile)
+   return proof?{...row,oneshotProof:proof}:row
+  })
+  for(const name of starts.keys())if(!names.has(name))starts.delete(name)
+  return rows
+ }catch(error){if(!signal?.aborted&&current.current===scope)history.current.starts.clear();throw error}
  }})
  useEffect(()=>{const update=()=>{if(!document.hidden)tick(Date.now())};const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update)}},[])
- const starts=history.current.starts
- if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data)){starts.clear();return [[],clock,starts]}
- const rows=q.data.map(row=>{const status=officeStatus(row),value=row.idle_since,valid=typeof value==='number'&&Number.isFinite(value)&&value>0&&value*1000<=Date.now();if(status==='idle'&&valid)return {...row,presentationIdleSince:value};if(status==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'&&starts.has(row.profile))return {...row,presentationIdleSince:starts.get(row.profile),historicalIdle:true};return row})
- return [rows,clock,starts]
+ const {starts,estimateFences,oneshotFences}=history.current
+ if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data)){starts.clear();return [[],clock,starts,estimateFences,oneshotFences]}
+ const rows=q.data.map(row=>{
+  const status=railStatus(row),since=backendIdleStart(row),start=starts.get(row.profile)
+  if(status==='idle'&&validIdleStart(since,Date.now()))return {...row,presentationIdleSince:since,idleSampledAt:start?.sampledAt}
+  if(status==='online_unobserved'&&sharedIdleHistory(row)&&start)return {...row,presentationIdleSince:start.since,idleSampledAt:start.sampledAt,historicalIdle:true}
+  return row
+ })
+ return [rows,clock,starts,estimateFences,oneshotFences]
 }
 function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
 const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
@@ -1000,20 +1045,21 @@ function Rail({storage,rest,preferences}){
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
  const completion=useCompletion(storage,rest,connectionId,profile,settings.showCron,settings.hiddenMessagingSources,preferences)
- const activityScopeNow=useActivityScope(),[office,clock,idleStarts]=useRailSnapshot(rest,connectionId,profile,activityScopeNow)
+ const activityScopeNow=useActivityScope(),[office,clock,idleStarts,estimateFences,oneshotFences]=useRailSnapshot(rest,connectionId,profile,activityScopeNow)
  const [activityMap,setActivityMap]=useState({})
- const onActivity=useCallback((name,key,activity,since)=>{
-  const busy=activity&&(activity.working||activity.background.length)
-  if(busy)idleStarts.delete(name)
+ const onActivity=useCallback((name,key,activity,since,conflict=false)=>{
+  const invalidatesIdle=activity&&(activity.working||activity.background.length||activity.waiting)
+  if(invalidatesIdle&&idleStarts.get(name)?.sampledAt<=activity.observedAt)idleStarts.delete(name)
+  if(invalidatesIdle)fenceEstimate(estimateFences,name,activity.observedAt)
   setActivityMap(previous=>{
   const old=previous[key]
-  if(!activity&&!old||old?.activity===activity&&old?.since===since)return previous
+  if(!activity&&!conflict&&!old||old?.activity===activity&&old?.since===since&&old?.conflict===conflict)return previous
   const next={...previous}
   if(activity===undefined)delete next[key]
-  else next[key]={activity,since,invalidAt:busy?Math.max(old?.invalidAt||0,activity.observedAt/1000):old?.invalidAt||0}
+  else next[key]={activity,since,conflict,invalidAt:invalidatesIdle?Math.max(old?.invalidAt||0,activity.observedAt):old?.invalidAt||0}
   return next
   })
- },[idleStarts])
+ },[idleStarts,estimateFences])
  const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
  const launchEpoch=useRef(null),[,refreshLaunch]=useState(0)
  const select=useCallback(value=>{if(value!==selectedRef.current){selectionEpoch.current++;setProjectOwner(null)}selectedRef.current=value;setSelected(value)},[])
@@ -1043,14 +1089,28 @@ function Rail({storage,rest,preferences}){
  if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const byName=new Map(office.map(row=>[row.profile,row]))
  const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>{
-  const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);const row=byName.get(p.name),base=officeStatus(row)
+  const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);const row=byName.get(p.name),base=railStatus(row)
   const evidence=activityMap[attentionKey],activity=evidence?.activity,waiting=activity?.waiting===true,background=activity?.background||[],working=activity?.working===true
-  const recent=base==='working'&&['recent_session_activity','recent_delegated_activity'].includes(row?.status_observation),idleAllowed=base==='idle'||base==='online_unobserved'&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'||recent
-  let status=recent?'online_unobserved':base;if(base!=='offline'&&(working||background.length&&base!=='waiting'))status='working'
-  const canShowIdle=idleAllowed&&!waiting&&['idle','online_unobserved'].includes(status)
-  const backendSince=canShowIdle&&row?.presentationIdleSince>(evidence?.invalidAt||0)?row.presentationIdleSince:null
-  const observedSince=canShowIdle?evidence?.since:null,idleSince=Math.max(backendSince||0,observedSince||0)||null
-  const idleKind=observedSince&&idleSince===observedSince?'observedIdle':backendSince&&row?.historicalIdle?'historicalIdle':null
+  const idleAllowed=base==='idle'||base==='online_unobserved'&&(row.status_observation==='fresh_shared_gateway_no_observed_owner_work'||recentWork(row))
+  const proof=row?.oneshotProof,now=Date.now()
+  // An arbitrary idle RPC row is not owner idle. Only the existing confirmed
+  // owner observation can veto overlapping/newer evidence; keep waiting and
+  // explicit /status idle ahead of this fallback, not ahead of normal RPC work.
+  const observedIdleAt=(evidence?.since||0)*1000
+  const idleConflict=idleAllowed&&observedIdleAt>=proof?.sampledAt
+  const leaseWorking=row?.online===true&&base!=='working'&&base!=='waiting'&&base!=='idle'&&row.waiting!==true&&!waiting&&!idleConflict&&proof?.sampledAt<=now&&now<proof.validUntil&&(!activityScopeNow.gateway||activityScopeNow.gateway==='open')
+  let status=base;if(base!=='offline'&&(working||background.length&&base!=='waiting'||leaseWorking))status='working'
+  const canShowIdle=idleAllowed&&!waiting&&!ownBusyStatus(row,base)&&['idle','online_unobserved'].includes(status)
+  // Last activity is an elapsed-time origin, not the time idle was observed.
+  // Only a new observation can supersede a prior execution sample.
+  const backendSince=canShowIdle&&(!evidence?.invalidAt||row?.idleSampledAt>evidence.invalidAt)?row?.presentationIdleSince:null
+  const observedSince=canShowIdle&&observedIdleAt>=(oneshotFences.get(p.name)||0)?evidence?.since:null,confirmedSince=Math.max(backendSince||0,observedSince||0)||null
+  // Estimates only fill a gap; they cannot replace stronger evidence or
+  // reuse an activity origin at or before observed work/waiting in this scope.
+  const estimated=canShowIdle&&base==='online_unobserved'&&!confirmedSince&&!evidence?.conflict&&!activity?.unmatchedBackground&&(!activityScopeNow.gateway||activityScopeNow.gateway==='open')?lastActivityEstimate(row,Date.now()):null
+  const estimateSince=estimated*1000>(estimateFences.get(p.name)||0)?estimated:null
+  const idleSince=confirmedSince??estimateSince
+  const idleKind=observedSince&&confirmedSince===observedSince?'observedIdle':backendSince&&row?.historicalIdle?'historicalIdle':estimateSince?'lastActivityElapsed':null
   return {...p,index,attentionKey,status,waiting,background,idleAllowed,idleSince,idleKind}
  }).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
  const order=p=>p.status==='online_unobserved'&&p.idleSince?statusOrder.idle:statusOrder[p.status],rank=order(a)-order(b);if(rank)return rank

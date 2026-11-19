@@ -45,7 +45,11 @@ try{
  active.hand=[]
  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
  await until(()=>!entries().some(x=>x.hand))
- assert.deepEqual(order(),['working','office wait','both','dot','idle new','plain','hand','idle old','offline'],'last hand removal restores idle tie-break')
+ assert.deepEqual(order(),['working','office wait','both','dot','idle new','plain','idle old','hand','offline'],'hand removal does not restore a stale idle tie-break')
+ await new Promise(r=>setTimeout(r,5))
+ await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','status']}))
+ await until(()=>order().indexOf('hand')<order().indexOf('idle old'))
+ assert.deepEqual(order(),['working','office wait','both','dot','idle new','plain','hand','idle old','offline'],'fresh idle restores the idle tie-break')
  active.offline=[record('offline')]
  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
  await until(()=>entries().find(x=>x.name==='offline')?.hand)

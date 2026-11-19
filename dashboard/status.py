@@ -488,9 +488,14 @@ def _read_profile_base(
             if not entry["busy"]:
                 entry["state"] = "unknown"
                 entry["idle_since"] = entry.get("last_session_activity")
-                if (entry.get('stats_available') is True
-                        and _shared_host_snapshot_valid(profile, served[0], served[1], liveness)):
-                    if served[1]['active_agents'] == 0:
+            if (entry.get('stats_available') is True
+                    and _shared_host_snapshot_valid(profile, served[0], served[1], liveness)):
+                # Report host-wide evidence independently of the legacy 90s
+                # recency fields. A positive count does not name its owner.
+                zero = served[1]['active_agents'] == 0
+                entry['shared_gateway_observation'] = 'zero' if zero else 'positive'
+                if not entry['busy']:
+                    if zero:
                         entry['state'] = 'idle'
                         entry['status_observation'] = 'fresh_shared_gateway_zero_observed_work'
                     else:
@@ -608,8 +613,16 @@ def _read_profile(profile: str, delegation_routes=None, live_subagents=None) -> 
     spec.loader.exec_module(helper)
     entry.update(helper.read_waiting(Path(_db_path(profile))))
     entry['active_turn'] = helper.has_active_turn(Path(_db_path(profile)))
+    if entry['active_turn'] and entry.get('shared_gateway_observation') == 'zero':
+        # A turn can outlive message recency or run outside the shared host.
+        # Contradictory evidence cannot confirm idle, even after the cutoff.
+        entry.pop('shared_gateway_observation')
+        if entry.get('status_observation') == 'fresh_shared_gateway_zero_observed_work':
+            entry.pop('status_observation')
+            entry.update(state='unknown', busy=None, idle_since=None)
     if entry['waiting']:
         entry.pop('status_observation', None)
+        entry.pop('shared_gateway_observation', None)
         entry['online'] = True
         entry['state'] = 'working' if entry['active_turn'] else 'waiting'
         # Session recency and attributed delegations are not proof of execution;

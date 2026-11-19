@@ -1,6 +1,7 @@
 """Status exposes recency provenance; Desktop validates live execution separately."""
 import sqlite3
 import time
+from types import SimpleNamespace
 
 from test_shared_host_idle import fleet, rows
 
@@ -42,6 +43,35 @@ def test_old_activity_does_not_invent_execution_evidence(fleet):
     assert result['state'] == 'online_unobserved'
     assert result['busy'] is None
     assert result['active_sessions'] == 0
+
+
+def test_shared_counter_observation_is_independent_of_recency(fleet, monkeypatch):
+    collector, runtime, client, root = fleet
+    now = time.time()
+    monkeypatch.setattr(collector, 'time', SimpleNamespace(time=lambda: now))
+    with sqlite3.connect(root / 'profiles/alpha/state.db') as db:
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?)',
+                   ('open', 'desktop', now - 90, None, 0, 0, 0, 0))
+    runtime['active_agents'] = 1
+    inside = rows(client)['alpha']
+    assert (inside['state'], inside['status_observation']) == ('working', 'recent_session_activity')
+    assert inside.get('shared_gateway_observation') == 'positive'
+    runtime['active_agents'] = 0
+    zero = rows(client)['alpha']
+    assert zero['status_observation'] == 'recent_session_activity'  # legacy fields unchanged
+    assert zero.get('shared_gateway_observation') == 'zero'
+    assert zero['last_session_activity'] == now - 90
+    with sqlite3.connect(root / 'profiles/alpha/state.db') as db:
+        db.execute('INSERT INTO session_turn_leases VALUES (?,?)', ('open', now + 60))
+    assert rows(client)['alpha'].get('shared_gateway_observation') != 'zero', 'a contradictory turn blocks the zero fallback'
+    now += 0.01
+    assert rows(client)['alpha']['state'] != 'idle', 'the recency cutoff must not override a known turn'
+    with sqlite3.connect(root / 'profiles/alpha/state.db') as db:
+        db.execute('DELETE FROM session_turn_leases')
+    assert rows(client)['alpha']['shared_gateway_observation'] == 'zero'
+    assert rows(client)['alpha']['state'] == 'idle'
+    runtime['start_time'] = 1
+    assert rows(client)['alpha'].get('shared_gateway_observation') is None
 
 
 def test_recently_ended_child_does_not_activate_delegation_route(fleet):

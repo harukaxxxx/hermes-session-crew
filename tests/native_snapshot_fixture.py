@@ -53,7 +53,30 @@ with tempfile.TemporaryDirectory(prefix='sessioncrew-test-') as directory:
             command = json.loads(line)
             if command == 'quit':
                 break
-            if command == 'activity':
+            if command == 'oneshot':
+                db.create_session('s-oneshot', source='oneshot')
+                db.create_session('oneshot-child', source='subagent', parent_session_id='s-oneshot')
+                holder = f'pid={os.getpid()}{holder_namespace_token()}:turn=fixture:platform=cli'
+                for sid in ('s-oneshot', 'oneshot-child'):
+                    assert db.try_acquire_session_turn_lease(sid, holder)
+                # Exercise the real route and lease reader. This is a controlled
+                # shared-host classification, not a captured /status payload.
+                api._status_collector().collect_status = lambda: [dict(profile='alpha', online=True,
+                    state='working', status_observation='recent_session_activity', active_turn=True)]
+                response = {'active': True}
+            elif command == 'oneshot-status':
+                result = client.get('/api/plugins/sessioncrew/status')
+                response = {'status': result.status_code, 'body': result.json()}
+            elif command == 'oneshot-end-child':
+                assert holder is not None
+                db.release_session_turn_lease('oneshot-child', holder)
+                db.end_session('oneshot-child', 'agent_close')
+                response = {'released': True}
+            elif command == 'oneshot-release':
+                assert holder is not None
+                db.release_session_turn_lease('s-oneshot', holder)
+                response = {'released': True}
+            elif command == 'activity':
                 db.create_session('s-two', source='desktop')
                 db.create_session('child', source='subagent', parent_session_id='s-one')
                 db.create_session('child2', source='subagent', parent_session_id='s-one')

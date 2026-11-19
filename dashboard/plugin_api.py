@@ -21,6 +21,7 @@ try:
 except ImportError:
     fcntl = None
 from collections import defaultdict
+from contextlib import closing
 
 try:
     import psutil
@@ -514,6 +515,27 @@ def _lease_reason(holder, acquired, expires, now):
     return None
 
 
+def _oneshot_activity(root: Path, home: Path):
+    """A positive, owner-bound observation; absence says nothing about idle."""
+    try:
+        expected = root.resolve() / (Path('profiles') / home.name if home != root else Path()) / 'state.db'
+        db = (home / 'state.db').resolve(strict=True)
+        if db != expected or db.stat().st_nlink != 1:
+            return None
+        with closing(sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=0.2)) as conn:
+            rows = conn.execute("""SELECT l.holder, l.acquired_at, l.expires_at
+                FROM session_turn_leases l JOIN sessions s ON s.id=l.conversation_id
+                WHERE s.source='oneshot' AND s.ended_at IS NULL AND l.expires_at > ? LIMIT 65""",
+                (time.time(),)).fetchall()
+    except (OSError, sqlite3.Error):
+        return None
+    if len(rows) > 64:
+        return None
+    observed = time.time()
+    expires = max((end for holder, acquired, end in rows if _lease_reason(holder, acquired, end, observed) is None), default=0)
+    return {'observed_at': observed, 'expires_at': expires} if expires > time.time() else None
+
+
 def _lineage_root(session_id, sessions):
     seen = set()
     while True:
@@ -739,9 +761,18 @@ def status():
     root = get_default_hermes_root()
     try:
         home = get_hermes_home().resolve()
-        if home not in {path.resolve() for _, path in _profile_homes(root)}:
+        homes = dict(_profile_homes(root))
+        if home not in {path.resolve() for path in homes.values()}:
             raise HTTPException(status_code=403, detail='SessionCrew runtime outside profile inventory')
-        return _status_collector().collect_status()
+        rows = _status_collector().collect_status()
+        for row in rows:
+            owner_home = homes.get(row['profile'])
+            # The raw flag only avoids a needless read. It cannot prove work.
+            if owner_home is not None and row.get('active_turn') is True and row['online']:
+                proof = _oneshot_activity(root, owner_home)
+                if proof is not None:
+                    row['oneshot_activity'] = proof
+        return rows
     except OSError as exc:
         raise HTTPException(status_code=503, detail='profile inventory unavailable') from exc
 
