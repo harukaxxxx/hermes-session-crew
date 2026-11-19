@@ -1,9 +1,62 @@
-"""Read bounded, profile-owned waiting evidence without reading task payloads."""
+"""Read bounded, profile-owned execution evidence without reading task payloads."""
 import sqlite3
 import time
 import json
+import math
 import os
+import re
 import subprocess
+import sys
+from contextlib import closing
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+_HOLDER = re.compile(r'^pid=([1-9][0-9]*)(?::pidns=[0-9]+)?:turn=(.+):platform=([^:]+)$')
+
+
+def holder_pid_checkable(holder):
+    """A lease PID is usable only in its own known Linux PID namespace."""
+    if sys.platform != 'linux':
+        return True
+    token = re.search(r'(?:^|:)pidns=(\d+)(?::|$)', holder or '')
+    if token is None:
+        return False
+    try:
+        local = re.search(r'\[(\d+)\]', os.readlink('/proc/self/ns/pid'))
+    except OSError:
+        return False
+    return local is not None and token.group(1) == local.group(1)
+
+
+def lease_reason(holder, acquired, expires, now):
+    """Return why a lease is not positive execution evidence, or None if verified."""
+    if not isinstance(holder, str) or not (m := _HOLDER.fullmatch(holder)):
+        return 'unsupported_holder'
+    if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in (acquired, expires)) or acquired > now or expires <= acquired:
+        return 'invalid_lease_time'
+    if expires <= now:
+        return 'expired_lease'
+    if not holder_pid_checkable(holder):
+        return 'foreign_or_unknown_pid_namespace'
+    if psutil is None:
+        return 'process_start_unknown'
+    try:
+        process = psutil.Process(int(m.group(1)))
+        if not process.is_running() or process.status() == psutil.STATUS_ZOMBIE:
+            return 'dead_pid'
+        started = process.create_time()
+        if not isinstance(started, (int, float)) or not math.isfinite(started):
+            return 'process_start_unknown'
+        if started > acquired:
+            return 'pid_reused'
+    except psutil.NoSuchProcess:
+        return 'dead_pid'
+    except (psutil.Error, OSError, ValueError, OverflowError):
+        return 'process_start_unknown'
+    return None
 
 
 def _observably_alive(pid):
@@ -60,7 +113,16 @@ def _observably_alive(pid):
         return False
 
 
+def is_owner_file(path):
+    try:
+        return path.resolve(strict=True) == path and path.stat().st_nlink == 1
+    except (OSError, RuntimeError):
+        return False
+
+
 def read_waiting(db_path, now=None):
+    if not is_owner_file(db_path):
+        return {'waiting': False, 'waiting_count': 0, 'waiting_sources': []}
     now = time.time() if now is None else now
     count = 0
     try:
@@ -85,7 +147,8 @@ def read_waiting(db_path, now=None):
     processes = 0
     try:
         from gateway.status import get_process_start_time, start_time_fingerprints_match
-        entries = json.loads((db_path.parent / 'processes.json').read_text(encoding='utf-8-sig'))
+        registry = db_path.parent / 'processes.json'
+        entries = json.loads(registry.read_text(encoding='utf-8-sig')) if is_owner_file(registry) else []
         seen = set()
         with sqlite3.connect(db_path.as_uri() + '?mode=ro', uri=True, timeout=2) as db:
             for item in entries if isinstance(entries, list) else []:
@@ -112,13 +175,25 @@ def read_waiting(db_path, now=None):
     return {'waiting': count > 0, 'waiting_count': count, 'waiting_sources': sources}
 
 
-def has_active_turn(db_path, now=None):
-    now = time.time() if now is None else now
+def read_active_turn(db_path) -> bool | None:
+    """True for verified work, False for no candidate, None for incomplete evidence."""
+    if not is_owner_file(db_path):
+        return None
+    cutoff = time.time()
     try:
-        with sqlite3.connect(db_path.as_uri() + '?mode=ro', uri=True, timeout=2) as db:
-            return bool(db.execute('''SELECT 1 FROM session_turn_leases l
-                JOIN sessions s ON s.id=l.conversation_id
-                WHERE l.expires_at > ? AND (s.source IS NULL OR s.source != 'subagent') LIMIT 1''',
-                (now,)).fetchone())
-    except (OSError, sqlite3.Error):
-        return False
+        with closing(sqlite3.connect(db_path.as_uri() + '?mode=ro', uri=True, timeout=0.2)) as db:
+            rows = db.execute('''SELECT l.holder, l.acquired_at, l.expires_at, s.id IS NOT NULL
+                FROM session_turn_leases l LEFT JOIN sessions s ON s.id=l.conversation_id
+                WHERE (l.expires_at > ? OR l.expires_at IS NULL)
+                  AND (s.source IS NULL OR s.source != 'subagent') LIMIT 65''',
+                (cutoff,)).fetchall()
+    except (OSError, RuntimeError, sqlite3.Error):
+        return None
+    unknown = len(rows) > 64
+    for holder, acquired, expires, matched in rows[:64]:
+        reason = lease_reason(holder, acquired, expires, time.time())
+        if matched and reason is None:
+            return True
+        if reason not in ('dead_pid', 'pid_reused', 'expired_lease'):
+            unknown = True
+    return None if unknown else False

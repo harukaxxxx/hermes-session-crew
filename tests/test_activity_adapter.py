@@ -81,20 +81,21 @@ def test_cross_profile_child_owner_and_ambiguous_parent(tmp_path):
 def test_lease_validation_conservatively_rejects_unverifiable(monkeypatch):
     api = load(); now = time.time()
     holder = f'pid={os.getpid()}{holder_namespace_token()}:turn=a:b:c:platform=desktop'
-    assert api._lease_reason('unexpected', now-2, now+100, now) == 'unsupported_holder'
-    assert api._lease_reason(holder, now-10, now-1, now) == 'expired_lease'
+    evidence = api._evidence
+    assert evidence.lease_reason('unexpected', now-2, now+100, now) == 'unsupported_holder'
+    assert evidence.lease_reason(holder, now-10, now-1, now) == 'expired_lease'
     class FakeProcess:
         def __init__(self, pid): pass
         def is_running(self): return True
         def status(self): return 'running'
         def create_time(self): return now-1
-    monkeypatch.setattr(api.psutil, 'Process', FakeProcess)
-    assert api._lease_reason(holder, now-2, now+100, now) == 'pid_reused'
+    monkeypatch.setattr(evidence.psutil, 'Process', FakeProcess)
+    assert evidence.lease_reason(holder, now-2, now+100, now) == 'pid_reused'
     monkeypatch.setattr(FakeProcess, 'create_time', lambda self: None)
-    assert api._lease_reason(holder, now-2, now+100, now) == 'process_start_unknown'
-    def dead(pid): raise api.psutil.NoSuchProcess(pid)
-    monkeypatch.setattr(api.psutil, 'Process', dead)
-    assert api._lease_reason(holder, now-2, now+100, now) == 'dead_pid'
+    assert evidence.lease_reason(holder, now-2, now+100, now) == 'process_start_unknown'
+    def dead(pid): raise evidence.psutil.NoSuchProcess(pid)
+    monkeypatch.setattr(evidence.psutil, 'Process', dead)
+    assert evidence.lease_reason(holder, now-2, now+100, now) == 'dead_pid'
 
 
 def test_missing_row_and_compression_lineage_and_broken_database(tmp_path):

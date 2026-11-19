@@ -47,7 +47,7 @@ def test_namespace_checkability(monkeypatch, platform, recorded, link, expected)
         return link
     monkeypatch.setattr(api.os, 'readlink', readlink)
     holder = 'pid=42' + (f':pidns={recorded}' if recorded else '') + ':turn=x:platform=desktop'
-    assert api.holder_pid_checkable(holder) is expected
+    assert api._evidence.holder_pid_checkable(holder) is expected
 
 
 def test_profile_metadata_synthetic(monkeypatch, tmp_path):

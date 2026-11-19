@@ -3,7 +3,7 @@ import sqlite3
 import time
 from types import SimpleNamespace
 
-from test_shared_host_idle import fleet, rows
+from test_shared_host_idle import fleet, insert_turn, rows
 
 
 def test_recently_ended_session_does_not_override_fresh_zero_host(fleet):
@@ -62,7 +62,7 @@ def test_shared_counter_observation_is_independent_of_recency(fleet, monkeypatch
     assert zero.get('shared_gateway_observation') == 'zero'
     assert zero['last_session_activity'] == now - 90
     with sqlite3.connect(root / 'profiles/alpha/state.db') as db:
-        db.execute('INSERT INTO session_turn_leases VALUES (?,?)', ('open', now + 60))
+        insert_turn(db, 'open', 700, now)
     assert rows(client)['alpha'].get('shared_gateway_observation') != 'zero', 'a contradictory turn blocks the zero fallback'
     now += 0.01
     assert rows(client)['alpha']['state'] != 'idle', 'the recency cutoff must not override a known turn'

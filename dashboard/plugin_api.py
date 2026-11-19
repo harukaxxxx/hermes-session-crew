@@ -4,6 +4,7 @@ No transcript, title, prompt, tool arguments, or raw result data is selected.
 This is a bounded *snapshot*, not an ordered completion-time event log.
 """
 from pathlib import Path
+import importlib.util
 import hashlib
 from functools import lru_cache
 from itertools import islice
@@ -23,28 +24,15 @@ except ImportError:
 from collections import defaultdict
 from contextlib import closing
 
-try:
-    import psutil
-except ImportError:
-    psutil = None
-
-def holder_pid_checkable(holder):
-    """A lease PID is usable only in its own known Linux PID namespace."""
-    if sys.platform != 'linux':
-        return True
-    token = re.search(r'(?:^|:)pidns=(\d+)(?::|$)', holder or '')
-    if token is None:
-        return False
-    try:
-        local = re.search(r'\[(\d+)\]', os.readlink('/proc/self/ns/pid'))
-    except OSError:
-        return False
-    return local is not None and token.group(1) == local.group(1)
-
 from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from hermes_constants import get_default_hermes_root, get_hermes_home
+
+_evidence_spec = importlib.util.spec_from_file_location('sessioncrew_evidence', Path(__file__).with_name('waiting_status.py'))
+assert _evidence_spec is not None and _evidence_spec.loader is not None
+_evidence = importlib.util.module_from_spec(_evidence_spec)
+_evidence_spec.loader.exec_module(_evidence)
 
 router = APIRouter()
 _PROFILE = re.compile(r'^[a-z0-9][a-z0-9_-]{0,63}$')
@@ -462,7 +450,6 @@ def _read_profile(root: Path, name: str, home: Path, limit: int):
         return {'profile': name, 'status': 'unavailable', 'high_water': None, 'truncated': None, 'rows': []}
 
 
-_HOLDER = re.compile(r'^pid=([1-9][0-9]*)(?::pidns=[0-9]+)?:turn=(.+):platform=([^:]+)$')
 _ACTIVITY_LIMIT = 20000
 
 
@@ -488,33 +475,6 @@ def _activity_rows(root, home):
         return None
 
 
-def _lease_reason(holder, acquired, expires, now):
-    if not isinstance(holder, str) or not (m := _HOLDER.fullmatch(holder)):
-        return 'unsupported_holder'
-    if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in (acquired, expires)) or acquired > now or expires <= acquired:
-        return 'invalid_lease_time'
-    if expires <= now:
-        return 'expired_lease'
-    if not holder_pid_checkable(holder):
-        return 'foreign_or_unknown_pid_namespace'
-    if psutil is None:
-        return 'process_start_unknown'
-    try:
-        process = psutil.Process(int(m.group(1)))
-        if not process.is_running() or process.status() == psutil.STATUS_ZOMBIE:
-            return 'dead_pid'
-        started = process.create_time()
-        if not isinstance(started, (int, float)) or not math.isfinite(started):
-            return 'process_start_unknown'
-        if started > acquired:
-            return 'pid_reused'
-    except psutil.NoSuchProcess:
-        return 'dead_pid'
-    except (psutil.Error, OSError, ValueError, OverflowError):
-        return 'process_start_unknown'
-    return None
-
-
 def _oneshot_activity(root: Path, home: Path):
     """A positive, owner-bound observation; absence says nothing about idle."""
     try:
@@ -532,7 +492,7 @@ def _oneshot_activity(root: Path, home: Path):
     if len(rows) > 64:
         return None
     observed = time.time()
-    expires = max((end for holder, acquired, end in rows if _lease_reason(holder, acquired, end, observed) is None), default=0)
+    expires = max((end for holder, acquired, end in rows if _evidence.lease_reason(holder, acquired, end, observed) is None), default=0)
     return {'observed_at': observed, 'expires_at': expires} if expires > time.time() else None
 
 
@@ -625,7 +585,7 @@ def _collect_activity(root, homes):
             continue
         _, sessions, leases = inventory
         for sid, holder, acquired, expires in leases:
-            reason = _lease_reason(holder, acquired, expires, now)
+            reason = _evidence.lease_reason(holder, acquired, expires, now)
             row = sessions.get(sid)
             if reason:
                 results[name]['unknown_reasons'].append(reason)
@@ -749,7 +709,6 @@ def collect_snapshot(root: Path, limit: int = MAX_ROWS):
 
 @lru_cache(maxsize=1)
 def _status_collector():
-    import importlib.util
     spec = importlib.util.spec_from_file_location('sessioncrew_status', Path(__file__).resolve().parent / 'status.py')
     collector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(collector)
@@ -764,14 +723,17 @@ def status():
         homes = dict(_profile_homes(root))
         if home not in {path.resolve() for path in homes.values()}:
             raise HTTPException(status_code=403, detail='SessionCrew runtime outside profile inventory')
-        rows = _status_collector().collect_status()
+        collector = _status_collector()
+        rows = collector.collect_status()
         for row in rows:
             owner_home = homes.get(row['profile'])
-            # The raw flag only avoids a needless read. It cannot prove work.
-            if owner_home is not None and row.get('active_turn') is True and row['online']:
+            # An incomplete foreground scan cannot veto a separately verified oneshot.
+            if owner_home is not None and row.get('active_turn') is not False and (row['online'] or row.get('waiting')):
                 proof = _oneshot_activity(root, owner_home)
                 if proof is not None:
+                    row['active_turn'] = True
                     row['oneshot_activity'] = proof
+            collector.project_execution_status(row)
         return rows
     except OSError as exc:
         raise HTTPException(status_code=503, detail='profile inventory unavailable') from exc

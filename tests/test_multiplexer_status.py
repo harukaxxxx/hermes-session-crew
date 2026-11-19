@@ -43,7 +43,7 @@ def test_served_unknown_without_complete_activity(status, tmp_path, monkeypatch,
     monkeypatch.setattr(status, '_read_session_stats', lambda _: {'stats_available': False, 'active_sessions': 0})
     if record is not None:
         (tmp_path / 'profiles/alpha/gateway_state.json').write_text(record)
-    row = status._read_profile('alpha', {}, 0)
+    row = status.project_execution_status(status._read_profile('alpha', {}, 0))
     assert (row['online'], row['state'], row['busy'], row['active_agents']) == (True, 'unknown', None, 0)
 
 
@@ -80,7 +80,9 @@ def test_served_busy_and_waiting_precedence_are_owner_scoped(status, tmp_path, m
     import gateway.status as native
     import psutil
     from types import SimpleNamespace
-    monkeypatch.setattr(psutil, 'Process', lambda pid: SimpleNamespace(status=lambda: psutil.STATUS_RUNNING))
+    from hermes_state_pidns import holder_namespace_token
+    monkeypatch.setattr(psutil, 'Process', lambda pid: SimpleNamespace(
+        status=lambda: psutil.STATUS_RUNNING, is_running=lambda: True, create_time=lambda: time.time() - 60))
     monkeypatch.setattr(psutil, 'pid_exists', lambda pid: True)
     monkeypatch.setattr(status, 'get_running_pid_cached', lambda *a, **k: 123)
     monkeypatch.setattr(native, 'multiplexer_liveness_for_profile', lambda _: (123, {}))
@@ -90,16 +92,17 @@ def test_served_busy_and_waiting_precedence_are_owner_scoped(status, tmp_path, m
     with sqlite3.connect(home / 'state.db') as db:
         db.executescript('''CREATE TABLE sessions(id TEXT, source TEXT, last_activity_at REAL, ended_at REAL, input_tokens INT, output_tokens INT, actual_cost_usd REAL, estimated_cost_usd REAL);
         CREATE TABLE async_delegations(state TEXT, delivery_state TEXT, updated_at REAL, owner_pid INT, owner_started_at TEXT, parent_session_id TEXT);
-        CREATE TABLE session_turn_leases(conversation_id TEXT, expires_at REAL);''')
+        CREATE TABLE session_turn_leases(conversation_id TEXT, holder TEXT, acquired_at REAL, expires_at REAL);''')
         db.execute('INSERT INTO sessions VALUES(?,?,?,?,?,?,?,?)', ('a', 'desktop', time.time(), None, 0, 0, 0, 0))
         db.execute('INSERT INTO async_delegations VALUES(?,?,?,?,?,?)', ('running', 'pending', time.time(), os.getpid(), 'fingerprint', 'a'))
-    row = status._read_profile('alpha', {}, 0)
+    row = status.project_execution_status(status._read_profile('alpha', {}, 0))
     assert (row['state'], row['waiting'], row['busy']) == ('waiting', True, False)
     with sqlite3.connect(home / 'state.db') as db:
-        db.execute('INSERT INTO session_turn_leases VALUES(?,?)', ('a', time.time() + 60))
-    row = status._read_profile('alpha', {}, 0)
+        holder = f'pid={os.getpid()}{holder_namespace_token()}:turn=fixture:platform=desktop'
+        db.execute('INSERT INTO session_turn_leases VALUES(?,?,?,?)', ('a', holder, time.time() - 30, time.time() + 60))
+    row = status.project_execution_status(status._read_profile('alpha', {}, 0))
     assert (row['state'], row['waiting'], row['busy']) == ('working', True, True)
-    other = status._read_profile('beta', {}, 0)
+    other = status.project_execution_status(status._read_profile('beta', {}, 0))
     assert (other['state'], other['waiting']) == ('unknown', False)
 
 

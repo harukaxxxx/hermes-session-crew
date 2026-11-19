@@ -37,6 +37,11 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
+_evidence_spec = importlib.util.spec_from_file_location('sessioncrew_evidence', Path(__file__).with_name('waiting_status.py'))
+assert _evidence_spec is not None and _evidence_spec.loader is not None
+_evidence = importlib.util.module_from_spec(_evidence_spec)
+_evidence_spec.loader.exec_module(_evidence)
+
 # Never mistake a named profile's runtime home for the fleet root.
 try:
     from hermes_constants import get_default_hermes_root
@@ -575,6 +580,9 @@ def _read_profile_base(
     # Busy includes local or attributed delegated sessions, not gateway counters.
     entry["busy"] = bool(sess_active)
     entry["updated_at"] = updated_at_str  # informational only
+    if not sess_active and gw_state == "waiting":
+        entry.update(state="unknown", busy=None)
+        return entry
     # state text: prefer 'working' when sessions are live, else the gateway's.
     entry["state"] = "working" if sess_active else gw_state
     online = entry["online"]
@@ -608,27 +616,33 @@ def _read_profile_base(
 
 def _read_profile(profile: str, delegation_routes=None, live_subagents=None) -> Dict[str, Any]:
     entry = _read_profile_base(profile, delegation_routes, live_subagents)
-    spec = importlib.util.spec_from_file_location('office_waiting_status', Path(__file__).resolve().parent / 'waiting_status.py')
-    helper = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(helper)
-    entry.update(helper.read_waiting(Path(_db_path(profile))))
-    entry['active_turn'] = helper.has_active_turn(Path(_db_path(profile)))
-    if entry['active_turn'] and entry.get('shared_gateway_observation') == 'zero':
-        # A turn can outlive message recency or run outside the shared host.
-        # Contradictory evidence cannot confirm idle, even after the cutoff.
-        entry.pop('shared_gateway_observation')
-        if entry.get('status_observation') == 'fresh_shared_gateway_zero_observed_work':
-            entry.pop('status_observation')
-            entry.update(state='unknown', busy=None, idle_since=None)
-    if entry['waiting']:
+    db_path = Path(_db_path(profile))
+    owner_db = Path(HERMES_HOME).resolve() / db_path.relative_to(HERMES_HOME)
+    entry.update(_evidence.read_waiting(owner_db))
+    entry['active_turn'] = _evidence.read_active_turn(owner_db)
+    return entry
+
+
+def project_execution_status(entry):
+    """Project a status row after all owner-bound evidence has been collected."""
+    turn = entry.get('active_turn')
+    if entry.get('waiting'):
+        # Only a verified foreground turn outranks verified waiting. Recency
+        # and gateway totals do not identify foreground work for this owner.
         entry.pop('status_observation', None)
         entry.pop('shared_gateway_observation', None)
-        entry['online'] = True
-        entry['state'] = 'working' if entry['active_turn'] else 'waiting'
-        # Session recency and attributed delegations are not proof of execution;
-        # gateway active_agents also includes deferred/cron/API work, not just turns.
-        entry['busy'] = entry['active_turn']
-        entry['idle_since'] = None
+        entry.update(online=True, state='working' if turn is True else 'waiting',
+                     busy=turn is True, idle_since=None)
+    elif turn is None or turn is True:
+        # An unverified candidate is not work, but neither it nor a verified
+        # turn (which can run outside the gateway) lets us confirm idle.
+        shared = entry.get('shared_gateway_observation')
+        if turn is None or shared == 'zero':
+            entry.pop('shared_gateway_observation', None)
+        if entry['online'] and not entry.get('busy', entry['state'] == 'working') and (
+                entry['state'] != 'online_unobserved' or turn is None):
+            entry.pop('status_observation', None)
+            entry.update(state='unknown', busy=None, idle_since=None)
     elif not entry.get('stats_available', False) and not entry.get('busy'):
         entry['busy'] = None
         if entry.get('online') and entry.get('state') == 'running':
@@ -637,6 +651,7 @@ def _read_profile(profile: str, delegation_routes=None, live_subagents=None) -> 
 
 
 def collect_status():
+    """Collect base status and execution evidence for the route to compose."""
     routes = _read_delegation_routes()
     live = _count_live_subagent_sessions() if routes else 0
     result = []

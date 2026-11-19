@@ -1,6 +1,7 @@
 """Exercise Rail's actual FastAPI route with isolated metadata fixtures."""
 import importlib.util
 import os
+import psutil
 import sqlite3
 import time
 from pathlib import Path
@@ -53,10 +54,10 @@ def test_status_oneshot_requires_open_session_live_pid_and_matching_owner(tmp_pa
     db = SessionDB(db_path=alpha / 'state.db')
     now = time.time()
     def process(pid):
-        if pid == 701: raise api.psutil.NoSuchProcess(pid)
-        return SimpleNamespace(is_running=lambda: True, status=lambda: api.psutil.STATUS_RUNNING,
+        if pid == 701: raise psutil.NoSuchProcess(pid)
+        return SimpleNamespace(is_running=lambda: True, status=lambda: psutil.STATUS_RUNNING,
                                create_time=lambda: now + 3600 if pid == 702 else now - 30)
-    monkeypatch.setattr(api.psutil, 'Process', process)
+    monkeypatch.setattr(psutil, 'Process', process)
     try:
         for source in ('oneshot', 'subagent', 'desktop'):
             db.create_session(source, source, parent_session_id='oneshot' if source == 'subagent' else None)
