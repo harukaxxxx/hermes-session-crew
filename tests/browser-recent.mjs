@@ -1,2 +1,35 @@
-import {createRequire} from 'node:module';import {pathToFileURL} from 'node:url';import path from 'node:path';import assert from 'node:assert/strict';
-const require=createRequire((process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT||(()=>{throw Error('Set HERMES_CHECKOUT or HERMES_AGENT_ROOT')})())+'/package.json');const {chromium}=require('playwright');const browser=await chromium.launch({headless:true,executablePath:(process.env.CHROME_PATH||(()=>{throw Error('Set CHROME_PATH')})())});try{const page=await browser.newPage({viewport:{width:900,height:500}});await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href);await page.getByRole('button',{name:'Aster · 狀態 未知'}).click();await page.waitForSelector('[data-recent-row]');assert.equal(await page.locator('[data-recent-row]').count(),3);await page.locator('[data-recent-more]').click();assert.equal(await page.locator('[data-recent-row]').count(),13);const result=await page.evaluate(()=>{const list=document.querySelector('[data-recent-list]'), row=list.firstElementChild, title=row.querySelector('strong'),buttons=[...[...document.querySelectorAll('[role=dialog] button')].filter(b=>b.textContent.includes('快速新增')||b.textContent.includes('開啟專案'))];const l=list.getBoundingClientRect();return {rowHeight:row.getBoundingClientRect().height,listHeight:l.height,scrollHeight:list.scrollHeight,overflow:getComputedStyle(list).overflowY,titleOverflow:getComputedStyle(title).textOverflow,titleFits:title.getBoundingClientRect().right<=l.right,buttons:buttons.map(b=>{let r=b.getBoundingClientRect();return {visible:r.width>0&&r.height>0&&r.bottom<=innerHeight&&r.top>=0}})}});assert.equal(result.overflow,'auto');assert.ok(result.listHeight<=result.rowHeight*5&&result.scrollHeight>result.listHeight);assert.equal(result.titleOverflow,'ellipsis');assert.ok(result.titleFits);assert.equal(result.buttons.length,2);assert.ok(result.buttons.every(x=>x.visible));await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?pending');await page.getByRole('button',{name:'Aster · 狀態 未知'}).click();await page.waitForSelector('[data-recent-row]');assert.equal(await page.locator('[data-recent-row]').count(),3);assert.match(await page.locator('[role=dialog]').innerText(),/專案載入中/);await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?error');await page.getByRole('button',{name:'Aster · 狀態 未知'}).click();await page.getByText('工作階段無法載入：fixture session error').waitFor();assert.equal(await page.getByRole('button',{name:'重試'}).count(),1);console.log('PASS controlled Chromium real Popover 3→13, footer, project pending, session error/retry',JSON.stringify(result));}finally{await browser.close()}
+import {createRequire} from 'node:module'
+import {pathToFileURL} from 'node:url'
+import path from 'node:path'
+import assert from 'node:assert/strict'
+
+const require=createRequire((process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT||(()=>{throw Error('Set HERMES_CHECKOUT or HERMES_AGENT_ROOT')})())+'/package.json')
+const {chromium}=require('playwright')
+const browser=await chromium.launch({headless:true,executablePath:(process.env.CHROME_PATH||(()=>{throw Error('Set CHROME_PATH')})())})
+const url=pathToFileURL(path.resolve('tests/sdk-preview.html')).href
+try{
+ const page=await browser.newPage({viewport:{width:900,height:500}})
+ const avatar=page.getByRole('button',{name:'Aster · 狀態 未知'}),list=page.locator('[data-recent-list]'),rows=page.locator('[data-recent-row]')
+ await page.goto(url);await avatar.click();await rows.first().waitFor()
+ assert.equal(await rows.count(),5)
+ const initialHeight=await list.evaluate(el=>el.getBoundingClientRect().height)
+ await page.locator('[data-recent-more]').click()
+ assert.equal(await rows.count(),15)
+ const result=await list.evaluate(el=>{
+  const title=el.querySelector('[data-recent-row] strong'),r=el.getBoundingClientRect(),style=getComputedStyle(el)
+  return {height:r.height,reserve:r.height-parseFloat(style.paddingTop),scrollHeight:el.scrollHeight,overflow:style.overflowY,titleOverflow:getComputedStyle(title).textOverflow,titleFits:title.getBoundingClientRect().right<=r.right}
+ })
+ assert.equal(result.overflow,'auto');assert.equal(result.height,initialHeight,'load more does not resize the viewport')
+ assert.equal(result.reserve,260);assert.ok(result.scrollHeight>result.height)
+ assert.equal(result.titleOverflow,'ellipsis');assert.ok(result.titleFits)
+ for(const name of ['快速新增','▦ 開啟專案']){
+  const {y,height}=await page.getByRole('button',{name,exact:true}).boundingBox()
+  assert.ok(height>0&&y>=0&&y+height<=500,`${name} remains in the viewport`)
+ }
+ await page.goto(url+'?pending');await avatar.click();await rows.first().waitFor()
+ assert.equal(await rows.count(),5);assert.match(await page.getByRole('dialog').innerText(),/專案載入中/)
+ await page.goto(url+'?error');await avatar.click()
+ await page.getByText('工作階段無法載入：fixture session error').waitFor()
+ assert.equal(await page.getByRole('button',{name:'重試'}).count(),1)
+ console.log('PASS controlled Chromium real Popover 5→15, fixed viewport, footer, project pending, session error/retry',JSON.stringify(result))
+}finally{await browser.close()}

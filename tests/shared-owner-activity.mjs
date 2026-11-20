@@ -17,7 +17,7 @@ const rest=async(p,opts)=>p==='/status'?(++statusReads,holdStatus?holdStatus(off
 const useValue=a=>React.useSyncExternalStore(a.subscribe,a.get,a.get)
 const sdk={host,useValue,useGatewayActivationEpoch:()=>useValue(epoch),gatewayActivationEpoch:epoch.get,useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
-const saved={'display-settings-v1':{hideOffline:false,showCron:false,developerMode:true,hiddenProfiles:[]}}
+const saved={'display-settings-v1':{hideOffline:false,showCron:false,developerMode:true,hiddenProfiles:[],recentSessionCount:3}}
 let contribution,settingsPage;mod.namespace.default.register({storage:{get:async key=>saved[key],set:async(key,value)=>{saved[key]=structuredClone(value)}},rest,register:x=>contribution=x,registerSettingsPage:x=>settingsPage=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 async function until(fn){const end=performance.now()+3000;while(performance.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,10))});if(fn())return}throw Error('timeout: '+document.body.innerHTML.slice(0,1000))}
 const buttons=()=>[...document.querySelectorAll('.profile-rail-hit')],label=x=>x.getAttribute('aria-label').split(' · ')[0].toLowerCase(),button=(name='alpha')=>buttons().find(x=>label(x)===name)

@@ -23,11 +23,27 @@ try{
  await cron.focus();await page.keyboard.press('Space');await page.waitForFunction(()=>window.fixture.storage.value.showCron===false);assert.equal(await cron.getAttribute('aria-checked'),'false')
  await alpha.click();await page.waitForFunction(()=>window.fixture.storage.value.hiddenProfiles.includes('alpha'));assert.equal(await alpha.getAttribute('aria-pressed'),'false')
  await offline.click();await page.waitForFunction(()=>window.fixture.storage.value.hideOffline===true)
- const geometry=await page.evaluate(()=>{const section=document.querySelector('section'),chips=[...section.querySelectorAll('button')],sw=[...document.querySelectorAll('[role=switch]')],r=e=>e.getBoundingClientRect();return {wrap:chips.some(x=>r(x).top>r(chips[0]).top),switchRight:sw.map(x=>r(x).right),chipHeight:r(chips[0]).height,overflow:document.documentElement.scrollWidth>innerWidth}})
+ const recent=page.getByRole('group',{name:'Recent sessions'}),option=n=>recent.getByRole('button',{name:String(n),exact:true})
+ const assertRecent=async(selected)=>{
+  assert.deepEqual(await recent.getByRole('button').allTextContents(),['3','5','10','15'])
+  for(const count of [3,5,10,15]){
+   assert.equal(await option(count).getAttribute('aria-pressed'),String(count===selected))
+   assert.equal(await option(count).isDisabled(),count===selected)
+  }
+ }
+ await assertRecent(5)
+ for(const count of [3,10,15,5]){
+  await option(count).focus();await page.keyboard.press('Space')
+  await page.waitForFunction(n=>!window.fixture.preferences.get().pending&&window.fixture.storage.value.recentSessionCount===n,count)
+  await assertRecent(count)
+ }
+ const geometry=await alpha.evaluate(el=>{const section=el.closest('section'),chips=[...section.querySelectorAll('button')],sw=[...document.querySelectorAll('[role=switch]')],r=e=>e.getBoundingClientRect();return {wrap:chips.some(x=>r(x).top>r(chips[0]).top),switchRight:sw.map(x=>r(x).right),chipHeight:r(chips[0]).height,overflow:document.documentElement.scrollWidth>innerWidth}})
  assert.ok(geometry.wrap&&!geometry.overflow&&Math.abs(geometry.switchRight[0]-geometry.switchRight[1])<1&&geometry.chipHeight>=30,JSON.stringify(geometry))
  for(const locale of ['en','zh-hant'])for(const [width,tag] of [[760,'wide'],[320,'narrow']]){
   await page.setViewportSize({width,height:600});await page.goto(pathToFileURL(html).href+'?lang='+locale);await page.waitForFunction(()=>window.fixture.preferences.get().ready)
   assert.equal(await page.getByRole('switch',{name:locale==='en'?'Developer mode':'開發者模式'}).getAttribute('aria-checked'),'false');assert.equal(await page.getByText(locale==='en'?'Show idle minutes on profile avatars.':'在設定檔頭像顯示閒置分鐘數。',{exact:true}).count(),1)
+  const recentGroup=page.getByRole('group',{name:locale==='en'?'Recent sessions':'近期工作階段'})
+  assert.deepEqual(await recentGroup.getByRole('button').allTextContents(),['3','5','10','15'])
   const title=page.getByText(locale==='en'?'Messaging platforms':'訊息平台',{exact:true}),help=page.getByText(locale==='en'?'Choose which messaging sessions appear in bubbles and unread dots. Unknown sources remain visible; unread records are preserved.':'選擇要在泡泡及未讀紅點中顯示的訊息平台。來源未知時仍顯示；未讀紀錄會保留。',{exact:true}),showHeader=page.getByRole('button',{name:locale==='en'?'Show all':'全部顯示'}),hideHeader=page.getByRole('button',{name:locale==='en'?'Hide all':'全部隱藏'})
   assert.equal(await page.getByText(locale==='en'?'Recently observed platforms':'近期觀察到的平台',{exact:true}).count(),0)
   const headerGeometry=await title.evaluate((e,{helpText,showText,hideText})=>{const all=[...document.querySelectorAll('*')],find=t=>all.find(x=>x.textContent===t&&x.children.length===0),r=x=>{const b=x.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom}},show=find(showText),hide=find(hideText);return {title:r(e),help:r(find(helpText)),show:r(show),hide:r(hide),header:r(show.parentElement.parentElement),overflow:document.documentElement.scrollWidth>innerWidth}},{helpText:await help.innerText(),showText:await showHeader.innerText(),hideText:await hideHeader.innerText()})
