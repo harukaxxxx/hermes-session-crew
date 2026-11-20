@@ -28,6 +28,7 @@ host.openSession=async (...args)=>{await fixtureOpenSession(...args);await windo
 host.state.gateway=gatewayAtom
 const fixtureRequestProfile=host.requestProfile
 host.requestProfile=(route,method,params,...rest)=>{
+ if(method==='session.list'&&window.fixtureSessionList)return window.fixtureSessionList(route,params)
  if(method==='session.active_list'||method==='subagent.roster'){
   window.fixtureActivityCalls=(window.fixtureActivityCalls||[]).concat([{route,method,params}])
   if(window.fixtureActivityRequest)return window.fixtureActivityRequest(route,method,params)

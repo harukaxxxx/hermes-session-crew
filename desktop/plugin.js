@@ -191,6 +191,9 @@ const messages = {
       remove: path => `Remove ${path}`,
     },
     session: {
+      openLatest: "Open latest",
+      loadingLatest: "Loading latest...",
+      noRecentSessions: "No recent sessions",
       quickCreate: "Quick create",
       limit: "Showing at most 200 fetched items",
       untitled: "Untitled",
@@ -390,6 +393,9 @@ const messages = {
       remove: path => `移除 ${path}`,
     },
     session: {
+      openLatest: "開啟最近",
+      loadingLatest: "載入最近...",
+      noRecentSessions: "查無最近",
       quickCreate: "快速新增",
       limit: "最多顯示已取得的 200 筆",
       untitled: "未命名",
@@ -603,7 +609,7 @@ const isMessagingSource=source=>messagingSources.has(source)
 const sourceVisible=(source,hidden)=>!isMessagingSource(source)||!hidden?.includes(source)
 const recentSessionCounts=[3,5,10,15],defaultRecentSessionCount=5,recentRowHeight=52
 const normalizeRecentSessionCount=count=>recentSessionCounts.includes(count)?count:defaultRecentSessionCount
-function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false,hiddenMessagingSources:[]}}){
+function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false,hiddenMessagingSources:[]},menu}){
  const tr=useTranslator()
  const activeConnection=useValue(host.state.connectionId),activeProfile=useValue(host.state.profile),activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const recentRest=useContext(DialogRestContext)
@@ -611,22 +617,47 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
  const [page,setPage]=useState({baseCount,extra:0}),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
  if(page.baseCount!==baseCount)setPage({baseCount,extra:0})
  const count=baseCount+(page.baseCount===baseCount?page.extra:0)
- async function open(id){if(rowLock.current)return;rowLock.current=true;setBusy(true);setError('');const watermark=completion.watermark(owner,id,true);try{await openOwned(owner,id);await completion.ack(owner,id,watermark);onOpened()}catch(e){setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}finally{rowLock.current=false;setBusy(false)}}
+ async function open(id){
+  const target=menu&&owner?menu.getLiveOwner(launchDestination(owner)):owner
+  if(rowLock.current||!target||(menu&&target.route?.mode!==owner.route?.mode))return
+  rowLock.current=true;setBusy(true);setError('')
+  const watermark=completion.watermark(target,id,true)
+  try{await openOwned(target,id);if(!menu||menu.isCurrent()){await completion.ack(target,id,watermark,menu?.isCurrent);onOpened()}}
+  catch(e){if(!menu||menu.isCurrent())setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}
+  finally{rowLock.current=false;if(!menu||menu.isCurrent())setBusy(false)}
+ }
  const route=owner?.route, key=[owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]
  // Consume the open/retry intent once; interval and focus callbacks stay background.
  const recentIntent=useRef(null),intentKey=JSON.stringify([...key,generation])
- const result=useQuery({queryKey:['sessioncrew','recent',activeConnection,activeProfile,activation,...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
+ const result=useQuery({queryKey:['sessioncrew','recent',activeConnection,activeProfile,activation,...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:!menu,refetchInterval:menu?false:15000})
  const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>row.sourceConflict||(settings.showCron||row.source!=='cron')&&sourceVisible(row.source,settings.hiddenMessagingSources))}}:result
- const activity=useRowActivity(owner,q.data?.rows)
+ const activity=useRowActivity(menu?null:owner,menu?null:q.data?.rows)
  const projectIntent=useRef(0)
- const projects=useQuery({queryKey:['sessioncrew','projects',...key,projectGeneration],queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner,retry:false})
+ const projects=useQuery({queryKey:['sessioncrew','projects',...key,projectGeneration],queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner&&!menu,retry:false})
+ const routeStatus=phase==='loading'?tr('session.findingRoute'):localizeError(phase)||tr('common.connectionNotReady')
+ const listStatus=q.isError?tr('session.loadFailure',localizeError(errorMessage(q.error,tr)||tr('errors.unknown'))):q.fetchStatus==='idle'||(menu&&q.fetchStatus==='paused')?tr('common.connectionNotReady'):tr('session.loading')
+ if(menu){
+  const loading=owner?q.fetchStatus==='fetching':phase==='loading'
+  const issue=owner?(q.isError||q.isPaused||(!loading&&q.isPending)?listStatus:null):loading?null:routeStatus
+  const latest=owner&&!loading&&!issue?q.data?.rows[0]:null
+  const latestLabel=loading?'session.loadingLatest':latest||issue?'session.openLatest':'session.noRecentSessions'
+  const canRead=completion.coverageReady&&completion.covers(menu.owner.name)
+  // Keep the first action focusable while the fresh list is loading.
+  const action=(label,disabled,run)=>jsx('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&menu.isCurrent())void run()},style:{...s.button,textAlign:'left',opacity:disabled ? .55 : 1,cursor:disabled?'default':'pointer'},children:label})
+  const markAll=async()=>{
+   rowLock.current=true;setBusy(true);setError('')
+   try{await completion.ackAll(menu.owner,menu.isCurrent)}finally{rowLock.current=false;if(menu.isCurrent())setBusy(false)}
+  }
+  return jsxs(React.Fragment,{children:[action(tr(latestLabel),busy||!latest,()=>open(latest.id)),action(tr('completion.markAllRead'),busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
+ }
+
  // Match the loaded list and footer from the first render; allow shrinking in short viewports.
  const reserve=baseCount*recentRowHeight
  const recentLayout={minHeight:0,display:'flex',flexDirection:'column',flex:'1 1 auto',marginTop:12},recentList={...s.sessions,minHeight:0,height:reserve,flex:'1 1 auto',maxHeight:reserve,overflowY:'auto'}
  const placeholder=(children,center=false)=>jsxs('div',{style:recentLayout,children:[jsx('div',{'data-recent-list':true,style:center?{...recentList,display:'grid',placeItems:'center'}:recentList,children}),jsx('div',{style:{height:18,flexShrink:0}})]})
- if(!owner) return placeholder([jsx('span',{children:phase==='loading'?tr('session.findingRoute'):localizeError(phase)||tr('common.connectionNotReady')},'message'),phase!=='loading'?jsx('button',{onClick:retryRoutes,children:tr('common.retry')},'retry'):null])
- if(q.isPending) return placeholder(q.fetchStatus==='idle'?tr('common.connectionNotReady'):tr('session.loading'),q.fetchStatus!=='idle')
- if(q.isError) return placeholder([jsx('span',{children:tr('session.loadFailure',localizeError(errorMessage(q.error,tr)||tr('errors.unknown')))},'message'),jsx('button',{onClick:()=>setGeneration(n=>n+1),children:tr('common.retry')},'retry')])
+ if(!owner) return placeholder([jsx('span',{children:routeStatus},'message'),phase!=='loading'?jsx('button',{onClick:retryRoutes,children:tr('common.retry')},'retry'):null])
+ if(q.isPending) return placeholder(listStatus,q.fetchStatus!=='idle')
+ if(q.isError) return placeholder([jsx('span',{children:listStatus},'message'),jsx('button',{onClick:()=>setGeneration(n=>n+1),children:tr('common.retry')},'retry')])
 
 
  const ellipsis={whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}
@@ -918,13 +949,13 @@ function RailItem({working,selected,clock,identity,children}){
 }
 // Radix may clamp its arrow while the real anchor continues moving. Never leave
 // that detached arrow near a rounded corner or an anchor outside our own rail.
-function GuardedPopover({active,onOpenChange,isLaunching,children}){
+function GuardedPopover({active,compact,onOpenChange,isLaunching,children}){
  const avatar=useRef(null),content=useRef(null),close=useRef(onOpenChange),geometryClose=useRef(false)
  const [,setContentElement]=useState(null)
  const contentRef=useCallback(node=>{content.current=node;setContentElement(node)},[])
  close.current=onOpenChange
  useEffect(()=>{
-  if(!active)return
+  if(!active||compact)return
   const a=avatar.current,c=content.current,rail=a?.closest('[data-profile-rail]')
   if(!a||!c||!rail)return
   let first=0,second=0
@@ -1087,10 +1118,10 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
   for(const x of state.rows){const sample=state.observed.get(x.key);if(sample?.generation===activityScope.generation&&x.source===state.baseline.source&&!x.session_source_conflict&&visibleUnread(x,owner,background))since=Math.max(since||0,sample.since)}
   return since
  }
- const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
+ const ackAll=async(owner,isCurrent=()=>true)=>{if(!usable()||!isCurrent())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable()||!isCurrent())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
  // Source classification comes from the scoped completion ledger, not the
  // bounded recent list. Unknown/conflicting evidence stays visible.
- return {activityFor,childMetadataFor,ackAll,unreadSince,clearedAt:name=>usable()&&state.baseline.profiles.has(name)?state.cleared.get(clearKey({name})):null,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.rows.some(x=>visibleUnread(x,{name,connectionId:connection},background)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}}
+ return {activityFor,childMetadataFor,ackAll,unreadSince,clearedAt:name=>usable()&&state.baseline.profiles.has(name)?state.cleared.get(clearKey({name})):null,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.rows.some(x=>visibleUnread(x,{name,connectionId:connection},background)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys,isCurrent=()=>true)=>{if(!usable()||!keys.length||!isCurrent())return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable()||!isCurrent())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}}
 }
 const activityLabel=(n,t=tr)=>t('activity.observed',n)
 // Activity inputs are tri-state: unknown does not invent a child or a count.
@@ -1105,7 +1136,7 @@ export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,o
  const extraRunning=Number.isSafeInteger(runningCount)&&runningCount>1?runningCount-1:0
  const seenChildren=new Set(),children=childMetadata?.children?.filter(x=>{if(!['queued','recent'].includes(x.kind)||seenChildren.has(x.id))return false;seenChildren.add(x.id);return true})||[]
  const shadowColor=i=>i<extraRunning?statusColor.working:children[i-extraRunning]?.leased?statusColor.working:children[i-extraRunning]?.kind==='queued'?statusColor.waiting:statusColor.unknown
- const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
+ const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined,pointerEvents:avatar?'none':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
  const minutes=attentionMinutes??idleMinutes,label=minutes===null?null:Math.floor(minutes/60)+'h'+minutes%60+'m'
  return jsx('span',{ref:box,style:{display:'block',width:'100%',height:37},children:jsxs('span',{'data-avatar-stack':true,style:{position:'relative',display:'block',margin:'0 auto',left:developerMode&&waiting&&width?Math.min(0,(width+Math.min(natural,available))/2-44):undefined,width:Math.min(natural,available),height:37},children:[jsx('span',{style:{position:'absolute',inset:0,overflow:'hidden',zIndex:0},children:Array.from({length:visible},(_,i)=>jsxs('span',{style:{position:'absolute',left:(i+1)*6,top:1.5,width:34,height:34,zIndex:-(i+1),opacity:Math.max(0,1-(i+1)/7),pointerEvents:'none'},children:[face(null,i+1),jsx('span',{'data-child-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:0,width:34,height:34,borderRadius:'22%',boxShadow:'inset 0 0 0 1px '+shadowColor(i),zIndex:-(i+1),pointerEvents:'none'}})]},i))}),jsx(PopoverTrigger,{asChild:true,children:jsx('button',{...triggerProps,ref:avatarRef,type:'button',className:'profile-rail-hit',style:{...s.hit,position:'absolute',left:0,top:1.5,width:34,height:34,zIndex:1},children:face(null)})}),offline?jsx('span',{'data-avatar-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:1.5,width:34,height:34,borderRadius:'22%',outline:'2px solid '+color,zIndex:2,pointerEvents:'none'}}):null,waiting||unread?jsx('span',{'data-completion-badge':unread&&!waiting||undefined,'data-avatar-waiting':waiting||undefined,'aria-hidden':true,style:{position:'absolute',left:26,top:-5,zIndex:3,pointerEvents:'none',...(waiting?{fontSize:14,lineHeight:1}:{...unreadCircle,left:28,top:-3})},children:waiting?'✋':undefined}):null,label!==null?jsx('span',{[attentionMinutes===null?'data-idle-minutes':'data-elapsed-minutes']:true,'aria-hidden':true,style:{position:'absolute',left:17,top:38,transform:'translateX(-50%)',zIndex:4,color:'#fff',fontSize:label.length>=10?5.5:label.length>=9?6:label.length>=8?7:label.length>=6?8:10,fontWeight:700,lineHeight:1,whiteSpace:'nowrap',textShadow:'-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',pointerEvents:'none'},children:label}):null,Number.isSafeInteger(runningCount)&&runningCount>=2?jsx('span',{'data-running-count':true,title:activityLabel(runningCount,tr),'aria-hidden':true,style:{position:'absolute',left:26,bottom:0,zIndex:3,borderRadius:'50%',minWidth:17,height:17,lineHeight:'17px',textAlign:'center',fontSize:9,color:'var(--ui-text-primary)',background:'var(--ui-bg-elevated)',border:'1px solid var(--ui-stroke-secondary)',pointerEvents:'none'},children:'x'+runningCount}):null]})})
 }
@@ -1168,7 +1199,11 @@ function Rail({storage,rest,preferences}){
  },[idleStarts,idleFences,estimateFences])
  const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
  const launchEpoch=useRef(null),[,refreshLaunch]=useState(0)
- const select=useCallback(value=>{if(value!==selectedRef.current){selectionEpoch.current++;setProjectOwner(null)}selectedRef.current=value;setSelected(value)},[])
+ const select=useCallback((key,mode='panel')=>{
+  if(key===(selectedRef.current?.key??null)&&(!key||mode===selectedRef.current.mode))return
+  selectionEpoch.current++;setProjectOwner(null)
+  const value=key===null?null:{key,mode};selectedRef.current=value;setSelected(value)
+ },[])
  useEffect(()=>{select(null)},[connectionId,profile,select])
  useEffect(()=>{
   // Observe transitions even if React batches a switch away and back.
@@ -1235,8 +1270,8 @@ function Rail({storage,rest,preferences}){
  })
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
  return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'}),...profiles.map(p=>{
-  const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected===selectionKey
-  const isCurrent=()=>selectedRef.current===selectionKey&&selectionEpoch.current===epoch&&host.state.connectionId.get()===connectionId&&host.state.profile.get()===profile
+  const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected?.key===selectionKey,compact=active&&selected.mode==='menu'
+  const isCurrent=()=>selectedRef.current?.key===selectionKey&&selectionEpoch.current===epoch&&host.state.connectionId.get()===connectionId&&host.state.profile.get()===profile
   const getLiveOwner=destination=>{
    const live=liveRoutes.current
    if(!isCurrent()||!live||live.connectionId!==connectionId||live.profile!==profile)return null
@@ -1250,9 +1285,13 @@ function Rail({storage,rest,preferences}){
   }
   let owner=null,phase=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
   if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
-  return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(selectedRef.current===selectionKey)select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
-   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:completion.has(p.name,p.background),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,p.background),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
-  jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
+  const openMenu=e=>{e.preventDefault();if(!dialogActive.current)select(selectionKey,'menu')}
+  const avatarActions={onContextMenu:openMenu,onKeyDown:e=>{if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10')openMenu(e)},onClick:e=>{if(compact){e.preventDefault();select(selectionKey)}}}
+  const preserveFocus=e=>{const next=selectedRef.current;if(next&&(next.key!==selectionKey||selectionEpoch.current!==epoch))e.preventDefault()}
+  return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
+   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:completion.has(p.name,p.background),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,p.background),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
+   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},isCurrent,getLiveOwner},onOpened:()=>{if(isCurrent())select(null)}})},'menu'):
+   jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]},'panel')]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }
 export default {id:'sessioncrew',name:'SessionCrew',defaultEnabled:true,register(ctx){pluginI18n=typeof ctx.i18n?.register==='function'&&typeof ctx.i18n?.t==='function'?ctx.i18n:null;pluginI18n?.register(messages);const rest=typeof ctx.rest==='function'?(path,opts)=>ctx.rest(path,opts):null;const preferences=createPreferences(ctx.storage);ctx.registerSettingsPage?.({id:'settings',title:'SessionCrew',icon:'account',render:()=>jsx(LocalizedRoot,{children:jsx(Settings,{preferences})})});ctx.register({id:'rail',area:'panes',title:'SessionCrew',data:{placement:'left',dock:{pane:'workspace',pos:'left'},width:'80px',minWidth:'80px'},render:()=>jsx(LocalizedRoot,{children:jsx(DialogRestContext.Provider,{value:rest,children:jsx(Rail,{storage:ctx.storage,rest,preferences})})})})}}
