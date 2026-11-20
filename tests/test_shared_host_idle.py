@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from hermes_state_pidns import holder_namespace_token
+from hermes_fixture_store import holder_namespace_token
 
 ROOT = Path(__file__).resolve().parents[1]
 

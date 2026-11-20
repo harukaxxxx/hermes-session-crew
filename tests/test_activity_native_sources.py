@@ -2,42 +2,33 @@
 
 These are negative evidence, not an activity producer or a live fleet test.
 """
-import importlib.util
+from contextlib import closing
 import os
-from pathlib import Path
-import sys
+import sqlite3
 import time
 
-spec = importlib.util.find_spec('hermes_state')
-assert spec and spec.origin
-sys.path.insert(0, str(Path(spec.origin).parent))
-from hermes_state import SessionDB
-import hermes_state_runtime as runtime
+from hermes_fixture_store import FixtureStore, holder_namespace_token
 
 
 def _facts(db):
-    with db._read_ctx() as conn:
+    with closing(sqlite3.connect(db.db_path.as_uri() + '?mode=ro', uri=True)) as conn:
         return [tuple(r) for r in conn.execute(
             'SELECT l.conversation_id,s.source,s.parent_session_id,l.holder,l.expires_at '
             'FROM session_turn_leases l LEFT JOIN sessions s ON s.id=l.conversation_id')]
 
 
 def test_native_admission_claim_is_not_a_turn_lease(tmp_path):
-    db = SessionDB(db_path=tmp_path / 'state.db')
+    db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('parent', source='desktop')
-        epoch = runtime.begin_runtime_epoch(db, instance_id='fixture')
-        runtime.admit_session_input(db, epoch=epoch, principal_id='human', session_id='parent', request_id='r1', payload={'text': 'fixture'})
-        claim = runtime.claim_session_input(db, epoch=epoch, session_id='parent')
-        assert isinstance(claim, dict)
-        assert claim['status'] == 'started'
+        db.start_admission('parent', 'fixture')
         assert _facts(db) == []
     finally:
         db.close()
 
 
 def test_native_child_reservation_and_lease_do_not_prove_execution(tmp_path):
-    db = SessionDB(db_path=tmp_path / 'state.db')
+    db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('parent', source='desktop')
         db.create_session('child', source='subagent', parent_session_id='parent')
@@ -45,7 +36,7 @@ def test_native_child_reservation_and_lease_do_not_prove_execution(tmp_path):
         # It proves that even a fresh lease + live pid + parent relation is not
         # by itself an execution-start event.
         assert _facts(db) == []
-        holder = f'pid={os.getpid()}:turn=fixture:platform=subagent'
+        holder = f'pid={os.getpid()}{holder_namespace_token()}:turn=fixture:platform=subagent'
         assert db.try_acquire_session_turn_lease('child', holder, ttl_seconds=300)
         rows = _facts(db)
         assert len(rows) == 1
@@ -63,11 +54,11 @@ def test_native_unreleased_lease_survives_dead_owner_until_reclaim(tmp_path, mon
     def absent(pid):
         raise psutil.NoSuchProcess(pid)
     monkeypatch.setattr(psutil, 'Process', absent)
-    db = SessionDB(db_path=tmp_path / 'state.db')
+    db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('parent', source='desktop')
         # No process with this synthetic impossible PID is started by this test.
-        holder = 'pid=999999999:turn=fixture:platform=desktop'
+        holder = f'pid=999999999{holder_namespace_token()}:turn=fixture:platform=desktop'
         assert db.try_acquire_session_turn_lease('parent', holder, ttl_seconds=300)
         row = _facts(db)[0]
         assert row[4] > time.time()

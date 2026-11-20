@@ -17,11 +17,11 @@ def process(pid):
 psutil.Process = process
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-spec = importlib.util.find_spec('hermes_state')
-assert spec and spec.origin
-sys.path.insert(0, str(Path(spec.origin).parent))
+# The JS harness uses python -I, which omits the script directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hermes_fixture_store import holder_namespace_token, use_hermes_checkout
+use_hermes_checkout()
 import gateway.status as gateway
-from hermes_state_pidns import holder_namespace_token
 
 with tempfile.TemporaryDirectory(prefix='rail-status-fixture-') as d:
     root = Path(d)

@@ -80,7 +80,7 @@ def test_served_busy_and_waiting_precedence_are_owner_scoped(status, tmp_path, m
     import gateway.status as native
     import psutil
     from types import SimpleNamespace
-    from hermes_state_pidns import holder_namespace_token
+    from hermes_fixture_store import holder_namespace_token
     monkeypatch.setattr(psutil, 'Process', lambda pid: SimpleNamespace(
         status=lambda: psutil.STATUS_RUNNING, is_running=lambda: True, create_time=lambda: time.time() - 60))
     monkeypatch.setattr(psutil, 'pid_exists', lambda pid: True)

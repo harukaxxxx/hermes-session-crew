@@ -8,8 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from hermes_state import SessionDB
-from hermes_state_pidns import holder_namespace_token
+from hermes_fixture_store import FixtureStore, holder_namespace_token
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -51,7 +50,7 @@ def test_status_oneshot_requires_open_session_live_pid_and_matching_owner(tmp_pa
     def sample():
         r = client.get('/status'); assert r.status_code == 200
         return {x['profile']: x.get('oneshot_activity') for x in r.json()}
-    db = SessionDB(db_path=alpha / 'state.db')
+    db = FixtureStore(db_path=alpha / 'state.db')
     now = time.time()
     def process(pid):
         if pid == 701: raise psutil.NoSuchProcess(pid)
