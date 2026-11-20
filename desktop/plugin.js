@@ -205,6 +205,7 @@ const messages = {
       showMore: "Show more sessions",
       openFailure: error => `Could not open: ${error}; try again`,
       loadFailure: error => `Could not load sessions: ${error}`,
+      refreshFailure: error => `Could not refresh sessions. Showing the previous list: ${error}`,
       createdOpenFailure: (id, error) => `Created ${id}, but opening failed; retry only opens it: ${error}`,
       newInProject: project => `New conversation in ${project}`,
     },
@@ -407,6 +408,7 @@ const messages = {
       showMore: "顯示更多工作階段",
       openFailure: error => `開啟失敗：${error}，請再試一次`,
       loadFailure: error => `工作階段無法載入：${error}`,
+      refreshFailure: error => `工作階段無法更新，目前顯示上次的清單：${error}`,
       createdOpenFailure: (id, error) => `已建立 ${id}，開啟失敗；重試只會開啟：${error}`,
       newInProject: project => `在 ${project} 新增對話`,
     },
@@ -448,20 +450,24 @@ async function requestOwner(owner,method,params,spawnPriority='background'){
  throw new LocalizedError('errors.otherProfilesUnsupported')
 }
 async function recentData(owner,spawnPriority='background',rest=null){
- const connection=host.state.connectionId.get(),profile=host.state.profile.get();let changed=false
+ const connection=host.state.connectionId.get(),profile=host.state.profile.get(),activation=sdk.gatewayActivationEpoch?.();let changed=false
  const dispose=[host.state.connectionId,host.state.profile].map(atom=>typeof atom.subscribe==='function'?atom.subscribe(()=>{if(host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)changed=true}):null)
- const sameScope=()=>!changed&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile
+ const sameScope=()=>!changed&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&sdk.gatewayActivationEpoch?.()===activation
  try{return await recentDataScoped(owner,spawnPriority,rest,sameScope)}finally{for(const off of dispose)if(typeof off==='function')off()}
 }
 async function recentDataScoped(owner,spawnPriority,rest,sameScope){
+ const list=params=>{
+  if(!sameScope())throw new LocalizedError('errors.connectionChanged')
+  return requestOwner(owner,'session.list',params,spawnPriority)
+ }
  let result
- try { result=await requestOwner(owner,'session.list',{limit:200,scope:'stored'},spawnPriority); if(result?.error) throw result.error }
- catch(e){if(!scopeError(e)) throw e;result=await requestOwner(owner,'session.list',{limit:200},spawnPriority)}
+ try { result=await list({limit:200,scope:'stored'}); if(result?.error) throw result.error }
+ catch(e){if(!scopeError(e)) throw e;result=await list({limit:200})}
  if(result?.error || !Array.isArray(result?.sessions) || (result.scope!=null && result.scope!=='stored')) throw new LocalizedError('errors.sessionFormat')
  // Canonical stored history excludes open canonical sessions; legacy has no scope.
  let sessions=result.sessions
  if(result.scope==='stored'){
-  const live=await requestOwner(owner,'session.list',{limit:200,scope:'live'},spawnPriority)
+  const live=await list({limit:200,scope:'live'})
   if(live?.error || live?.scope!=='live' || !Array.isArray(live.sessions)) throw new LocalizedError('errors.liveSessionFormat')
   sessions=[...live.sessions,...sessions]
  }
@@ -609,46 +615,86 @@ const isMessagingSource=source=>messagingSources.has(source)
 const sourceVisible=(source,hidden)=>!isMessagingSource(source)||!hidden?.includes(source)
 const recentSessionCounts=[3,5,10,15],defaultRecentSessionCount=5,recentRowHeight=52
 const normalizeRecentSessionCount=count=>recentSessionCounts.includes(count)?count:defaultRecentSessionCount
+const recentStaleTime=10000
+const ownerRouteKey=owner=>{const route=owner?.route;return [owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]}
+const recentQueryKey=(scope,owner)=>['sessioncrew','recent',...scope,...ownerRouteKey(owner),0]
+const recentRows=(data,settings)=>data?.rows.filter(row=>row.sourceConflict||(settings.showCron||row.source!=='cron')&&sourceVisible(row.source,settings.hiddenMessagingSources))
+const recentFresh=query=>query.status==='success'&&!query.isInvalidated&&Date.now()-query.dataUpdatedAt<recentStaleTime
 function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false,hiddenMessagingSources:[]},menu}){
  const tr=useTranslator()
  const activeConnection=useValue(host.state.connectionId),activeProfile=useValue(host.state.profile),activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const recentRest=useContext(DialogRestContext)
  const baseCount=normalizeRecentSessionCount(settings.recentSessionCount)
- const [page,setPage]=useState({baseCount,extra:0}),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
+ const [page,setPage]=useState({baseCount,extra:0}),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false),latestIntent=useRef(null)
  if(page.baseCount!==baseCount)setPage({baseCount,extra:0})
  const count=baseCount+(page.baseCount===baseCount?page.extra:0)
+ function liveMenuOwner(){
+  if(!owner||activation!==null&&typeof sdk.gatewayActivationEpoch==='function'&&sdk.gatewayActivationEpoch()!==activation)return null
+  const target=menu.getLiveOwner(launchDestination(owner))
+  return target?.route?.mode===owner.route?.mode?target:null
+ }
  async function open(id){
-  const target=menu&&owner?menu.getLiveOwner(launchDestination(owner)):owner
-  if(rowLock.current||!target||(menu&&target.route?.mode!==owner.route?.mode))return
+  const target=menu?liveMenuOwner():owner
+  if(rowLock.current||!target)return
   rowLock.current=true;setBusy(true);setError('')
   const watermark=completion.watermark(target,id,true)
   try{await openOwned(target,id);if(!menu||menu.isCurrent()){await completion.ack(target,id,watermark,menu?.isCurrent);onOpened()}}
   catch(e){if(!menu||menu.isCurrent())setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}
   finally{rowLock.current=false;if(!menu||menu.isCurrent())setBusy(false)}
  }
- const route=owner?.route, key=[owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]
+ const key=ownerRouteKey(owner),queryKey=recentQueryKey([activeConnection,activeProfile,activation],owner)
+ const queryState=()=>sdk.queryClient?.getQueryState?.(queryKey)
  // Consume the open/retry intent once; interval and focus callbacks stay background.
- const recentIntent=useRef(null),intentKey=JSON.stringify([...key,generation])
- const result=useQuery({queryKey:['sessioncrew','recent',activeConnection,activeProfile,activation,...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:!menu,refetchInterval:menu?false:15000})
- const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>row.sourceConflict||(settings.showCron||row.source!=='cron')&&sourceVisible(row.source,settings.hiddenMessagingSources))}}:result
- const activity=useRowActivity(menu?null:owner,menu?null:q.data?.rows)
+ const recentIntent=useRef(null),intentKey=JSON.stringify(queryKey)
+ const q=useQuery({queryKey,queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,staleTime:recentStaleTime,refetchOnMount:true,refetchOnWindowFocus:!menu,refetchInterval:menu?false:15000})
+ useEffect(()=>{if(q.data)recentIntent.current=intentKey},[intentKey,q.data])
+ useEffect(()=>{
+  if(latestIntent.current&&latestIntent.current.key!==intentKey){latestIntent.current=null;setBusy(false)}
+ },[intentKey])
+ const refetchRecent=()=>{
+  if((queryState()??q).fetchStatus==='idle')recentIntent.current=null
+  return q.refetch({cancelRefetch:false})
+ }
+ const rows=recentRows(q.data,settings)
+ const activity=useRowActivity(menu?null:owner,menu?null:rows)
  const projectIntent=useRef(0)
  const projects=useQuery({queryKey:['sessioncrew','projects',...key,projectGeneration],queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner&&!menu,retry:false})
  const routeStatus=phase==='loading'?tr('session.findingRoute'):localizeError(phase)||tr('common.connectionNotReady')
- const listStatus=q.isError?tr('session.loadFailure',localizeError(errorMessage(q.error,tr)||tr('errors.unknown'))):q.fetchStatus==='idle'||(menu&&q.fetchStatus==='paused')?tr('common.connectionNotReady'):tr('session.loading')
+ const listStatus=q.isError?tr(!menu&&rows?.length?'session.refreshFailure':'session.loadFailure',localizeError(errorMessage(q.error,tr)||tr('errors.unknown'))):q.fetchStatus==='idle'||(menu&&q.fetchStatus==='paused')?tr('common.connectionNotReady'):tr('session.loading')
+ const retryList=()=>jsx('button',{type:'button',disabled:q.isFetching,onClick:()=>void refetchRecent(),children:tr('common.retry')},'retry')
  if(menu){
   const loading=owner?q.fetchStatus==='fetching':phase==='loading'
-  const issue=owner?(q.isError||q.isPaused||(!loading&&q.isPending)?listStatus:null):loading?null:routeStatus
-  const latest=owner&&!loading&&!issue?q.data?.rows[0]:null
-  const latestLabel=loading?'session.loadingLatest':latest||issue?'session.openLatest':'session.noRecentSessions'
+  const issue=owner?(!loading&&(q.isError||q.isPaused||q.isPending)?listStatus:null):loading?null:routeStatus
+  const canOpen=owner&&!issue&&!!rows?.length
+  const latestLabel=canOpen||issue?'session.openLatest':loading?'session.loadingLatest':'session.noRecentSessions'
   const canRead=completion.coverageReady&&completion.covers(menu.owner.name)
+  const openLatest=async()=>{
+   if(latestIntent.current||!liveMenuOwner())return
+   const current=queryState()??q
+   const visible=recentRows(current.data,menu.getSettings())
+   if(!visible?.length||current.fetchStatus==='paused'||current.status==='error'&&current.fetchStatus!=='fetching')return
+   if(current.fetchStatus==='idle'&&recentFresh(current))return open(visible[0].id)
+   // The click joins a running refresh or starts one for this exact query key.
+   const intent={key:intentKey,updatedAt:current.dataUpdatedAt,updateCount:current.dataUpdateCount}
+   latestIntent.current=intent;setBusy(true);setError('')
+   let latest
+   try{
+    const result=await refetchRecent()
+    const next=queryState()??result
+    const advanced=next.dataUpdatedAt>intent.updatedAt||next.dataUpdateCount>intent.updateCount
+    if(latestIntent.current===intent&&next.fetchStatus==='idle'&&advanced&&recentFresh(next)&&liveMenuOwner())latest=recentRows(next.data,menu.getSettings())?.[0]
+   }finally{
+    if(latestIntent.current===intent){latestIntent.current=null;if(menu.isCurrent())setBusy(false)}
+   }
+   if(latest)await open(latest.id)
+  }
   // Keep the first action focusable while the fresh list is loading.
-  const action=(label,disabled,run)=>jsx('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&menu.isCurrent())void run()},style:{...s.button,textAlign:'left',opacity:disabled ? .55 : 1,cursor:disabled?'default':'pointer'},children:label})
+  const action=(label,disabled,run)=>jsx('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&!latestIntent.current&&menu.isCurrent())void run()},style:{...s.button,textAlign:'left',opacity:disabled ? .55 : 1,cursor:disabled?'default':'pointer'},children:label})
   const markAll=async()=>{
    rowLock.current=true;setBusy(true);setError('')
    try{await completion.ackAll(menu.owner,menu.isCurrent)}finally{rowLock.current=false;if(menu.isCurrent())setBusy(false)}
   }
-  return jsxs(React.Fragment,{children:[action(tr(latestLabel),busy||!latest,()=>open(latest.id)),action(tr('completion.markAllRead'),busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
+  return jsxs(React.Fragment,{children:[action(tr(latestLabel),busy||!canOpen,openLatest),action(tr('completion.markAllRead'),busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
  }
 
  // Match the loaded list and footer from the first render; allow shrinking in short viewports.
@@ -657,12 +703,12 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
  const placeholder=(children,center=false)=>jsxs('div',{style:recentLayout,children:[jsx('div',{'data-recent-list':true,style:center?{...recentList,display:'grid',placeItems:'center'}:recentList,children}),jsx('div',{style:{height:18,flexShrink:0}})]})
  if(!owner) return placeholder([jsx('span',{children:routeStatus},'message'),phase!=='loading'?jsx('button',{onClick:retryRoutes,children:tr('common.retry')},'retry'):null])
  if(q.isPending) return placeholder(listStatus,q.fetchStatus!=='idle')
- if(q.isError) return placeholder([jsx('span',{children:listStatus},'message'),jsx('button',{onClick:()=>setGeneration(n=>n+1),children:tr('common.retry')},'retry')])
+ if(q.isError&&!rows?.length) return placeholder([jsx('span',{role:'alert',children:listStatus},'message'),retryList()])
 
 
  const ellipsis={whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}
  const projectLabel=id=>projects.isError?tr('project.loadFailed'):projects.isPending?tr('project.loading'):(typeof projects.data?.labels?.[id]==='object'?tr(projects.data.labels[id].fallback):projects.data?.labels?.[id])||tr('project.uncategorized')
- return jsxs('div',{style:recentLayout,children:[jsx('style',{children:rowArcCss}),jsx(RecentScroll,{style:recentList,revision:Math.min(count,q.data.rows.length),children:q.data.rows.length?q.data.rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:'9px 8px',background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:4},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,children:'›'})]},row.id)):tr('session.empty')},baseCount),error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[count<q.data.rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
+ return jsxs('div',{style:recentLayout,children:[jsx('style',{children:rowArcCss}),jsx(RecentScroll,{style:recentList,revision:Math.min(count,rows.length),children:rows.length?rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:'9px 8px',background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:4},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,children:'›'})]},row.id)):tr('session.empty')},baseCount),q.isError?jsxs('div',{role:'alert',children:[listStatus,retryList()]}):null,error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[count<rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
 }
 const unreadCircle={width:10,height:10,borderRadius:'50%',background:'var(--ui-red, #e53935)'}
 function FolderBreadcrumbs({root,path,busy,go}){
@@ -1175,6 +1221,59 @@ function Settings({preferences}){
  ]})
  return jsxs('div',{style:{padding:20,width:'100%',boxSizing:'border-box'},children:[jsx('h2',{children:'SessionCrew'}),toggle(tr('settings.hideOffline'),tr('settings.offlineHelp'),settings.hideOffline,v=>save({hideOffline:v})),toggle(tr('settings.showCron'),tr('settings.cronHelp'),settings.showCron,v=>save({showCron:v})),toggle(tr('settings.developerMode'),tr('settings.developerHelp'),settings.developerMode,v=>save({developerMode:v})),recentCountControl,jsxs('div',{style:{padding:'12px 0'},children:[jsxs('div',{style:{display:'flex',flexWrap:'wrap',alignItems:'center',gap:10},children:[jsxs('div',{style:{flex:'1 1 340px',minWidth:0},children:[jsx('div',{style:{fontSize:13,fontWeight:600,color:'var(--ui-text-primary)'},children:tr('settings.platforms')}),jsx('p',{style:description,children:tr('settings.messagingHelp')})]}),jsxs('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginLeft:'auto'},children:[jsx('button',{type:'button',disabled,style:bulkStyle,onClick:()=>save({hiddenMessagingSources:settings.hiddenMessagingSources.filter(s=>!messagingSources.has(s))}),children:tr('settings.showAllPlatforms')}),jsx('button',{type:'button',disabled,style:bulkStyle,onClick:()=>save({hiddenMessagingSources:[...new Set([...settings.hiddenMessagingSources,...messagingSources])]}),children:tr('settings.hideAllPlatforms')})]})]}),observed.map(platform),jsxs('details',{children:[jsx('summary',{style:{cursor:'pointer',padding:'10px 0',color:'var(--ui-text-primary)',fontSize:13},children:tr('settings.otherPlatforms')}),...other.map(platform)]})]}),jsxs('section',{style:{padding:'12px 0'},children:[jsx('div',{style:{fontSize:13,fontWeight:600,color:'var(--ui-text-primary)'},children:tr('settings.visibleProfiles')}),jsx('p',{style:description,children:tr('settings.storageHelp')}),q.isPending?jsx('p',{children:tr('settings.loadingProfiles')}):q.isError?jsx('p',{role:'alert',children:tr('settings.profileLoadFailed')}):jsx('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginTop:10},children:(q.data||[]).map(p=>{const visible=!settings.hiddenProfiles.includes(p.name);return jsx('button',{type:'button','aria-pressed':visible,disabled,onClick:()=>save({hiddenProfiles:visible?[...settings.hiddenProfiles,p.name]:settings.hiddenProfiles.filter(x=>x!==p.name)}),style:{minHeight:30,maxWidth:'100%',overflowWrap:'anywhere',padding:'5px 10px',border:'1px solid '+(visible?'var(--ui-accent)':'var(--ui-stroke-secondary)'),borderRadius:5,background:visible?'var(--ui-accent)':'var(--ui-bg-elevated)',color:visible?'var(--dt-midground-foreground, var(--ui-bg-editor))':'var(--ui-text-primary)',fontSize:12,cursor:disabled?'default':'pointer',opacity:disabled?0.55:1},children:p.name},p.name)})})]}),settings.error?jsx('p',{role:'alert',children:settings.error.translationKey?tr(settings.error.translationKey):localizeError(settings.error)}):null]})
 }
+function useRecentPrewarm({connection,profile,activation,owners,ready,rest,selectedRef}){
+ const latest=useRef(null),inFlight=useRef(false),wake=useRef(null)
+ React.useLayoutEffect(()=>{
+  const client=sdk.queryClient,cache=client?.getQueryCache?.()
+  if(!profile||!rest||!client?.prefetchQuery||!client.getQueryState||!client.isFetching||!cache?.subscribe||typeof document==='undefined')return
+  const scope=[connection,profile,activation],prefix=['sessioncrew','recent',...scope]
+  const attempted=new Set()
+  let queue=null,timer=null,stopped=false
+  const atoms=[host.state.connectionId,host.state.profile]
+  const sameScope=()=>!stopped&&atoms[0].get()===connection&&atoms[1].get()===profile&&(activation===null||typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===activation)
+  const canRun=()=>sameScope()&&latest.current?.ready&&document.visibilityState==='visible'&&navigator.onLine!==false&&!selectedRef.current&&!inFlight.current&&!client.isFetching({queryKey:prefix})
+  const clear=()=>{clearTimeout(timer);timer=null}
+  async function next(){
+   timer=null
+   if(!canRun())return
+   while(queue.length){
+    const name=queue.shift(),owner=latest.current.owners.get(name)
+    if(!owner||attempted.has(name))continue
+    const queryKey=recentQueryKey(scope,owner),state=client.getQueryState(queryKey)
+    if(state&&(state.fetchStatus!=='idle'||state.dataUpdateCount||state.errorUpdateCount))continue
+    attempted.add(name);inFlight.current=true
+    try{
+     // Do not leave an offline prefetch paused inside QueryClient to auto-start later.
+     await client.prefetchQuery({queryKey,queryFn:()=>recentData(owner,'background',rest),staleTime:recentStaleTime,retry:false,networkMode:'always'})
+    }finally{inFlight.current=false;wake.current?.()}
+    return
+   }
+  }
+  const pump=()=>{
+   // Snapshot order once. The live owner map is only for dispatch-time validation.
+   if(queue===null&&sameScope()&&latest.current?.ready)queue=[...latest.current.owners.keys()]
+   if(!queue?.length||!canRun()){clear();return}
+   // Yield to browser and query callbacks; recheck guards on the next turn.
+   if(timer===null)timer=setTimeout(()=>void next(),0)
+  }
+  wake.current=pump
+  const unsubscribe=cache.subscribe(event=>{
+   const key=event.query?.queryKey
+   if(event.type!=='updated'||!key||!prefix.every((part,i)=>key[i]===part))return
+   if(event.action?.type==='fetch')attempted.add(key[6])
+   pump()
+  })
+  const unwatch=atoms.map(atom=>atom.subscribe?.(()=>{if(!sameScope()){stopped=true;clear()}}))
+  document.addEventListener('visibilitychange',pump)
+  window.addEventListener('online',pump);window.addEventListener('offline',pump)
+  return()=>{
+   stopped=true;clear();wake.current=null;unsubscribe();unwatch.forEach(off=>off?.())
+   document.removeEventListener('visibilitychange',pump)
+   window.removeEventListener('online',pump);window.removeEventListener('offline',pump)
+  }
+ },[connection,profile,activation,rest,selectedRef])
+ React.useLayoutEffect(()=>{latest.current={owners,ready};wake.current?.()})
+}
 function Rail({storage,rest,preferences}){
  const tr=useTranslator()
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
@@ -1213,7 +1312,8 @@ function Rail({storage,rest,preferences}){
   const dispose=atoms.map(atom=>atom.subscribe?.(check))
   return()=>{dispose.forEach(fn=>fn?.());selectionEpoch.current++}
  },[select])
- const routes=useQuery({queryKey:['sessioncrew','routes',connectionId,profile,routeGeneration],queryFn:()=>typeof host.profileRoutes==='function'?bounded(()=>host.profileRoutes(),'common.routeLookup'):Promise.resolve(null),enabled:!!profile,retry:false})
+ const activation=activityScopeNow.epoch
+ const routes=useQuery({queryKey:['sessioncrew','routes',connectionId,profile,routeGeneration,activation],queryFn:()=>typeof host.profileRoutes==='function'?bounded(()=>host.profileRoutes(),'common.routeLookup'):Promise.resolve(null),enabled:!!profile,retry:false})
  const liveRoutes=useRef(null)
  React.useLayoutEffect(()=>{liveRoutes.current=routes.isSuccess?{connectionId,profile,data:routes.data}:null},[connectionId,profile,routes.isSuccess,routes.data])
  const q=useQuery({queryKey:['sessioncrew','roster',connectionId,profile],queryFn:async()=>{
@@ -1227,11 +1327,8 @@ function Rail({storage,rest,preferences}){
   if(host.state.connectionId.get()!==connectionId || host.state.profile.get()!==profile) throw new Error('Connection changed')
   return rows
  },enabled:!!profile,retry:false})
- if(q.isPending) return jsx('p',{children:q.fetchStatus==='idle'?tr('common.connectionNotReady'):tr('settings.loadingProfiles')})
- if(q.isError) return jsxs('div',{children:[jsx('p',{children:tr('settings.profilesUnknown')}),jsx('button',{onClick:()=>q.refetch(),children:tr('common.retry')})]})
- if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const byName=new Map(office.map(row=>[row.profile,row]))
- const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>{
+ const profiles=(q.data??[]).filter(p=>typeof p.name==='string').map((p,index)=>{
   const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);const row=byName.get(p.name),base=railStatus(row)
   const evidence=activityMap[attentionKey],activity=evidence?.activity,waiting=activity?.waiting===true,background=activity?.background||[],working=activity?.working===true
   const idleAllowed=base==='idle'||base==='online_unobserved'&&(row.status_observation==='fresh_shared_gateway_no_observed_owner_work'||recentWork(row))
@@ -1268,6 +1365,22 @@ function Rail({storage,rest,preferences}){
   if(aRank===statusOrder.idle){const when=p=>Math.max(p.idleSince||0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
   return a.index-b.index
  })
+ const routeStatus=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
+ const destinations=new Map(profiles.map(p=>{
+  if(routeStatus)return [p.name,{owner:null,phase:routeStatus}]
+  try{return [p.name,{owner:{connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)},phase:''}]}
+  catch(e){return [p.name,{owner:null,phase:errorMessage(e,tr)}]}
+ }))
+ const warmOwners=new Map()
+ for(const [name,{owner}] of destinations){
+  if(!owner)continue
+  const supported=typeof owner.route==='string'?name===profile&&typeof host.request==='function':typeof host.requestProfile==='function'
+  if(supported)warmOwners.set(name,owner)
+ }
+ useRecentPrewarm({connection:connectionId,profile,activation,owners:warmOwners,ready:settings.ready&&q.isSuccess&&q.fetchStatus==='idle'&&routes.isSuccess&&routes.fetchStatus==='idle',rest,selectedRef})
+ if(q.isPending) return jsx('p',{children:q.fetchStatus==='idle'?tr('common.connectionNotReady'):tr('settings.loadingProfiles')})
+ if(q.isError) return jsxs('div',{children:[jsx('p',{children:tr('settings.profilesUnknown')}),jsx('button',{onClick:()=>q.refetch(),children:tr('common.retry')})]})
+ if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
  return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'}),...profiles.map(p=>{
   const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected?.key===selectionKey,compact=active&&selected.mode==='menu'
@@ -1283,14 +1396,13 @@ function Rail({storage,rest,preferences}){
    refreshLaunch(n=>n+1)
    return()=>{if(launchEpoch.current===epoch)launchEpoch.current=null;refreshLaunch(n=>n+1)}
   }
-  let owner=null,phase=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
-  if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
+  const {owner,phase}=destinations.get(p.name)
   const openMenu=e=>{e.preventDefault();if(!dialogActive.current)select(selectionKey,'menu')}
   const avatarActions={onContextMenu:openMenu,onKeyDown:e=>{if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10')openMenu(e)},onClick:e=>{if(compact){e.preventDefault();select(selectionKey)}}}
   const preserveFocus=e=>{const next=selectedRef.current;if(next&&(next.key!==selectionKey||selectionEpoch.current!==epoch))e.preventDefault()}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
    jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:completion.has(p.name,p.background),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,p.background),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
-   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},isCurrent,getLiveOwner},onOpened:()=>{if(isCurrent())select(null)}})},'menu'):
+   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},isCurrent,getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(isCurrent())select(null)}})},'menu'):
    jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]},'panel')]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }

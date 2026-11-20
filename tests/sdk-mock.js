@@ -7,8 +7,7 @@ export { Textarea } from '@/components/ui/textarea.tsx'
 import { QueryClient } from '@tanstack/react-query'
 export { useQuery } from '@tanstack/react-query'
 export const queryClient = new QueryClient({defaultOptions:{queries:{retry:false}}})
-export const useGatewayActivationEpoch=()=>1
-export const gatewayActivationEpoch=()=>1
+
 import {useSyncExternalStore} from 'react'
 // Existing visual baselines are Traditional Chinese. Tests can opt into the
 // plugin's English default with ?locale=en; use the public SDK i18n contract.
@@ -18,6 +17,9 @@ const translate=(key,...args)=>{const get=locale=>key.split('.').reduce((node,pa
 export const fixtureI18n={register:messages=>{fixtureMessages=messages},t:translate}
 export const usePluginI18n=()=>{const locale=useSyncExternalStore(fn=>{localeListeners.add(fn);return()=>localeListeners.delete(fn)},()=>fixtureLocale);return (key,...args)=>{const get=l=>key.split('.').reduce((node,part)=>node?.[part],fixtureMessages[l]);const value=get(locale)??get('en');return typeof value==='function'?value(...args):typeof value==='string'?value:key}}
 const atom=value=>{const listeners=new Set();return {get:()=>value,set:v=>{value=v;for(const f of listeners)f()},subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}}}
+const activationAtom=atom(1);window.fixtureSetActivation=v=>activationAtom.set(v)
+export const gatewayActivationEpoch=activationAtom.get
+export const useGatewayActivationEpoch=()=>useValue(activationAtom)
 const profileAtom=atom(new URLSearchParams(location.search).has('snapshot')?'default':'Aster');window.fixtureSetProfile=v=>profileAtom.set(v)
 const gatewayAtom=atom('open');window.fixtureSetGateway=v=>gatewayAtom.set(v)
 const listeners=new Map();window.emitFixtureGatewayEvent=event=>{for(const fn of listeners.get(event.type)||[])fn(event)}
@@ -26,9 +28,10 @@ host.activeConnectionId=()=>host.state.connectionId.get()
 const fixtureOpenSession=host.openSession
 host.openSession=async (...args)=>{await fixtureOpenSession(...args);await window.fixtureOpenSession?.(...args)}
 host.state.gateway=gatewayAtom
+if(window.fixtureProfileRoutes)host.profileRoutes=window.fixtureProfileRoutes
 const fixtureRequestProfile=host.requestProfile
 host.requestProfile=(route,method,params,...rest)=>{
- if(method==='session.list'&&window.fixtureSessionList)return window.fixtureSessionList(route,params)
+ if(method==='session.list'&&window.fixtureSessionList)return window.fixtureSessionList(route,params,...rest)
  if(method==='session.active_list'||method==='subagent.roster'){
   window.fixtureActivityCalls=(window.fixtureActivityCalls||[]).concat([{route,method,params}])
   if(window.fixtureActivityRequest)return window.fixtureActivityRequest(route,method,params)
