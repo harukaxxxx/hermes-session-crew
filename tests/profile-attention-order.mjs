@@ -20,7 +20,7 @@ const sdk={host,useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
 let contribution;mod.namespace.default.register({storage,rest,register:x=>contribution=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 async function until(fn){const end=Date.now()+3000;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,5))});if(fn())return}throw Error('fixture timeout: '+document.body.textContent)}
-const entries=()=>[...document.querySelectorAll('.profile-rail-hit')].map(x=>({name:x.getAttribute('aria-label').split(' · ')[0].toLowerCase(),hand:!!x.closest('[data-avatar-stack]').querySelector('[data-avatar-waiting]'),dot:!!x.closest('[data-avatar-stack]').querySelector('[data-completion-badge]')}))
+const entries=()=>[...document.querySelectorAll('.profile-rail-hit')].map(x=>({name:x.getAttribute('aria-label').split(' · ')[0].toLowerCase(),status:x.dataset.stateName,hand:!!x.closest('[data-avatar-stack]').querySelector('[data-avatar-waiting]'),dot:!!x.closest('[data-avatar-stack]').querySelector('[data-completion-badge]')}))
 const order=()=>entries().map(x=>x.name)
 try{
  await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
@@ -53,7 +53,23 @@ try{
  active.offline=[record('offline')]
  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
  await until(()=>entries().find(x=>x.name==='offline')?.hand)
- assert.equal(order().at(-1),'offline','even a displayed hand cannot cross a status group')
+ assert.equal(order().at(-1),'offline','a displayed hand cannot promote an offline avatar')
  assert.equal(entries().find(x=>x.name==='office wait').hand,false,'office waiting does not produce an avatar hand')
+ const handStatus=status.find(p=>p.profile==='hand')
+ for(const state of ['online_unobserved','unknown']){
+  Object.assign(handStatus,{state,idle_since:null})
+  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','status']}))
+  await until(()=>entries().some(x=>x.name==='hand'&&x.status===state))
+  assert.deepEqual(order(),['working','office wait','both','dot','idle new','plain','idle old','hand','offline'],'without verified input, the original status order applies')
+  active.hand=[record('hand')]
+  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
+  await until(()=>entries().some(x=>x.name==='hand'&&x.hand))
+  assert.equal(entries().find(x=>x.name==='hand').status,state,'promoting a hand does not change the displayed status')
+  assert.deepEqual(order(),['working','office wait','hand','both','dot','idle new','plain','idle old','offline'],`verified input beats idle and unread even with ${state} status`)
+  active.hand=[]
+  await React.act(async()=>client.refetchQueries({queryKey:['sessioncrew','profile-input-waiting']}))
+  await until(()=>entries().some(x=>x.name==='hand'&&!x.hand))
+  assert.deepEqual(order(),['working','office wait','both','dot','idle new','plain','idle old','hand','offline'],'clearing the hand restores status order')
+ }
  console.log('PASS profile attention ordering uses displayed markers')
 }finally{await React.act(async()=>root.unmount());client.clear()}

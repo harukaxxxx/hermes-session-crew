@@ -30,6 +30,7 @@ mock.push('request-priority')
 mock.push('profile-attention-order')
 mock.push('idle-clear-order')
 mock.push('shared-owner-activity')
+mock.push('status-recovery')
 browser.push('browser-session-hand')
 browser.push('browser-recent-footer')
 browser.push('browser-project-stability')
@@ -45,7 +46,8 @@ browser.push('browser-idea-integration')
 browser.push('browser-recent-reserve')
 browser.push('browser-row-activity')
 browser.push('browser-session-launch')
-const commands=[['node','--check','desktop/plugin.js'],[path.join(HERMES_CHECKOUT,'.venv/bin/python'),'-I','-B','tests/folder_backend_fixture.py'],['node','tests/live-contract.mjs'],['node','tests/popover-fixture-contract.mjs'],['node','tests/popover-owned-ref.mjs'],...mock.map(x=>['node','--experimental-vm-modules',`tests/${x}.mjs`]),['node','tests/build-sdk.mjs'],...browser.map(x=>['node',`tests/${x}.mjs`])]
+browser.push('browser-elapsed-attention')
+const commands=[['node','--check','desktop/plugin.js'],[path.join(HERMES_CHECKOUT,'.venv/bin/python'),'-I','-B','tests/folder_backend_fixture.py'],['node','tests/live-contract.mjs'],['node','tests/popover-fixture-contract.mjs'],['node','tests/popover-owned-ref.mjs'],...mock.map(x=>['node','--experimental-vm-modules',`tests/${x}.mjs`]),...['cache','legacy'].map(mode=>['node','--experimental-vm-modules','tests/status-recovery.mjs',mode]),['node','tests/build-sdk.mjs'],...browser.map(x=>['node',`tests/${x}.mjs`])]
 const inherited=Object.fromEntries(['PATH','CHROME_PATH','RAIL_TEST_SCRATCH','HERMES_CHECKOUT'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]))
 const env={...inherited,HOME:path.join(run,'home'),HERMES_HOME:path.join(run,'hermes'),HERMES_AGENT_ROOT:HERMES_CHECKOUT,TMPDIR:run,PYTHONDONTWRITEBYTECODE:'1',PYTHONNOUSERSITE:'1'}
 const git=(...args)=>{const p=spawnSync('git',['-C',HERMES_CHECKOUT,...args],{env,encoding:'utf8'});if(p.status!==0)throw Error('Cannot attest Hermes source: '+p.stderr);return p.stdout.trim()}

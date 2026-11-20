@@ -41,7 +41,7 @@ try{
  assert.ok(geometry.wrap&&!geometry.overflow&&Math.abs(geometry.switchRight[0]-geometry.switchRight[1])<1&&geometry.chipHeight>=30,JSON.stringify(geometry))
  for(const locale of ['en','zh-hant'])for(const [width,tag] of [[760,'wide'],[320,'narrow']]){
   await page.setViewportSize({width,height:600});await page.goto(pathToFileURL(html).href+'?lang='+locale);await page.waitForFunction(()=>window.fixture.preferences.get().ready)
-  assert.equal(await page.getByRole('switch',{name:locale==='en'?'Developer mode':'開發者模式'}).getAttribute('aria-checked'),'false');assert.equal(await page.getByText(locale==='en'?'Show idle minutes on profile avatars.':'在設定檔頭像顯示閒置分鐘數。',{exact:true}).count(),1)
+  assert.equal(await page.getByRole('switch',{name:locale==='en'?'Developer mode':'開發者模式'}).getAttribute('aria-checked'),'false');assert.equal(await page.getByText(locale==='en'?'Show elapsed time on profile avatars when idle, an input wait, or a completion has been observed.':'有閒置、等待輸入或完成的觀察紀錄時，在設定檔頭像顯示經過時間。',{exact:true}).count(),1)
   const recentGroup=page.getByRole('group',{name:locale==='en'?'Recent sessions':'近期工作階段'})
   assert.deepEqual(await recentGroup.getByRole('button').allTextContents(),['3','5','10','15'])
   const title=page.getByText(locale==='en'?'Messaging platforms':'訊息平台',{exact:true}),help=page.getByText(locale==='en'?'Choose which messaging sessions appear in bubbles and unread dots. Unknown sources remain visible; unread records are preserved.':'選擇要在泡泡及未讀紅點中顯示的訊息平台。來源未知時仍顯示；未讀紀錄會保留。',{exact:true}),showHeader=page.getByRole('button',{name:locale==='en'?'Show all':'全部顯示'}),hideHeader=page.getByRole('button',{name:locale==='en'?'Hide all':'全部隱藏'})

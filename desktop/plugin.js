@@ -94,7 +94,7 @@ const messages = {
       loadingProfiles: "Loading profiles…",
       hideOffline: "Hide offline profiles",
       showCron: "Show Cron sessions",
-      developerMode: "Developer mode", developerHelp: "Show idle minutes on profile avatars.",
+      developerMode: "Developer mode", developerHelp: "Show elapsed time on profile avatars when idle, an input wait, or a completion has been observed.",
 
       profilesUnknown: "Profiles unavailable · state unknown",
       noProfiles: "No profiles available",
@@ -120,6 +120,8 @@ const messages = {
       historicalIdle: "Elapsed since last confirmed idle; current activity unknown",
       observedIdle: "Elapsed since work was observed to end; other activity may be unknown",
       lastActivityElapsed: "Elapsed since last recorded session activity; idle not confirmed",
+      inputWaitElapsed: "Elapsed since the current input wait was first observed",
+      unreadCompletionElapsed: "Elapsed since an unread completion was observed; idle not confirmed",
       offline: "offline",
       unknown: "unknown",
       label: value => `Status: ${value}`,
@@ -291,7 +293,7 @@ const messages = {
       loadingProfiles: "載入設定檔…",
       hideOffline: "隱藏離線設定檔",
       showCron: "顯示 Cron 工作階段",
-      developerMode: "開發者模式", developerHelp: "在設定檔頭像顯示閒置分鐘數。",
+      developerMode: "開發者模式", developerHelp: "有閒置、等待輸入或完成的觀察紀錄時，在設定檔頭像顯示經過時間。",
 
       profilesUnknown: "設定檔無法載入・狀態未知",
       noProfiles: "沒有設定檔",
@@ -317,6 +319,8 @@ const messages = {
       historicalIdle: "自上次確認閒置起經過的時間；目前活動狀態未知",
       observedIdle: "自觀察到工作結束起經過的時間；其他活動可能未知",
       lastActivityElapsed: "距上次記錄的工作階段活動已過的時間；未確認閒置",
+      inputWaitElapsed: "自首次觀察到目前等待輸入起經過的時間",
+      unreadCompletionElapsed: "自觀察到未讀完成起經過的時間；未確認閒置",
       offline: "離線",
       unknown: "未知",
       label: value => `狀態：${value}`,
@@ -549,7 +553,8 @@ function useProfileInputWaiting(owner,rest,poll=true){
    }
   }
   const uniqueBackground=[...new Set(background)].sort(),backgroundSet=new Set(uniqueBackground),states=Object.fromEntries(active.sessions.map(r=>[r.id,backgroundSet.has(r.id)?'background':r.status]))
-  return {states,waiting:active.sessions.some(r=>r.status==='waiting'),working:active.sessions.some(r=>r.status==='working'||r.status==='starting'),background:uniqueBackground,started,observedAt:Date.now(),sessions:active.sessions,rosterKnown,unmatchedBackground}
+  const inputWait=active.sessions.filter(r=>r.status==='waiting').map(r=>JSON.stringify([r.id,r.source])).sort()
+  return {states,waiting:inputWait.length>0,inputWaitKey:JSON.stringify(inputWait),working:active.sessions.some(r=>r.status==='working'||r.status==='starting'),background:uniqueBackground,started,observedAt:Date.now(),sessions:active.sessions,rosterKnown,unmatchedBackground}
  }})
  const [,tick]=useState(0);useEffect(()=>{if(!q.data)return;const timer=setTimeout(()=>tick(n=>n+1),Math.max(0,q.data.started+ACTIVITY_TTL-Date.now()));return()=>clearTimeout(timer)},[q.data])
  useEffect(()=>{if(!poll||!supported||typeof host.onEvent!=='function')return;return host.onEvent('gateway.ready',()=>{void q.refetch({cancelRefetch:false})})},[poll,supported,key])
@@ -576,11 +581,20 @@ function observeIdle(previous,activity,allowed){
  const allIdle=cohort.size>0&&[...cohort.keys()].every(id=>byId.get(id)?.status==='idle')
  return {executing:history?.since&&!allIdle?executing:cohort,since:allIdle?(history?.since??activity.observedAt/1000):null,activity}
 }
-function ProfileAvatar({owner,ownerName,rest,attentionKey,idleAllowed,onActivity,...props}){
+const elapsedMinutes=(clock,since)=>Math.max(0,Math.floor((clock-since*1000)/60000))
+function ProfileAvatar({owner,ownerName,rest,attentionKey,idleAllowed,onActivity,clock,status,unreadSince,elapsedHint,...props}){
  const tr=useTranslator(),{activity,conflict}=useProfileInputWaiting(owner,rest),waiting=activity?.waiting===true,label=waiting?tr('sessionActivity.waiting'):'',history=useRef(null)
+ const previous=history.current?.key===attentionKey?history.current:null
+ const continuedWait=waiting&&previous?.activity?.waiting&&previous.activity.inputWaitKey===activity.inputWaitKey&&activity.started>=previous.activity.started&&activity.observedAt-previous.activity.started<ACTIVITY_TTL
+ const waitingSince=waiting?(continuedWait?previous.waitingSince:activity.observedAt/1000):null
  useEffect(()=>()=>onActivity(ownerName,attentionKey,undefined,null),[ownerName,attentionKey,onActivity])
- useEffect(()=>{const next=observeIdle(history.current?.key===attentionKey?history.current:null,activity,idleAllowed);history.current={...next,key:attentionKey};onActivity(ownerName,attentionKey,activity,next.since,conflict)},[ownerName,attentionKey,onActivity,activity,idleAllowed,conflict])
- return jsx(AvatarLayers,{...props,waiting,triggerProps:{...props.triggerProps,'aria-label':[props.triggerProps['aria-label'],label].filter(Boolean).join(' · '),title:[props.triggerProps.title,label|| (props.unread?tr('completion.unread'):'')].filter(Boolean).join(' ')||undefined}})
+ useEffect(()=>{const next=observeIdle(history.current?.key===attentionKey?history.current:null,activity,idleAllowed);history.current={...next,key:attentionKey,waitingSince};onActivity(ownerName,attentionKey,activity,next.since,conflict)},[ownerName,attentionKey,onActivity,activity,idleAllowed,conflict,waitingSince])
+ const busy=activity&&(activity.working||activity.background.length>0)
+ const allowed=props.developerMode&&!busy&&status!=='offline'&&status!=='working'
+ const idle=allowed&&!waiting?props.idleMinutes:null
+ const attentionSince=allowed&&!activity?.unmatchedBackground?(waiting?waitingSince:!conflict&&idle===null?unreadSince:null):null
+ const hint=attentionSince?(waiting?'inputWaitElapsed':'unreadCompletionElapsed'):idle!==null?elapsedHint:null
+ return jsx(AvatarLayers,{...props,waiting,idleMinutes:idle,attentionMinutes:attentionSince?elapsedMinutes(clock,attentionSince):null,triggerProps:{...props.triggerProps,'aria-label':[props.triggerProps['aria-label'],label].filter(Boolean).join(' · '),title:[props.triggerProps.title,hint?tr('status.'+hint):'',label|| (props.unread?tr('completion.unread'):'')].filter(Boolean).join(' ')||undefined}})
 }
 // Explicit known messaging adapter sources; unknown/plugin sources stay visible.
 const messagingPlatforms=[['Telegram',['telegram']],['Discord',['discord']],['WhatsApp',['whatsapp','whatsapp_cloud']],['Slack',['slack']],['Signal',['signal']],['Mattermost',['mattermost']],['Matrix',['matrix']],['Email',['email']],['SMS',['sms']],['DingTalk',['dingtalk']],['Feishu',['feishu']],['WeCom',['wecom','wecom_callback']],['Weixin',['weixin']],['BlueBubbles',['bluebubbles']],['QQ',['qqbot']],['Yuanbao',['yuanbao']],['LINE',['line']],['Google Chat',['google_chat']],['Teams',['teams']],['IRC',['irc']],['SimpleX',['simplex']]]
@@ -832,15 +846,18 @@ function lastActivityEstimate(row,now){
  return explicit||recency?row.last_session_activity:null
 }
 const fenceAt=(fences,name,at)=>fences.set(name,Math.max(fences.get(name)||0,at))
-function useRailSnapshot(rest,connection,profile,{epoch,generation}){
+const freshStatus=(q,now)=>!q.isError&&Array.isArray(q.data)&&Number.isFinite(q.dataUpdatedAt)&&now-q.dataUpdatedAt<STATUS_TTL&&q.dataUpdatedAt<=now+1000
+function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
  const scope=JSON.stringify([connection,profile,epoch,generation]), current=useRef(scope);current.current=scope
+ const sameScope=()=>current.current===scope&&activityScope.generation===generation&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
  const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),idleFences:new Map(),estimateFences:new Map(),oneshotFences:new Map()}
  const [clock,tick]=useState(()=>Date.now())
- const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch,generation],enabled:!!profile&&typeof rest==='function',retry:false,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async({signal}={})=>{
+ const enabled=!!profile&&typeof rest==='function'
+ const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch,generation],enabled,retry:false,staleTime:STATUS_TTL,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async({signal}={})=>{
  try{
   const sampledAt=Date.now()
   const data=await rest('/status',{method:'GET',timeoutMs:10000})
-  if(signal?.aborted||current.current!==scope||activityScope.generation!==generation||host.state.connectionId.get()!==connection||host.state.profile.get()!==profile||(typeof sdk.gatewayActivationEpoch==='function'&&sdk.gatewayActivationEpoch()!==epoch))throw new LocalizedError('errors.connectionChanged')
+  if(signal?.aborted||!sameScope())throw new LocalizedError('errors.connectionChanged')
   if(!Array.isArray(data))throw new LocalizedError('errors.statusFormat')
   const names=new Set();for(const row of data){if(!row||typeof row.profile!=='string'||!row.profile||names.has(row.profile)||typeof row.online!=='boolean'||typeof row.state!=='string')throw new LocalizedError('errors.statusFormat');names.add(row.profile)}
   const starts=history.current.starts,now=Date.now();if(history.current.lastAt&&now-history.current.lastAt>STATUS_TTL)starts.clear();history.current.lastAt=now
@@ -858,11 +875,18 @@ function useRailSnapshot(rest,connection,profile,{epoch,generation}){
   })
   for(const name of starts.keys())if(!names.has(name))starts.delete(name)
   return rows
- }catch(error){if(!signal?.aborted&&current.current===scope)history.current.starts.clear();throw error}
+ }catch(error){if(!signal?.aborted&&sameScope())history.current.starts.clear();throw error}
  }})
+ useEffect(()=>{
+  if(!enabled||gateway!=='open'||typeof host.onEvent!=='function')return
+  return host.onEvent('gateway.ready',event=>{
+   if((event?.connectionId??null)!==connection||event?.profile!==profile||!sameScope()||freshStatus(q,Date.now()))return
+   void q.refetch({cancelRefetch:false})
+  })
+ },[enabled,gateway,scope,q.data,q.dataUpdatedAt,q.isError,q.refetch])
  useEffect(()=>{const update=()=>{if(!document.hidden)tick(Date.now())};const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update)}},[])
  const {starts,idleFences,estimateFences,oneshotFences}=history.current
- if(q.isError||!Number.isFinite(q.dataUpdatedAt)||Date.now()-q.dataUpdatedAt>STATUS_TTL||q.dataUpdatedAt>Date.now()+1000||!Array.isArray(q.data)){starts.clear();return [[],clock,starts,idleFences,estimateFences,oneshotFences]}
+ if(!freshStatus(q,Date.now())){starts.clear();return [[],clock,starts,idleFences,estimateFences,oneshotFences]}
  const rows=q.data.map(row=>{
   const status=railStatus(row),since=backendIdleStart(row),start=starts.get(row.profile)
   if(status==='idle'&&validIdleStart(since,Date.now()))return {...row,presentationIdleSince:since}
@@ -960,7 +984,7 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
  const activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const [generation,retry]=useState(0),[,render]=useState(0),ref=useRef(null)
  const scope=JSON.stringify([connection??null,profile,activation,generation])
- if(!ref.current||ref.current.scope!==scope)ref.current={scope,ready:false,failed:false,baseline:null,known:null,gap:false,rows:[],cleared:new Map(),queue:Promise.resolve()}
+ if(!ref.current||ref.current.scope!==scope)ref.current={scope,ready:false,failed:false,baseline:null,known:null,gap:false,rows:[],observed:new Map(),cleared:new Map(),queue:Promise.resolve()}
  const state=ref.current
  const q=useQuery({queryKey:['sessioncrew','completion-snapshot',connection,profile,activation,generation],enabled:!!profile&&typeof rest==='function',retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false,refetchInterval:query=>query.state.status==='success'&&query.state.fetchFailureCount===0?15000:false,queryFn:async()=>{const data=validateSnapshot(await rest('/completion-snapshot',{method:'GET',timeoutMs:30000}));if(host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)throw new LocalizedError('errors.connectionChanged');return data}})
  const queryClient=typeof sdk.useQueryClient==='function'?sdk.useQueryClient():null
@@ -976,12 +1000,12 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
  useEffect(()=>{
   if(q.isError){state.baseline=null;return}
   if(!q.data||q.isFetching)return
-  const data=q.data
+  const data=q.data,completionObservation={since:q.dataUpdatedAt/1000,generation:activityScope.generation}
   state.queue=queueSnapshotStorage(async()=>{
    if(state.failed||!state.ready||ref.current!==state)return
    const source=JSON.stringify([connection??null,data.source_id,data.server_epoch]),old=state.baseline
    if(old&&old.source!==source)state.gap=false
-   let rows=state.rows.slice()
+   let rows=state.rows.slice();const observed=new Map(state.observed)
    const next=new Map(),known=state.known&&sameSnapshotDataset(state.known.source,source)?new Map(state.known.profiles):new Map()
    for(const p of data.profiles){
     if(p.status!=='ok'||p.truncated)continue
@@ -997,13 +1021,18 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
     // Dataset identity is not the session source. Classify only against an
     // owner/database-matched complete snapshot; disagreements stay unknown.
     rows=rows.map(x=>{if(!sameSnapshotDataset(x.source,source)||x.owner!==p.profile||x.database!==p.database_id)return x;const r=now.get(JSON.parse(x.key)[4]),previous=prior.get(JSON.parse(x.key)[4]);if(!r||r.session_id!==x.session)return x;const s=r.session_source??null,known=[x.last_known_session_source,x.session_source,previous?.session_source,s].filter(Boolean),conflict=!!x.session_source_conflict||new Set(known).size>1;return {...x,session_source:conflict?null:s,last_known_session_source:s??previous?.session_source??x.session_source??x.last_known_session_source??null,session_source_conflict:conflict}})
-    if(before&&consistent)for(const r of p.rows){const previous=prior.get(r.admission_id);const becameComplete=r.status==='terminal'&&r.outcome==='completed'&&(!previous||previous.status!=='terminal'||previous.outcome!=='completed');if(!becameComplete)continue;const key=JSON.stringify([source,p.profile,p.database_id,r.session_id,r.admission_id]);const conflict=!!(r.session_source&&previous?.session_source&&previous.session_source!==r.session_source);if(!rows.some(x=>sameSnapshotDataset(x.source,source)&&x.owner===p.profile&&x.database===p.database_id&&x.session===r.session_id&&JSON.parse(x.key)[4]===r.admission_id))rows.push({key,connection:JSON.stringify(connection??null),source,owner:p.profile,database:p.database_id,session:r.session_id,session_source:conflict?null:r.session_source??null,last_known_session_source:r.session_source??previous?.session_source??null,session_source_conflict:conflict,read:focusedMatches(p.profile,r.session_id)})}
+    if(before&&consistent)for(const r of p.rows){const previous=prior.get(r.admission_id);const becameComplete=r.status==='terminal'&&r.outcome==='completed'&&(!previous||previous.status!=='terminal'||previous.outcome!=='completed');if(!becameComplete)continue;const key=JSON.stringify([source,p.profile,p.database_id,r.session_id,r.admission_id]);const conflict=!!(r.session_source&&previous?.session_source&&r.session_source!==previous.session_source);if(!rows.some(x=>sameSnapshotDataset(x.source,source)&&x.owner===p.profile&&x.database===p.database_id&&JSON.parse(x.key)[4]===r.admission_id)){
+     const read=focusedMatches(p.profile,r.session_id)
+     rows.push({key,connection:JSON.stringify(connection??null),source,owner:p.profile,database:p.database_id,session:r.session_id,session_source:conflict?null:r.session_source??null,last_known_session_source:r.session_source??previous?.session_source??null,session_source_conflict:conflict,read})
+     if(!read&&!conflict)observed.set(key,completionObservation)
+    }}
     const coverage={database_id:p.database_id,high_water:p.high_water,rows:p.rows};next.set(p.profile,coverage);known.set(p.profile,coverage)
    }
    if(rows.length>5000)throw Error('completion ledger full')
    const baseline={source,profiles:next},knownCoverage={source,profiles:known}
    await writeSnapshotLedger(storage,rows,knownCoverage)
    if(ref.current!==state)return
+   state.observed=new Map(rows.filter(x=>!x.read&&x.source===source&&observed.has(x.key)).map(x=>[x.key,observed.get(x.key)]))
    state.rows=rows;state.baseline=baseline;state.known=knownCoverage;render(n=>n+1)
   }).catch(()=>{if(ref.current===state){state.failed=true;state.baseline=null;render(n=>n+1)}})
  },[q.data,q.dataUpdatedAt,q.isError,q.isFetching,state,storage,connection])
@@ -1049,16 +1078,25 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
   return m
  }
  const covered=(x,owner)=>x.owner===owner?.name&&owner?.connectionId===connection&&sameSnapshotDataset(x.source,state.baseline?.source)&&x.connection===JSON.stringify(connection??null)&&x.database===state.baseline?.profiles.get(owner.name)?.database_id&&!x.read
+ const visibleUnread=(x,owner,background)=>covered(x,owner)&&visible(x)&&!background.includes(x.session)
+ // Snapshot v2 has no terminal timestamp. Keep first observation times only
+ // in this scope, rather than dating restored unread entries to this mount.
+ const unreadSince=(name,background)=>{
+  if(!usable())return null
+  const owner={name,connectionId:connection};let since=null
+  for(const x of state.rows){const sample=state.observed.get(x.key);if(sample?.generation===activityScope.generation&&x.source===state.baseline.source&&!x.session_source_conflict&&visibleUnread(x,owner,background))since=Math.max(since||0,sample.since)}
+  return since
+ }
  const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
  // Source classification comes from the scoped completion ledger, not the
  // bounded recent list. Unknown/conflicting evidence stays visible.
- return {activityFor,childMetadataFor,ackAll,clearedAt:name=>usable()&&state.baseline.profiles.has(name)?state.cleared.get(clearKey({name})):null,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.baseline.profiles.has(name)&&state.rows.some(x=>sameSnapshotDataset(x.source,state.baseline.source)&&x.database===state.baseline.profiles.get(name).database_id&&x.connection===JSON.stringify(connection??null)&&x.owner===name&&!x.read&&visible(x)&&!background.includes(x.session)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}}
+ return {activityFor,childMetadataFor,ackAll,unreadSince,clearedAt:name=>usable()&&state.baseline.profiles.has(name)?state.cleared.get(clearKey({name})):null,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.rows.some(x=>visibleUnread(x,{name,connectionId:connection},background)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}}
 }
 const activityLabel=(n,t=tr)=>t('activity.observed',n)
 // Activity inputs are tri-state: unknown does not invent a child or a count.
 // Developer spacing leaves room for the outlined minutes and the next hand.
 export const profileRailGap=developerMode=>developerMode?18:10
-export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,offline=false,childRunning=null,childCount=null,childMetadata=null,runningCount=null,idleMinutes=null,developerMode=false,triggerProps={}}){
+export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,offline=false,childRunning=null,childCount=null,childMetadata=null,runningCount=null,idleMinutes=null,attentionMinutes=null,developerMode=false,triggerProps={}}){
  const tr=useTranslator()
  const box=useRef(null),[width,setWidth]=useState(0)
  useEffect(()=>{const el=box.current;if(!el)return;const update=()=>setWidth(el.clientWidth);update();const ro=typeof ResizeObserver==='function'?new ResizeObserver(update):null;ro?.observe(el);return()=>ro?.disconnect()},[])
@@ -1068,8 +1106,8 @@ export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,o
  const seenChildren=new Set(),children=childMetadata?.children?.filter(x=>{if(!['queued','recent'].includes(x.kind)||seenChildren.has(x.id))return false;seenChildren.add(x.id);return true})||[]
  const shadowColor=i=>i<extraRunning?statusColor.working:children[i-extraRunning]?.leased?statusColor.working:children[i-extraRunning]?.kind==='queued'?statusColor.waiting:statusColor.unknown
  const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
- const idleLabel=idleMinutes===null?null:Math.floor(idleMinutes/60)+'h'+idleMinutes%60+'m'
- return jsx('span',{ref:box,style:{display:'block',width:'100%',height:37},children:jsxs('span',{'data-avatar-stack':true,style:{position:'relative',display:'block',margin:'0 auto',left:developerMode&&waiting&&width?Math.min(0,(width+Math.min(natural,available))/2-44):undefined,width:Math.min(natural,available),height:37},children:[jsx('span',{style:{position:'absolute',inset:0,overflow:'hidden',zIndex:0},children:Array.from({length:visible},(_,i)=>jsxs('span',{style:{position:'absolute',left:(i+1)*6,top:1.5,width:34,height:34,zIndex:-(i+1),opacity:Math.max(0,1-(i+1)/7),pointerEvents:'none'},children:[face(null,i+1),jsx('span',{'data-child-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:0,width:34,height:34,borderRadius:'22%',boxShadow:'inset 0 0 0 1px '+shadowColor(i),zIndex:-(i+1),pointerEvents:'none'}})]},i))}),jsx(PopoverTrigger,{asChild:true,children:jsx('button',{...triggerProps,ref:avatarRef,type:'button',className:'profile-rail-hit',style:{...s.hit,position:'absolute',left:0,top:1.5,width:34,height:34,zIndex:1},children:face(null)})}),offline?jsx('span',{'data-avatar-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:1.5,width:34,height:34,borderRadius:'22%',outline:'2px solid '+color,zIndex:2,pointerEvents:'none'}}):null,waiting||unread?jsx('span',{'data-completion-badge':unread&&!waiting||undefined,'data-avatar-waiting':waiting||undefined,'aria-hidden':true,style:{position:'absolute',left:26,top:-5,zIndex:3,pointerEvents:'none',...(waiting?{fontSize:14,lineHeight:1}:{...unreadCircle,left:28,top:-3})},children:waiting?'✋':undefined}):null,idleMinutes!==null?jsx('span',{'data-idle-minutes':true,'aria-hidden':true,style:{position:'absolute',left:17,top:38,transform:'translateX(-50%)',zIndex:4,color:'#fff',fontSize:idleLabel.length>=10?5.5:idleLabel.length>=9?6:idleLabel.length>=8?7:idleLabel.length>=6?8:10,fontWeight:700,lineHeight:1,whiteSpace:'nowrap',textShadow:'-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',pointerEvents:'none'},children:idleLabel}):null,Number.isSafeInteger(runningCount)&&runningCount>=2?jsx('span',{'data-running-count':true,title:activityLabel(runningCount,tr),'aria-hidden':true,style:{position:'absolute',left:26,bottom:0,zIndex:3,borderRadius:'50%',minWidth:17,height:17,lineHeight:'17px',textAlign:'center',fontSize:9,color:'var(--ui-text-primary)',background:'var(--ui-bg-elevated)',border:'1px solid var(--ui-stroke-secondary)',pointerEvents:'none'},children:'x'+runningCount}):null]})})
+ const minutes=attentionMinutes??idleMinutes,label=minutes===null?null:Math.floor(minutes/60)+'h'+minutes%60+'m'
+ return jsx('span',{ref:box,style:{display:'block',width:'100%',height:37},children:jsxs('span',{'data-avatar-stack':true,style:{position:'relative',display:'block',margin:'0 auto',left:developerMode&&waiting&&width?Math.min(0,(width+Math.min(natural,available))/2-44):undefined,width:Math.min(natural,available),height:37},children:[jsx('span',{style:{position:'absolute',inset:0,overflow:'hidden',zIndex:0},children:Array.from({length:visible},(_,i)=>jsxs('span',{style:{position:'absolute',left:(i+1)*6,top:1.5,width:34,height:34,zIndex:-(i+1),opacity:Math.max(0,1-(i+1)/7),pointerEvents:'none'},children:[face(null,i+1),jsx('span',{'data-child-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:0,width:34,height:34,borderRadius:'22%',boxShadow:'inset 0 0 0 1px '+shadowColor(i),zIndex:-(i+1),pointerEvents:'none'}})]},i))}),jsx(PopoverTrigger,{asChild:true,children:jsx('button',{...triggerProps,ref:avatarRef,type:'button',className:'profile-rail-hit',style:{...s.hit,position:'absolute',left:0,top:1.5,width:34,height:34,zIndex:1},children:face(null)})}),offline?jsx('span',{'data-avatar-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:1.5,width:34,height:34,borderRadius:'22%',outline:'2px solid '+color,zIndex:2,pointerEvents:'none'}}):null,waiting||unread?jsx('span',{'data-completion-badge':unread&&!waiting||undefined,'data-avatar-waiting':waiting||undefined,'aria-hidden':true,style:{position:'absolute',left:26,top:-5,zIndex:3,pointerEvents:'none',...(waiting?{fontSize:14,lineHeight:1}:{...unreadCircle,left:28,top:-3})},children:waiting?'✋':undefined}):null,label!==null?jsx('span',{[attentionMinutes===null?'data-idle-minutes':'data-elapsed-minutes']:true,'aria-hidden':true,style:{position:'absolute',left:17,top:38,transform:'translateX(-50%)',zIndex:4,color:'#fff',fontSize:label.length>=10?5.5:label.length>=9?6:label.length>=8?7:label.length>=6?8:10,fontWeight:700,lineHeight:1,whiteSpace:'nowrap',textShadow:'-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',pointerEvents:'none'},children:label}):null,Number.isSafeInteger(runningCount)&&runningCount>=2?jsx('span',{'data-running-count':true,title:activityLabel(runningCount,tr),'aria-hidden':true,style:{position:'absolute',left:26,bottom:0,zIndex:3,borderRadius:'50%',minWidth:17,height:17,lineHeight:'17px',textAlign:'center',fontSize:9,color:'var(--ui-text-primary)',background:'var(--ui-bg-elevated)',border:'1px solid var(--ui-stroke-secondary)',pointerEvents:'none'},children:'x'+runningCount}):null]})})
 }
 // Fixed legacy set: future supported adapters must remain visible after migration.
 const legacyMessagingSources=['telegram','discord','whatsapp','whatsapp_cloud','slack','signal','mattermost','matrix','email','sms','dingtalk','feishu','wecom','wecom_callback','weixin','bluebubbles','qqbot','yuanbao','line','google_chat','teams','irc','simplex']
@@ -1182,11 +1220,17 @@ function Rail({storage,rest,preferences}){
   const estimateSince=estimated*1000>(estimateFences.get(p.name)||0)?estimated:null
   const idleSince=confirmedSince??estimateSince
   const idleKind=observedSince&&confirmedSince===observedSince?'observedIdle':backendSince&&row?.historicalIdle?'historicalIdle':estimateSince?'lastActivityElapsed':null
-  return {...p,index,attentionKey,status,waiting,background,idleAllowed,idleSince,idleKind}
+  const completionSince=settings.developerMode&&canShowIdle&&!idleSince&&!evidence?.conflict&&!activity?.unmatchedBackground&&(!activityScopeNow.gateway||activityScopeNow.gateway==='open')?completion.unreadSince(p.name,background):null
+  const unreadSince=validIdleStart(completionSince,now)&&completionSince*1000>(estimateFences.get(p.name)||0)?completionSince:null
+  return {...p,index,attentionKey,status,waiting,background,idleAllowed,idleSince,idleKind,unreadSince}
  }).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
- const order=p=>p.status==='online_unobserved'&&p.idleSince?statusOrder.idle:statusOrder[p.status],rank=order(a)-order(b);if(rank)return rank
- const attention=p=>p.waiting?0:completion.has(p.name,p.background)?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
-  if(order(a)===statusOrder.idle){const when=p=>Math.max(p.idleSince||0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
+  const order=p=>{
+   if(p.status==='online_unobserved'&&(p.waiting||p.idleSince)||p.status==='unknown'&&p.waiting)return statusOrder.idle
+   return statusOrder[p.status]
+  }
+  const aRank=order(a),rank=aRank-order(b);if(rank)return rank
+  const attention=p=>p.waiting?0:completion.has(p.name,p.background)?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
+  if(aRank===statusOrder.idle){const when=p=>Math.max(p.idleSince||0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
   return a.index-b.index
  })
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
@@ -1207,7 +1251,7 @@ function Rail({storage,rest,preferences}){
   let owner=null,phase=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
   if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(selectedRef.current===selectionKey)select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
-   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',idleMinutes:settings.developerMode&&p.idleSince?Math.max(0,Math.floor((clock-p.idleSince*1000)/60000)):null,unread:completion.has(p.name,p.background),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,p.background),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel,settings.developerMode&&p.idleKind?tr('status.'+p.idleKind):''].filter(Boolean).join(' ')||undefined}}),
+   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:completion.has(p.name,p.background),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,p.background),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
   jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }
