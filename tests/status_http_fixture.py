@@ -9,12 +9,18 @@ def forbid_real_kill(*args):
 os.kill = forbid_real_kill
 import psutil
 psutil.pid_exists = lambda pid: pid == os.getpid()
-psutil.Process = lambda pid: SimpleNamespace(status=lambda: psutil.STATUS_RUNNING)
+def process(pid):
+    if pid != os.getpid():
+        raise psutil.NoSuchProcess(pid)
+    return SimpleNamespace(status=lambda: psutil.STATUS_RUNNING, is_running=lambda: True,
+                           create_time=lambda: time.time() - 600)
+psutil.Process = process
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-spec = importlib.util.find_spec('hermes_state')
-assert spec and spec.origin
-sys.path.insert(0, str(Path(spec.origin).parent))
+# The JS harness uses python -I, which omits the script directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hermes_fixture_store import holder_namespace_token, use_hermes_checkout
+use_hermes_checkout()
 import gateway.status as gateway
 
 with tempfile.TemporaryDirectory(prefix='rail-status-fixture-') as d:
@@ -26,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix='rail-status-fixture-') as d:
         with sqlite3.connect(home / 'state.db') as db:
             db.executescript('''CREATE TABLE sessions(id TEXT, source TEXT, last_activity_at REAL, ended_at REAL, input_tokens INT, output_tokens INT, actual_cost_usd REAL, estimated_cost_usd REAL);
                 CREATE TABLE async_delegations(state TEXT, delivery_state TEXT, updated_at REAL, owner_pid INT, owner_started_at TEXT, parent_session_id TEXT, task_json TEXT);
-                CREATE TABLE session_turn_leases(conversation_id TEXT, expires_at REAL);''')
+                CREATE TABLE session_turn_leases(conversation_id TEXT, holder TEXT, acquired_at REAL, expires_at REAL);''')
             if name == 'alpha': db.execute('INSERT INTO sessions VALUES(?,?,?,?,?,?,?,?)', ('a','desktop',now,None,0,0,0,0))
             if name == 'beta':
                 db.execute('INSERT INTO sessions VALUES(?,?,?,?,?,?,?,?)', ('b','desktop',now-500,None,0,0,0,0))
@@ -48,8 +54,12 @@ with tempfile.TemporaryDirectory(prefix='rail-status-fixture-') as d:
         if command=='quit':break
         if command=='status':
             r=client.get('/api/plugins/sessioncrew/status');out={'status':r.status_code,'body':r.json()}
-        elif command=='foreground':
-            with sqlite3.connect(root/'profiles/beta/state.db') as db: db.execute('INSERT INTO session_turn_leases VALUES (?,?)',('b',time.time()+60))
+        elif command in ('dead-holder', 'foreground'):
+            pid = 701 if command == 'dead-holder' else os.getpid()
+            holder = f'pid={pid}{holder_namespace_token()}:turn=fixture:platform=desktop'
+            with sqlite3.connect(root/'profiles/beta/state.db') as db:
+                db.execute('DELETE FROM session_turn_leases')
+                db.execute('INSERT INTO session_turn_leases VALUES (?,?,?,?)', ('b', holder, now, time.time()+60))
             out={'ok':True}
         else:out={'error':'unknown command'}
         print(json.dumps(out),flush=True)

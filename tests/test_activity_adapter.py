@@ -9,8 +9,7 @@ from types import SimpleNamespace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-from hermes_state import SessionDB
-from hermes_state_pidns import holder_namespace_token
+from hermes_fixture_store import FixtureStore, holder_namespace_token
 
 
 @pytest.fixture(autouse=True)
@@ -31,7 +30,7 @@ def load():
 
 def test_native_lease_is_bounded_observation_and_release_clears(tmp_path):
     api = load()
-    db = SessionDB(db_path=tmp_path / 'state.db')
+    db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('one', 'desktop')
         db.create_session('two', 'desktop')
@@ -55,9 +54,9 @@ def test_cross_profile_child_owner_and_ambiguous_parent(tmp_path):
     api = load()
     alpha = tmp_path / 'profiles' / 'alpha'; alpha.mkdir(parents=True)
     beta = tmp_path / 'profiles' / 'beta'; beta.mkdir(parents=True)
-    rootdb = SessionDB(db_path=tmp_path / 'state.db')
-    parentdb = SessionDB(db_path=alpha / 'state.db')
-    childdb = SessionDB(db_path=beta / 'state.db')
+    rootdb = FixtureStore(db_path=tmp_path / 'state.db')
+    parentdb = FixtureStore(db_path=alpha / 'state.db')
+    childdb = FixtureStore(db_path=beta / 'state.db')
     try:
         parentdb.create_session('parent', 'desktop')
         childdb.create_session('child', 'subagent')
@@ -81,24 +80,25 @@ def test_cross_profile_child_owner_and_ambiguous_parent(tmp_path):
 def test_lease_validation_conservatively_rejects_unverifiable(monkeypatch):
     api = load(); now = time.time()
     holder = f'pid={os.getpid()}{holder_namespace_token()}:turn=a:b:c:platform=desktop'
-    assert api._lease_reason('unexpected', now-2, now+100, now) == 'unsupported_holder'
-    assert api._lease_reason(holder, now-10, now-1, now) == 'expired_lease'
+    evidence = api._evidence
+    assert evidence.lease_reason('unexpected', now-2, now+100, now) == 'unsupported_holder'
+    assert evidence.lease_reason(holder, now-10, now-1, now) == 'expired_lease'
     class FakeProcess:
         def __init__(self, pid): pass
         def is_running(self): return True
         def status(self): return 'running'
         def create_time(self): return now-1
-    monkeypatch.setattr(api.psutil, 'Process', FakeProcess)
-    assert api._lease_reason(holder, now-2, now+100, now) == 'pid_reused'
+    monkeypatch.setattr(evidence.psutil, 'Process', FakeProcess)
+    assert evidence.lease_reason(holder, now-2, now+100, now) == 'pid_reused'
     monkeypatch.setattr(FakeProcess, 'create_time', lambda self: None)
-    assert api._lease_reason(holder, now-2, now+100, now) == 'process_start_unknown'
-    def dead(pid): raise api.psutil.NoSuchProcess(pid)
-    monkeypatch.setattr(api.psutil, 'Process', dead)
-    assert api._lease_reason(holder, now-2, now+100, now) == 'dead_pid'
+    assert evidence.lease_reason(holder, now-2, now+100, now) == 'process_start_unknown'
+    def dead(pid): raise evidence.psutil.NoSuchProcess(pid)
+    monkeypatch.setattr(evidence.psutil, 'Process', dead)
+    assert evidence.lease_reason(holder, now-2, now+100, now) == 'dead_pid'
 
 
 def test_missing_row_and_compression_lineage_and_broken_database(tmp_path):
-    api = load(); db = SessionDB(db_path=tmp_path / 'state.db')
+    api = load(); db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('root', 'desktop')
         db.end_session('root', 'compression')
@@ -126,7 +126,7 @@ def test_actual_facade_two_turns_are_observed_until_release(tmp_path, monkeypatc
     conversation_loop = types.ModuleType('agent.conversation_loop')
     monkeypatch.setitem(sys.modules, 'agent.conversation_loop', conversation_loop)
     api = load()
-    db = SessionDB(db_path=tmp_path / 'state.db')
+    db = FixtureStore(db_path=tmp_path / 'state.db')
     for sid in ('first', 'second'):
         db.create_session(sid, 'desktop')
     gates = {sid: threading.Event() for sid in ('first', 'second')}
@@ -141,7 +141,8 @@ def test_actual_facade_two_turns_are_observed_until_release(tmp_path, monkeypatc
     monkeypatch.setattr(conversation_loop, 'run_conversation', body, raising=False)
     class Dummy(TurnFacadeMixin):
         def __init__(self, sid):
-            self.session_id, self._session_db, self.platform = sid, db, 'desktop'
+            self.session_id, self._session_db, self.platform = sid, db.native, 'desktop'
+            self.persistence = db.persistence
         def _conversation_root_id(self): return self.session_id
         def _touch_activity(self, *args): pass
         def _liveness_activity_lock(self): return threading.Lock()
@@ -167,7 +168,7 @@ def test_actual_facade_two_turns_are_observed_until_release(tmp_path, monkeypatc
 
 
 def test_two_observed_children_and_release(tmp_path):
-    api = load(); db = SessionDB(db_path=tmp_path / 'state.db')
+    api = load(); db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('parent', 'desktop')
         for sid in ('child1', 'child2'):

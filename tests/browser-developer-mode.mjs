@@ -1,0 +1,112 @@
+import {createRequire} from 'node:module'
+import {pathToFileURL} from 'node:url'
+import path from 'node:path'
+import assert from 'node:assert/strict'
+const {chromium}=createRequire(process.env.HERMES_CHECKOUT+'/package.json')('playwright')
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH})
+try{
+ const page=await browser.newPage({viewport:{width:900,height:700}}),url=pathToFileURL(path.resolve('tests/sdk-preview.html')).href
+ await page.goto(url+'?office&gallery&snapshot');await page.locator('.profile-rail-hit').first().waitFor()
+ await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'idle',idle_since:Date.now()/1000-80});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})})
+ assert.equal(await page.locator('[data-idle-minutes]').count(),0,'default off');assert.equal(await page.locator('[data-profile-rail]').evaluate(e=>getComputedStyle(e).rowGap),'10px','real off rail gap')
+ await page.goto(url+'?office&gallery&snapshot&developer&locale=en');await page.locator('.profile-rail-hit').first().waitFor()
+ const set=async (state,idle_since,online=true)=>page.evaluate(async ({state,idle_since,online})=>{Object.assign(window.fixtureStatus[0],{state,idle_since,online});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})},{state,idle_since,online})
+ assert.equal(await page.locator('[data-profile-rail]').evaluate(e=>getComputedStyle(e).rowGap),'18px','real on rail gap matches geometry fixture');assert.equal(await page.locator('#geometry-fixture').count(),0);
+ const hit=page.locator('.profile-rail-hit[aria-label^="Aster ·"]'),label=hit.locator('xpath=ancestor::*[@data-avatar-stack]').locator('[data-idle-minutes]')
+ await set('idle',Date.now()/1000-59);await label.waitFor();assert.equal(await label.innerText(),'0h0m');await page.waitForFunction(()=>[...document.querySelectorAll('[data-idle-minutes]')].some(x=>x.textContent==='0h1m'),null,{timeout:4000})
+ const g=await label.evaluate(e=>{const stack=e.closest('[data-avatar-stack]'),avatar=stack.querySelector('[data-avatar]'),rail=e.closest('[data-profile-rail]'),r=x=>{const b=x.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,width:b.width}};return {label:r(e),avatar:r(avatar),rail:r(rail),pointer:getComputedStyle(e).pointerEvents,color:getComputedStyle(e).color,shadow:getComputedStyle(e).textShadow,hit:document.elementFromPoint((r(e).left+r(e).right)/2,(r(e).top+r(e).bottom)/2)===e}})
+ assert.ok(Math.abs((g.label.left+g.label.right)/2-(g.avatar.left+g.avatar.right)/2)<1);assert.ok(g.label.top>=g.avatar.bottom&&g.label.left>=g.rail.left&&g.label.right<=g.rail.right,JSON.stringify(g));assert.equal(g.pointer,'none');assert.equal(g.hit,false);assert.equal(g.color,'rgb(255, 255, 255)');assert.notEqual(g.shadow,'none')
+ await page.evaluate(async()=>{const p=window.fixtureSnapshot.profiles[0];p.activity={version:1,coverage:'observed',observed_active_count:2,observed_child_active:false,observed_child_count:0,observed_at:Date.now()/1000,unknown_reasons:['bounded_observation'],definition:'native active-turn lease'};await window.refreshFixtureSnapshot()});await hit.locator('xpath=ancestor::*[@data-avatar-stack]').locator('[data-running-count]').waitFor()
+ const bounds=await label.evaluate(e=>{const b=e.getBoundingClientRect(),n=e.closest('[data-avatar-stack]').querySelector('[data-running-count]').getBoundingClientRect();return {labelTop:b.top,countBottom:n.bottom}});assert.ok(bounds.labelTop>=bounds.countBottom,JSON.stringify(bounds))
+ await page.screenshot({path:path.resolve('evidence/developer-idle-en.png')})
+ await page.evaluate(()=>window.fixtureSetLocale('zh-hant'));await page.waitForFunction(()=>[...document.querySelectorAll('[data-idle-minutes]')].some(x=>x.textContent==='0h1m'));await page.screenshot({path:path.resolve('evidence/developer-idle-zh.png')})
+ for(const value of [null,0,-1,'123',Date.now()/1000+600]){await set('idle',value);assert.equal(await label.count(),0,`invalid ${value}`)}
+ for(const [state,online] of [['working',true],['waiting',true],['unknown',true],['idle',false]]){await set(state,Date.now()/1000-100,online);assert.equal(await label.count(),0,`${state} ${online}`)}
+ await set('idle',Date.now()/1000-130);await label.waitFor();assert.equal(await label.innerText(),'0h2m')
+ await page.evaluate(()=>{const q=window.officeClient.getQueryCache().getAll().find(x=>x.queryKey[0]==='sessioncrew'&&x.queryKey[1]==='status');window.officeClient.setQueryData(q.queryKey,q.state.data,{updatedAt:Date.now()-16000})});await label.waitFor({state:'detached',timeout:4000})
+
+ // Shared host busy obscures other owners; it does not establish their state.
+ await page.goto(url+'?office&gallery&snapshot&developer&locale=en');await page.locator('.profile-rail-hit').first().waitFor()
+ const transition=async mixed=>page.evaluate(async mixed=>{const now=Date.now()/1000;window.fixtureStatus=window.fixtureProfiles.map((p,i)=>({profile:p.name,online:true,state:'idle',idle_since:now-(12-i)*120,status_observation:'fresh_shared_gateway_zero_observed_work'}));if(mixed){window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'working',busy:true};for(const row of window.fixtureStatus.slice(1)){row.state='online_unobserved';row.busy=null;row.idle_since=null;row.status_observation='fresh_shared_gateway_no_observed_owner_work'}}await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})},mixed)
+ const railRows=()=>page.locator('[data-profile-rail] .profile-rail-hit').evaluateAll(nodes=>nodes.map(n=>({name:n.getAttribute('aria-label').split(' · ')[0],state:n.getAttribute('data-state-name'),minutes:n.closest('[data-avatar-stack]').querySelector('[data-idle-minutes]')?.textContent??null,title:n.getAttribute('title')})))
+ await page.evaluate(async()=>{window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});assert.equal((await railRows()).find(x=>x.name==='Aster').minutes,null,'first unobserved does not invent idle')
+ await transition(false);await page.waitForFunction(()=>document.querySelectorAll('[data-idle-minutes]').length===12);const before=await railRows()
+ await transition(true);await page.waitForFunction(()=>document.querySelector('[data-state-name="working"]'));const mixed=await railRows();assert.equal(mixed[0].name,'Aster');assert.equal(mixed[0].minutes,null);assert.deepEqual(mixed.slice(1).map(x=>x.name),before.filter(x=>x.name!=='Aster').map(x=>x.name),'other owners retain relative idle order');assert.ok(mixed.slice(1).every(x=>x.state==='online_unobserved'&&x.minutes!==null&&x.title),'historical labels do not change observed state')
+ await page.screenshot({path:path.resolve('evidence/developer-idle-shared.png')})
+ assert.match(mixed[1].title,/last confirmed idle.*unknown/i)
+ await page.evaluate(async()=>{const row=window.fixtureStatus[2];Object.assign(row,{state:'idle',idle_since:Date.now()/1000-20*60});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});assert.deepEqual((await railRows()).filter(x=>x.name!=='Aster').map(x=>x.name),mixed.slice(1).map(x=>x.name),'confirmed and historical idle share the same ordering')
+ // Once the working owner becomes unobserved it cannot recover an old start.
+ await page.evaluate(async()=>{window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});assert.equal((await railRows()).find(x=>x.name==='Aster').minutes,null)
+ // Start close to a minute boundary and verify the retained clock keeps running.
+ await page.evaluate(async()=>{window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'idle',idle_since:Date.now()/1000-59};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});await page.waitForFunction(()=>[...document.querySelectorAll('.profile-rail-hit')].find(x=>x.getAttribute('aria-label').startsWith('Aster ·'))?.closest('[data-avatar-stack]').querySelector('[data-idle-minutes]')?.textContent==='0h1m',null,{timeout:4000})
+ // Explicit waiting and unknown invalidate history, including subsequent unobserved.
+ for(const state of ['waiting','unknown','offline']){await page.evaluate(async state=>{window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'idle',idle_since:Date.now()/1000-130};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']});window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:state!=='offline',state};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']});window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})},state);assert.equal((await railRows()).find(x=>x.name==='Aster').minutes,null,state)}
+ await page.evaluate(async()=>{window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'idle',idle_since:Date.now()/1000-130};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});await page.evaluate(async()=>{window.fixtureStatus[0]={profile:window.fixtureProfiles[0].name,online:true,state:'online_unobserved',busy:null,idle_since:null,status_observation:'fresh_shared_gateway_no_observed_owner_work'};await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})});await page.waitForFunction(()=>[...document.querySelectorAll('.profile-rail-hit')].find(x=>x.getAttribute('aria-label').startsWith('Aster ·'))?.closest('[data-avatar-stack]').querySelector('[data-idle-minutes]'))
+ await page.evaluate(()=>{const q=window.officeClient.getQueryCache().getAll().find(x=>x.queryKey[0]==='sessioncrew'&&x.queryKey[1]==='status');window.officeClient.setQueryData(q.queryKey,q.state.data,{updatedAt:Date.now()-16000})});await page.waitForFunction(()=>![...document.querySelectorAll('.profile-rail-hit')].find(x=>x.getAttribute('aria-label').startsWith('Aster ·'))?.closest('[data-avatar-stack]').querySelector('[data-idle-minutes]'));await page.evaluate(async()=>window.officeClient.refetchQueries({queryKey:['sessioncrew','status']}));assert.equal((await railRows()).find(x=>x.name==='Aster').minutes,null,'stale history cannot revive')
+ await transition(false);await page.waitForFunction(()=>document.querySelectorAll('[data-idle-minutes]').length===12)
+
+ // Exercise the real rail with positive session evidence while /status is still recency-only.
+ await page.clock.install()
+ await page.addInitScript(()=>{
+  window.fixtureActivityRequest=(route,method)=>Promise.resolve({sessions:method==='session.active_list'&&route.profile==='Aster'?structuredClone(window.observedSessions||[]):[]})
+  window.fixtureOwners={id0:'Aster',id1:'Aster'};window.fixtureSources={id0:'desktop',id1:'desktop'}
+ })
+ await page.goto(url+'?office&gallery&snapshot&developer&locale=en');await hit.waitFor()
+ const apply=async rows=>page.evaluate(async rows=>{
+  window.observedSessions=rows.map(([id,status])=>({id,session_key:id,source:'desktop',status}))
+  await window.officeClient.refetchQueries({queryKey:['sessioncrew','profile-input-waiting'],type:'active'})
+ },rows)
+ const hasState=state=>hit.and(page.locator(`[data-state-name="${state}"]`)).waitFor()
+ const stack=hit.locator('xpath=ancestor::*[@data-avatar-stack]'),dot=stack.locator('[data-completion-badge]'),hand=stack.locator('[data-avatar-waiting]')
+ await page.evaluate(async()=>{
+  window.fixtureStatus=window.fixtureProfiles.map(({name})=>name==='Aster'?{profile:name,online:true,state:'working',status_observation:'recent_session_activity'}:name==='Mika'?{profile:name,online:true,state:'working'}:{profile:name,online:true,state:'idle',idle_since:Date.now()/1000-125})
+  await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})
+ })
+ await apply([['id0','idle']]);await hasState('online_unobserved');assert.equal(await label.count(),0,'cold explicit idle is not a transition')
+ await apply([['id0','working'],['id1','working']]);await hasState('working')
+ await apply([['id0','idle'],['id1','working']]);assert.equal(await hit.getAttribute('data-state-name'),'working');assert.equal(await label.count(),0,'remaining work blocks timer')
+ await apply([['id0','idle']]);await hasState('online_unobserved');assert.equal(await label.count(),0,'missing known worker is not idle')
+ await apply([]);assert.equal(await label.count(),0,'empty list is not idle')
+ await apply([['id0','idle'],['id1','idle']]);await label.waitFor();assert.equal(await label.innerText(),'0h0m')
+ assert.deepEqual((await railRows()).slice(0,2).map(x=>x.name),['Mika','Aster'],'observed and confirmed idle share raw timestamp order without an unread dot')
+ assert.match(await hit.getAttribute('title'),/observed to end.*unknown/)
+ const observedBounds=await label.evaluate(e=>{const b=e.getBoundingClientRect(),r=e.closest('[data-profile-rail]').getBoundingClientRect();return b.width>0&&b.height>0&&b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom});assert.ok(observedBounds,'observed timer is visible inside the narrow rail')
+ await page.waitForFunction(()=>window.fixtureStorage?.['completion-snapshot-v2']?.coverage)
+ await page.evaluate(async()=>{const p=window.fixtureSnapshot.profiles[0];p.rows=[{seq:1,admission_id:'observed-test',session_id:'id0',session_source:'desktop',status:'terminal',outcome:'completed',generation:1}];p.high_water=1;await window.refreshFixtureSnapshot()});await dot.waitFor()
+ await page.screenshot({path:path.resolve('evidence/developer-idle-observed-mixed.png')})
+ await page.clock.runFor(61000);assert.equal(await label.innerText(),'0h1m','repeated idle polls must not reset observed start');assert.equal(await dot.count(),1,'working→idle did not acknowledge the unread dot')
+ await set('idle',await page.evaluate(()=>Date.now()/1000-85));assert.equal(await label.innerText(),'0h1m');assert.match(await hit.getAttribute('title'),/observed to end.*unknown/,'older backend idle did not replace observed start')
+ await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'working',status_observation:'recent_session_activity',idle_since:null});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})})
+ await apply([['id0','waiting'],['id1','idle']]);await hand.waitFor();assert.equal(await dot.count(),0);assert.equal(await label.count(),0,'waiting hides observed timer and takes priority over the dot')
+ await apply([['id0','idle'],['id1','idle']]);await dot.waitFor();assert.equal(await label.count(),0,'leaving input wait does not invent a completion')
+ await apply([['id0','working']]);await hasState('working');await apply([['id0','idle']]);await label.waitFor();assert.equal(await label.innerText(),'0h0m','new work establishes a separate fresh start')
+ await page.evaluate(()=>{const previous=window.fixtureActivityRequest;window.fixtureActivityRequest=(route,method)=>route.profile==='Aster'?Promise.reject(Error('activity unavailable')):previous(route,method)})
+ await apply([['id0','idle']]);await label.waitFor({state:'detached'});assert.equal(await dot.count(),1,'activity failure does not acknowledge unread')
+
+ // The public live list can drop a finished session. A newer confirmed backend
+ // state (not the missing row) must restore timing even with an old idle origin.
+ await page.goto(url+'?office&gallery&snapshot&developer&locale=en');await hit.waitFor()
+ await set('idle',await page.evaluate(()=>Date.now()/1000-125));await label.waitFor()
+ await apply([['id0','working']]);await hasState('working')
+ await apply([]);await hasState('idle');assert.equal(await label.count(),0,'absence cannot reuse the pre-work status sample')
+ await page.clock.runFor(20)
+ const oldOrigin=await page.evaluate(()=>Date.now()/1000-125)
+ await set('idle',oldOrigin)
+ await page.clock.runFor(1000)
+ assert.equal((await railRows()).find(x=>x.name==='Aster').minutes,'0h2m','later confirmed idle accepts the old backend origin without a remount')
+ await page.clock.runFor(61000)
+ assert.equal(await label.innerText(),'0h3m','the accepted origin survives identical status polls')
+ await page.evaluate(async()=>{Object.assign(window.fixtureStatus[0],{state:'online_unobserved',status_observation:'fresh_shared_gateway_no_observed_owner_work',busy:null,idle_since:null});await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})})
+ assert.equal(await label.innerText(),'0h3m','shared work retains the recovered idle origin');assert.match(await hit.getAttribute('title'),/last confirmed idle.*unknown/i)
+
+ await page.goto(url+'?office&geometry&locale=en');await page.locator('#geometry-fixture [data-idle-minutes]').waitFor()
+ const fixture=page.locator('#geometry-fixture'), measure=()=>fixture.evaluate(root=>{const rect=e=>{const b=e.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,width:b.width,height:b.height}},label=root.querySelector('[data-idle-minutes]'),marker=root.querySelector('[data-avatar-waiting],[data-completion-badge]'),count=root.querySelector('[data-running-count]'),rail=rect(root),l=label?rect(label):null,m=rect(marker),faces=[...root.querySelectorAll('[data-avatar]')].map(rect);return {rail,label:l,marker:m,count:count?rect(count):null,faces,scrollWidth:label?.scrollWidth,clientWidth:label?.clientWidth,font:label?getComputedStyle(label).fontSize:null}}), failures=[]
+ await page.evaluate(()=>window.fixtureGeometry(null,'waiting',false,false));await page.locator('#geometry-fixture [data-idle-minutes]').waitFor({state:'detached'});const baseline=await measure();assert.equal(await fixture.locator('[data-geometry-rail]').evaluate(e=>getComputedStyle(e).rowGap),'10px');assert.equal(baseline.faces[1].top-baseline.faces[0].top,47,'off geometry remains unchanged')
+ for(const marker of ['waiting','unread'])for(const [minutes,expected] of [[0,'0h0m'],[1,'0h1m'],[59,'0h59m'],[60,'1h0m'],[61,'1h1m'],[1440,'24h0m'],[10080,'168h0m'],[99999,'1666h39m'],[999999,'16666h39m'],[9999999,'166666h39m'],[29999999,'499999h59m']])for(const count of [false,true]){
+  await page.evaluate(({minutes,marker,count})=>window.fixtureGeometry(minutes,marker,count,true),{minutes,marker,count});await page.waitForFunction(({expected,marker,count})=>document.querySelector('#geometry-fixture [data-idle-minutes]')?.textContent===expected&&!!document.querySelector(`#geometry-fixture ${marker==='unread'?'[data-completion-badge]':'[data-avatar-waiting]'}`)&&!!document.querySelector('#geometry-fixture [data-running-count]')===count,{expected,marker,count})
+  const g=await measure();assert.equal(await fixture.locator('[data-geometry-rail]').evaluate(e=>getComputedStyle(e).rowGap),'18px');console.log('geometry',marker,minutes,count,JSON.stringify(g));assert.ok(g.marker.left>=g.rail.left&&g.marker.right<=g.rail.right,'next marker must fit rail '+JSON.stringify(g));assert.equal(g.marker.left-g.faces[1].left,marker==='waiting'?26:28,'marker offset from its avatar unchanged');assert.equal(g.faces[0].top,baseline.faces[0].top,'first avatar remains fixed');assert.equal(g.faces[1].top-g.faces[0].top,55,'mode-on spacing');if(!(g.label.left-1>=g.rail.left&&g.label.right+1<=g.rail.right&&g.label.top-1>=g.rail.top&&g.label.bottom+1<=g.rail.bottom&&g.scrollWidth<=g.clientWidth))failures.push(`${marker} ${minutes} ${count}: outlined label clipped`);const overlaps=r=>g.label.left-1<r.right&&g.label.right+1>r.left&&g.label.top-1<r.bottom&&g.label.bottom+1>r.top;if(overlaps(g.marker))failures.push(`${marker} ${minutes} ${count}: outlined label intersects next marker`);if(g.count&&overlaps(g.count))failures.push(`${marker} ${minutes} ${count}: outlined label intersects own count`)
+  if(minutes===10080&&count)await page.screenshot({path:path.resolve(`evidence/developer-idle-adjacent-${marker}-count.png`)})
+ }
+ assert.deepEqual(failures,[],'adjacent and narrow rail geometry')
+ console.log('PASS developer idle browser geometry, rollover, locale, stale and invalid/status cases')
+}finally{await browser.close()}

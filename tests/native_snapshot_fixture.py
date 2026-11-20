@@ -1,4 +1,4 @@
-"""Private subprocess fixture: real SQLite writer and FastAPI TestClient, no listener."""
+"""Subprocess fixture: real Hermes storage writer and FastAPI TestClient, no listener."""
 import importlib.util
 import json
 from pathlib import Path
@@ -15,12 +15,10 @@ import psutil
 psutil.pid_exists = lambda pid: True
 psutil.Process = lambda pid: SimpleNamespace(is_running=lambda: True, status=lambda: psutil.STATUS_RUNNING, create_time=lambda: 0.0)
 
-spec = importlib.util.find_spec('hermes_state')
-assert spec and spec.origin
-sys.path.insert(0, str(Path(spec.origin).parent))
-from hermes_state import SessionDB
-from hermes_state_pidns import holder_namespace_token
-import hermes_state_runtime as rt
+# The JS harness uses python -I, which omits the script directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hermes_fixture_store import FixtureStore, holder_namespace_token, use_hermes_checkout
+use_hermes_checkout()
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -29,14 +27,12 @@ with tempfile.TemporaryDirectory(prefix='sessioncrew-test-') as directory:
     home = root / 'profiles' / 'alpha'
     home.mkdir(parents=True)
     (root / 'profiles' / 'beta').mkdir(parents=True)
-    root_db = SessionDB(db_path=root / 'state.db')
-    db = SessionDB(db_path=home / 'state.db')
-    beta_db = SessionDB(db_path=root / 'profiles' / 'beta' / 'state.db')
+    root_db = FixtureStore(db_path=root / 'state.db')
+    db = FixtureStore(db_path=home / 'state.db')
+    beta_db = FixtureStore(db_path=root / 'profiles' / 'beta' / 'state.db')
     try:
         db.create_session('s-one', source='desktop')
-        epoch = rt.begin_runtime_epoch(db, instance_id='fixture')
-        admission = rt.admit_session_input(db, epoch=epoch, principal_id='human', session_id='s-one', request_id='r1', payload={'text': 'fixture'})
-        claim = rt.claim_session_input(db, epoch=epoch, session_id='s-one')
+        admission = db.start_admission('s-one', 'fixture')
         source = Path(__file__).resolve().parents[1] / 'dashboard' / 'plugin_api.py'
         spec = importlib.util.spec_from_file_location('sessioncrew_fixture_api', source)
         assert spec and spec.loader
@@ -53,7 +49,30 @@ with tempfile.TemporaryDirectory(prefix='sessioncrew-test-') as directory:
             command = json.loads(line)
             if command == 'quit':
                 break
-            if command == 'activity':
+            if command == 'oneshot':
+                db.create_session('s-oneshot', source='oneshot')
+                db.create_session('oneshot-child', source='subagent', parent_session_id='s-oneshot')
+                holder = f'pid={os.getpid()}{holder_namespace_token()}:turn=fixture:platform=cli'
+                for sid in ('s-oneshot', 'oneshot-child'):
+                    assert db.try_acquire_session_turn_lease(sid, holder)
+                # Exercise the real route and lease reader. This is a controlled
+                # shared-host classification, not a captured /status payload.
+                api._status_collector().collect_status = lambda: [dict(profile='alpha', online=True,
+                    state='working', status_observation='recent_session_activity', active_turn=True)]
+                response = {'active': True}
+            elif command == 'oneshot-status':
+                result = client.get('/api/plugins/sessioncrew/status')
+                response = {'status': result.status_code, 'body': result.json()}
+            elif command == 'oneshot-end-child':
+                assert holder is not None
+                db.release_session_turn_lease('oneshot-child', holder)
+                db.end_session('oneshot-child', 'agent_close')
+                response = {'released': True}
+            elif command == 'oneshot-release':
+                assert holder is not None
+                db.release_session_turn_lease('s-oneshot', holder)
+                response = {'released': True}
+            elif command == 'activity':
                 db.create_session('s-two', source='desktop')
                 db.create_session('child', source='subagent', parent_session_id='s-one')
                 db.create_session('child2', source='subagent', parent_session_id='s-one')
@@ -80,7 +99,7 @@ with tempfile.TemporaryDirectory(prefix='sessioncrew-test-') as directory:
                 db.end_session('child' if command == 'end-child' else 'child2', 'agent_close')
                 response = {'ended': True}
             elif command == 'settle':
-                rt.settle_session_input(db, epoch=epoch, admission_id=admission['admission_id'], generation=claim['generation'], outcome='completed')
+                db.complete_admission(admission)
                 response = {'settled': True}
             elif command == 'snapshot' or isinstance(command, dict) and command.get('snapshot') in ('default', 'alpha', 'beta'):
                 selected = command.get('snapshot', 'default') if isinstance(command, dict) else 'default'

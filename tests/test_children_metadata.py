@@ -1,12 +1,10 @@
 import importlib.util
 from pathlib import Path
-import sys
 import sqlite3
 import time
 import os
 
-from hermes_state import SessionDB
-from hermes_state_pidns import holder_namespace_token
+from hermes_fixture_store import FixtureStore, holder_namespace_token
 
 
 def load():
@@ -17,7 +15,7 @@ def load():
 
 
 def test_native_unleased_child_is_visible_as_metadata_not_running(tmp_path):
-    db = SessionDB(db_path=tmp_path / 'state.db')
+    db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('parent', 'desktop')
         db.create_session('child', 'subagent', parent_session_id='parent')
@@ -34,7 +32,7 @@ def test_classification_leases_and_optional_worker_table(tmp_path, monkeypatch):
     from types import SimpleNamespace
     monkeypatch.setattr(psutil, 'Process', lambda pid: SimpleNamespace(
         is_running=lambda: True, status=lambda: psutil.STATUS_RUNNING, create_time=lambda: 0.0))
-    db = SessionDB(db_path=tmp_path / 'state.db')
+    db = FixtureStore(db_path=tmp_path / 'state.db')
     try:
         db.create_session('parent', 'desktop')
         for sid in ('queued', 'recent', 'stale', 'ended', 'failed'):
@@ -63,7 +61,7 @@ def test_classification_leases_and_optional_worker_table(tmp_path, monkeypatch):
 def test_cross_profile_and_ambiguous_parent(tmp_path):
     homes = [tmp_path, tmp_path/'profiles'/'alpha', tmp_path/'profiles'/'beta']
     for home in homes: home.mkdir(parents=True, exist_ok=True)
-    root, alpha, beta = [SessionDB(db_path=home/'state.db') for home in homes]
+    root, alpha, beta = [FixtureStore(db_path=home/'state.db') for home in homes]
     try:
         alpha.create_session('parent', 'desktop')
         beta.create_session('child', 'subagent')
@@ -80,7 +78,7 @@ def test_cross_profile_and_ambiguous_parent(tmp_path):
 
 
 def test_missing_db_schema_nested_and_unavailable_lease(tmp_path):
-    db = SessionDB(db_path=tmp_path/'state.db')
+    db = FixtureStore(db_path=tmp_path/'state.db')
     try:
         db.create_session('parent', 'desktop')
         db.create_session('child', 'subagent', parent_session_id='parent')
@@ -100,7 +98,7 @@ def test_missing_db_schema_nested_and_unavailable_lease(tmp_path):
 
 
 def test_bounded_rows_and_expired_terminal(tmp_path):
-    db = SessionDB(db_path=tmp_path/'state.db')
+    db = FixtureStore(db_path=tmp_path/'state.db')
     try:
         db.create_session('parent', 'desktop')
         for i in range(51):

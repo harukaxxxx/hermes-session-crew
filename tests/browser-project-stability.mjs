@@ -22,11 +22,19 @@ try {
   const after=await measure()
   await page.screenshot({path:`evidence/stability-after-${height}.png`})
   console.log(JSON.stringify({height,before,after}))
-  assert.deepEqual(after,before,`main bubble geometry must not change at height ${height}`)
+  if(height>=700)assert.deepEqual(after,before,`main bubble must not shrink with ample space at height ${height}`)
+  else {
+   assert.ok(after.main[3]<before.main[3],`main bubble must make room for Projects at height ${height}`)
+   assert.equal(after.header[3],before.header[3],'header stays full height')
+   assert.equal(after.footer[3],before.footer[3],'actions stay full height')
+   const project=await page.getByRole('dialog').last().boundingBox()
+   assert.ok(project.y>=0&&project.y+project.height<=height,'project chooser stays within the viewport')
+  }
   await page.keyboard.press('Escape')
   assert.equal(await page.locator('[data-slot="popover-content"]').count(),1)
-  assert.deepEqual(await measure(),before,`main bubble geometry must remain stable after closing at height ${height}`)
+  await page.waitForFunction(h=>Math.abs(document.querySelector('[data-slot="popover-content"]').getBoundingClientRect().height-h)<1,before.main[3])
+  assert.deepEqual(await measure(),before,`main bubble geometry must be restored after closing at height ${height}`)
   await page.close()
  }
- console.log('PASS project toggle preserves main bubble and content geometry')
+ console.log('PASS project toggle shortens the bubble only when needed and restores its geometry')
 } finally {await browser.close()}

@@ -8,7 +8,7 @@ const sdk={host,useQuery:()=>{},useValue:()=>{},Popover:()=>{},PopoverContent:()
 const react={useState:()=>{},useRef:()=>{},useEffect:()=>{},useCallback:()=>{},useSyncExternalStore:()=>{},createContext:()=>({}),useContext:()=>{}}
 const jsx={jsx:()=>{},jsxs:()=>{}}
 const src=await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8')
-const mod=new SourceTextModule(src+'\nexport {recentData};')
+const mod=new SourceTextModule(src+'\nexport {recentData,isMessagingSource};')
 await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:react;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
 const rest=async(_p,o)=>({profile:o.body.profile,activity:Object.fromEntries(o.body.ids.map(id=>[id,null]))})
 const result=await mod.namespace.recentData({name:'alpha',connectionId:'conn',route},'background',rest)
@@ -16,6 +16,13 @@ assert.deepEqual(result.rows.map(x=>x.id),['live-new','duplicate','old'],'canoni
 assert.equal(result.rows[1].title,'Live duplicate')
 assert.deepEqual(calls.map(x=>x[2].scope).sort(),['live','stored'])
 assert.ok(calls.every(x=>x[0]===route&&x[1]==='session.list'))
+if(!process.env.CONFLICT_ONLY) for(const source of ['telegram','discord','whatsapp','whatsapp_cloud','slack','signal','mattermost','matrix','email','sms','dingtalk','feishu','wecom','wecom_callback','weixin','bluebubbles','qqbot','yuanbao','line','google_chat','teams','irc','simplex']) assert.equal(mod.namespace.isMessagingSource(source),true,source)
+assert.equal(mod.namespace.isMessagingSource('custom_plugin'),false)
+for(const [live,stored] of [['discord','desktop'],['desktop','discord'],['cron','desktop'],['desktop','cron'],['discord',null],[null,'discord']]){
+ host.requestProfile=async(r,m,p)=>({scope:p.scope,sessions:[{id:'duplicate',source:p.scope==='live'?live:stored}]})
+ const row=(await mod.namespace.recentData({name:'alpha',connectionId:'conn',route},'background',rest)).rows[0]
+ assert.equal(row.sourceConflict,true,`conflict: ${live} / ${stored}`)
+}
 host.requestProfile=async(r,m,p)=>p.scope==='stored'?{scope:'stored',sessions:[]}:{error:{message:'failed'}}
 await assert.rejects(()=>mod.namespace.recentData({name:'alpha',connectionId:'conn',route}),/Unsupported live session response format/)
 host.requestProfile=async(r,m,p)=>p.scope==='live'?{scope:'live',sessions:Array.from({length:200},(_,i)=>({id:'live'+i}))}:{scope:'stored',sessions:[{id:'old'}]}
