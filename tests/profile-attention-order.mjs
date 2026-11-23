@@ -18,12 +18,12 @@ const status=names.map(profile=>({profile,online:profile!=='offline',state:profi
 const rest=async(p,opts)=>p==='/status'?structuredClone(status):p==='/row-owners'?{owners:Object.fromEntries(opts.body.ids.map(id=>[id,id])),sources:Object.fromEntries(opts.body.ids.map(id=>[id,'cli']))}:structuredClone(snapshot)
 const sdk={host,useValue:a=>a.get(),useQuery,...createPopoverFixture(React)}
 const mod=new SourceTextModule(await readFile(new URL('../desktop/plugin.js',import.meta.url),'utf8'));await mod.link(async spec=>{const o=spec==='@hermes/plugin-sdk'?sdk:spec==='react/jsx-runtime'?jsx:React;return new SyntheticModule(Object.keys(o),function(){for(const [k,v] of Object.entries(o))this.setExport(k,v)})});await mod.evaluate()
-let contribution;mod.namespace.default.register({storage,rest,register:x=>contribution=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
+let contribution,settingsPage;mod.namespace.default.register({storage,rest,register:x=>contribution=x,registerSettingsPage:x=>settingsPage=x});const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 async function until(fn){const end=Date.now()+3000;while(Date.now()<end){await React.act(async()=>{await new Promise(r=>setTimeout(r,5))});if(fn())return}throw Error('fixture timeout: '+document.body.textContent)}
 const entries=()=>[...document.querySelectorAll('.profile-rail-hit')].map(x=>({name:x.getAttribute('aria-label').split(' · ')[0].toLowerCase(),status:x.dataset.stateName,hand:!!x.closest('[data-avatar-stack]').querySelector('[data-avatar-waiting]'),dot:!!x.closest('[data-avatar-stack]').querySelector('[data-completion-badge]')}))
 const order=()=>entries().map(x=>x.name)
 try{
- await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())))
+ await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render(),settingsPage.render())))
  await until(()=>saved['completion-snapshot-v2']?.coverage&&order().length===names.length)
  for(const name of ['dot','both']){const p=snapshot.profiles.find(p=>p.profile===name);p.high_water=1;p.rows=[{seq:1,admission_id:name,session_id:name,status:'terminal',outcome:'completed',generation:1}]}
  const plain=snapshot.profiles.find(p=>p.profile==='plain');plain.high_water=1;plain.rows=[{seq:1,admission_id:'oneshot',session_id:'oneshot',session_source:'oneshot',status:'terminal',outcome:'completed',generation:1}]
@@ -71,5 +71,33 @@ try{
   await until(()=>entries().some(x=>x.name==='hand'&&!x.hand))
   assert.deepEqual(order(),['working','office wait','both','dot','idle new','plain','idle old','hand','offline'],'clearing the hand restores status order')
  }
- console.log('PASS profile attention ordering uses displayed markers')
+ // Two online-but-unobserved red dots must sit above a plain 0h2m idle avatar.
+ const dot=snapshot.profiles.find(p=>p.profile==='dot');dot.high_water=2;dot.rows.push({seq:2,admission_id:'new-dot',session_id:'new-dot',status:'terminal',outcome:'completed',generation:1})
+ for(const name of ['dot','both','hand'])Object.assign(status.find(p=>p.profile===name),{state:'online_unobserved',idle_since:null})
+ status.find(p=>p.profile==='idle-new').idle_since=Date.now()/1000-125
+ active.hand=[record('hand')]
+ const refresh=key=>React.act(async()=>client.refetchQueries({queryKey:['sessioncrew',key]}))
+ await refresh('completion-snapshot');await refresh('status');await refresh('profile-input-waiting')
+ await until(()=>entries().find(x=>x.name==='dot')?.dot&&entries().find(x=>x.name==='hand')?.hand&&entries().filter(x=>x.status==='online_unobserved').length===3)
+ const avatar=name=>[...document.querySelectorAll('.profile-rail-hit')].find(x=>x.getAttribute('aria-label').split(' · ')[0].toLowerCase()===name)
+ const minutes=(name,selector='[data-idle-minutes]')=>avatar(name).closest('[data-avatar-stack]').querySelector(selector)?.textContent??null
+ const assertCounterexample=()=>{
+  assert.deepEqual(order().slice(0,6),['working','office wait','hand','dot','both','idle new'],'verified hand > two unobserved red dots > plain idle')
+  for(const name of ['dot','both'])assert.deepEqual(entries().find(x=>x.name===name),{name,status:'online_unobserved',hand:false,dot:true},'marker priority does not assert idle')
+ }
+ assert.equal(minutes('idle new'),null,'developer mode initially off')
+ assertCounterexample()
+ await React.act(async()=>document.querySelector('[role="switch"][aria-label="Developer mode"]').click())
+ await until(()=>minutes('idle new')==='0h2m')
+ for(const name of ['dot','both'])assert.equal(minutes(name,'[data-idle-minutes], [data-elapsed-minutes]'),null,'no timer needed to promote a dot')
+ assertCounterexample()
+ const bothStatus=status.find(p=>p.profile==='both')
+ Object.assign(bothStatus,{busy:null,status_observation:'fresh_shared_gateway_no_observed_owner_work',shared_gateway_observation:'positive'})
+ const both=snapshot.profiles.find(p=>p.profile==='both');both.high_water=2;both.rows.push({seq:2,admission_id:'new-both',session_id:'new-both',status:'terminal',outcome:'completed',generation:1})
+ await refresh('status');await refresh('completion-snapshot');await until(()=>minutes('both','[data-elapsed-minutes]')==='0h0m')
+ assertCounterexample()
+ bothStatus.state='unknown';await refresh('status')
+ await until(()=>entries().find(x=>x.name==='both')?.status==='unknown')
+ assert.ok(entries().find(x=>x.name==='both').dot&&order().indexOf('both')>order().indexOf('idle new'),'an unknown dot stays below idle without a verified hand')
+ console.log('PASS profile attention ordering uses displayed markers, including two unobserved dots above plain 0h2m idle')
 }finally{await React.act(async()=>root.unmount());client.clear()}
