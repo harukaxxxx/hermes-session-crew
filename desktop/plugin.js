@@ -124,6 +124,17 @@ const messages = {
       unreadCompletionElapsed: "Elapsed since an unread completion was observed; idle not confirmed",
       offline: "offline",
       unknown: "unknown",
+      railReason: {
+        pending: "Waiting for the first status response",
+        unavailable: "Status source unavailable",
+        requestError: "Status request failed",
+        expired: "Status response expired",
+        missing: "Status response has no row for this profile",
+        malformed: "Malformed status row for this profile",
+        duplicate: "Duplicate status rows for this profile",
+        backendUnknown: "Backend reported an unknown status",
+        lastSuccess: time => `Last successful status response: ${time}`,
+      },
       label: value => `Status: ${value}`,
       editLocal: state => `Edit ${state} (local only)`,
       profileAria: (name, state, unread, activity, metadata) => `${name} · state ${state}${unread ? " · unread completions" : ""}${activity ? ` · ${activity}` : ""}${metadata ? ` · ${metadata}` : ""}`,
@@ -327,6 +338,17 @@ const messages = {
       unreadCompletionElapsed: "自觀察到未讀完成起經過的時間；未確認閒置",
       offline: "離線",
       unknown: "未知",
+      railReason: {
+        pending: "尚未收到第一次狀態回應",
+        unavailable: "狀態來源不可用",
+        requestError: "狀態請求失敗",
+        expired: "狀態回應已過期",
+        missing: "狀態回應缺少此角色的資料",
+        malformed: "此角色的狀態資料格式無效",
+        duplicate: "此角色有重複的狀態資料",
+        backendUnknown: "後端回報狀態未知",
+        lastSuccess: time => `上次成功收到狀態回應：${time}`,
+      },
       label: value => `狀態：${value}`,
       editLocal: state => `編輯 ${state}（僅本機）`,
       profileAria: (name, state, unread, activity, metadata) => `${name} · 狀態 ${state}${unread ? " · 有未讀完成" : ""}${activity ? ` · ${activity}` : ""}${metadata ? ` · ${metadata}` : ""}`,
@@ -908,8 +930,10 @@ const backendIdleStart=row=>recentWork(row)?row.last_session_activity:row.idle_s
 const sharedIdleHistory=row=>recentWork(row)?row.shared_gateway_observation==='positive':row?.state==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'
 const ownBusyStatus=(row,status)=>row.active_turn===true||row.waiting===true||status==='working'||status==='waiting'
 function oneshotProof(row,sampledAt,now){
- const {observed_at,expires_at}=row.oneshot_activity||{},observed=observed_at*1000,expires=expires_at*1000
- if(row.active_turn!==true||typeof observed_at!=='number'||typeof expires_at!=='number'||!Number.isFinite(observed)||!Number.isFinite(expires)||observed<=0||expires<=observed||observed<sampledAt-1000||observed>now+1000)return null
+ const {observed_at,expires_at}=row.oneshot_activity||{}
+ if(row.active_turn!==true||typeof observed_at!=='number'||typeof expires_at!=='number')return null
+ const observed=observed_at*1000,expires=expires_at*1000
+ if(!Number.isFinite(observed)||!Number.isFinite(expires)||observed<=0||expires<=observed||observed<sampledAt-1000||observed>now+1000)return null
  // Bound validity by the sampled lease, not by a fresh cache delivery. Use
  // the request start for a conservative expiry even with minor clock skew.
  const validUntil=Math.min(expires,sampledAt+expires-observed,sampledAt+STATUS_TTL)
@@ -923,7 +947,26 @@ function lastActivityEstimate(row,now){
  return explicit||recency?row.last_session_activity:null
 }
 const fenceAt=(fences,name,at)=>fences.set(name,Math.max(fences.get(name)||0,at))
-const freshStatus=(q,now)=>!q.isError&&Array.isArray(q.data)&&Number.isFinite(q.dataUpdatedAt)&&now-q.dataUpdatedAt<STATUS_TTL&&q.dataUpdatedAt<=now+1000
+function partitionRailSnapshot(data){
+ const rows=new Map(),invalidOwners=new Map()
+ for(const row of data){
+  const name=row?.profile
+  if(typeof name!=='string'||!name)continue
+  if(rows.has(name)||invalidOwners.has(name)){
+   rows.delete(name);invalidOwners.set(name,'duplicate')
+  }else if(typeof row.online!=='boolean'||typeof row.state!=='string'||!row.state.trim())invalidOwners.set(name,'malformed')
+  else rows.set(name,row)
+ }
+ return {rows,invalidOwners}
+}
+const emptyRailSnapshot=partitionRailSnapshot([])
+function snapshotReason(q,now,enabled){
+ if(q.isError)return 'requestError'
+ if(q.data===undefined)return enabled?'pending':'unavailable'
+ if(!Array.isArray(q.data))return 'requestError'
+ if(!Number.isFinite(q.dataUpdatedAt)||now-q.dataUpdatedAt>=STATUS_TTL||q.dataUpdatedAt>now+1000)return 'expired'
+ return null
+}
 function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
  const scope=JSON.stringify([connection,profile,epoch,generation]), current=useRef(scope);current.current=scope
  const sameScope=()=>current.current===scope&&activityScope.generation===generation&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
@@ -936,9 +979,9 @@ function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
   const data=await rest('/status',{method:'GET',timeoutMs:10000})
   if(signal?.aborted||!sameScope())throw new LocalizedError('errors.connectionChanged')
   if(!Array.isArray(data))throw new LocalizedError('errors.statusFormat')
-  const names=new Set();for(const row of data){if(!row||typeof row.profile!=='string'||!row.profile||names.has(row.profile)||typeof row.online!=='boolean'||typeof row.state!=='string')throw new LocalizedError('errors.statusFormat');names.add(row.profile)}
+  const {rows}=partitionRailSnapshot(data),samples=new Map()
   const starts=history.current.starts,now=Date.now();if(history.current.lastAt&&now-history.current.lastAt>STATUS_TTL)starts.clear();history.current.lastAt=now
-  const rows=data.map(row=>{
+  for(const row of rows.values()){
    const status=railStatus(row),since=backendIdleStart(row)
    const proof=oneshotProof(row,sampledAt,now)
    if(proof&&row.online&&row.waiting!==true&&status!=='idle'&&status!=='waiting')fenceAt(history.current.oneshotFences,row.profile,sampledAt)
@@ -948,29 +991,34 @@ function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
    }else if(status==='idle'&&validIdleStart(since,now))starts.set(row.profile,{since,sampledAt})
    else if(status!=='online_unobserved'||!sharedIdleHistory(row))starts.delete(row.profile)
    const sample=proof?{...row,oneshotProof:proof}:row
-   return status==='idle'?{...sample,idleSampledAt:sampledAt}:sample
-  })
-  for(const name of starts.keys())if(!names.has(name))starts.delete(name)
-  return rows
+   samples.set(row.profile,status==='idle'?{...sample,idleSampledAt:sampledAt}:sample)
+  }
+  for(const name of starts.keys())if(!rows.has(name))starts.delete(name)
+  // Keep Query's existing array shape. Derive the Map-based snapshot outside the cache.
+  return data.map(row=>samples.get(row?.profile)??row)
  }catch(error){if(!signal?.aborted&&sameScope())history.current.starts.clear();throw error}
  }})
  useEffect(()=>{
   if(!enabled||gateway!=='open'||typeof host.onEvent!=='function')return
   return host.onEvent('gateway.ready',event=>{
-   if((event?.connectionId??null)!==connection||event?.profile!==profile||!sameScope()||freshStatus(q,Date.now()))return
+   if((event?.connectionId??null)!==connection||event?.profile!==profile||!sameScope()||!snapshotReason(q,Date.now(),enabled))return
    void q.refetch({cancelRefetch:false})
   })
  },[enabled,gateway,scope,q.data,q.dataUpdatedAt,q.isError,q.refetch])
  useEffect(()=>{const update=()=>{if(!document.hidden)tick(Date.now())};const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update)}},[])
  const {starts,idleFences,estimateFences,oneshotFences}=history.current
- if(!freshStatus(q,Date.now())){starts.clear();return [[],clock,starts,idleFences,estimateFences,oneshotFences]}
- const rows=q.data.map(row=>{
-  const status=railStatus(row),since=backendIdleStart(row),start=starts.get(row.profile)
-  if(status==='idle'&&validIdleStart(since,Date.now()))return {...row,presentationIdleSince:since}
-  if(status==='online_unobserved'&&sharedIdleHistory(row)&&start)return {...row,presentationIdleSince:start.since,idleSampledAt:start.sampledAt,historicalIdle:true}
-  return row
- })
- return [rows,clock,starts,idleFences,estimateFences,oneshotFences]
+ const now=Date.now(),reason=snapshotReason(q,now,enabled)
+ const lastSuccessAt=Array.isArray(q.data)&&q.dataUpdatedAt>0&&q.dataUpdatedAt<=now+1000?q.dataUpdatedAt:null
+ const snapshot=React.useMemo(()=>reason?emptyRailSnapshot:partitionRailSnapshot(q.data),[reason,q.data])
+ if(reason)starts.clear()
+ const rows=new Map()
+ for(const [name,row] of snapshot.rows){
+  const status=railStatus(row),since=backendIdleStart(row),start=starts.get(name)
+  if(status==='idle'&&validIdleStart(since,now))rows.set(name,{...row,presentationIdleSince:since})
+  else if(status==='online_unobserved'&&sharedIdleHistory(row)&&start)rows.set(name,{...row,presentationIdleSince:start.since,idleSampledAt:start.sampledAt,historicalIdle:true})
+  else rows.set(name,row)
+ }
+ return [{rows,invalidOwners:snapshot.invalidOwners,reason,lastSuccessAt},clock,starts,idleFences,estimateFences,oneshotFences]
 }
 function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
 const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
@@ -1327,9 +1375,8 @@ function Rail({storage,rest,preferences}){
   if(host.state.connectionId.get()!==connectionId || host.state.profile.get()!==profile) throw new Error('Connection changed')
   return rows
  },enabled:!!profile,retry:false})
- const byName=new Map(office.map(row=>[row.profile,row]))
  const profiles=(q.data??[]).filter(p=>typeof p.name==='string').map((p,index)=>{
-  const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);const row=byName.get(p.name),base=railStatus(row)
+  const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);const row=office.rows.get(p.name),base=railStatus(row)
   const evidence=activityMap[attentionKey],activity=evidence?.activity,waiting=activity?.waiting===true,background=activity?.background||[],working=activity?.working===true
   const idleAllowed=base==='idle'||base==='online_unobserved'&&(row.status_observation==='fresh_shared_gateway_no_observed_owner_work'||recentWork(row))
   const proof=row?.oneshotProof,now=Date.now()
@@ -1340,6 +1387,7 @@ function Rail({storage,rest,preferences}){
   const idleConflict=idleAllowed&&observedIdleAt>=proof?.sampledAt
   const leaseWorking=row?.online===true&&base!=='working'&&base!=='waiting'&&base!=='idle'&&row.waiting!==true&&!waiting&&!idleConflict&&proof?.sampledAt<=now&&now<proof.validUntil&&(!activityScopeNow.gateway||activityScopeNow.gateway==='open')
   let status=base;if(base!=='offline'&&(working||background.length&&base!=='waiting'||leaseWorking))status='working'
+  const statusReason=status==='unknown'?office.reason??office.invalidOwners.get(p.name)??(row?'backendUnknown':'missing'):status==='online_unobserved'?'onlineUnobserved':null
   const canShowIdle=idleAllowed&&!waiting&&!ownBusyStatus(row,base)&&['idle','online_unobserved'].includes(status)
   // Last activity is an elapsed-time origin, not the time idle was observed.
   // Only a new observation can supersede a prior execution sample.
@@ -1354,7 +1402,7 @@ function Rail({storage,rest,preferences}){
   const idleKind=observedSince&&confirmedSince===observedSince?'observedIdle':backendSince&&row?.historicalIdle?'historicalIdle':estimateSince?'lastActivityElapsed':null
   const completionSince=settings.developerMode&&canShowIdle&&!idleSince&&!evidence?.conflict&&!activity?.unmatchedBackground&&(!activityScopeNow.gateway||activityScopeNow.gateway==='open')?completion.unreadSince(p.name,background):null
   const unreadSince=validIdleStart(completionSince,now)&&completionSince*1000>(estimateFences.get(p.name)||0)?completionSince:null
-  return {...p,index,attentionKey,status,waiting,unread:completion.has(p.name,background),idleAllowed,idleSince,idleKind,unreadSince}
+  return {...p,index,attentionKey,status,statusReason,waiting,unread:completion.has(p.name,background),idleAllowed,idleSince,idleKind,unreadSince}
  }).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
   const order=p=>{
    if(p.status==='online_unobserved'&&(p.waiting||p.unread||p.idleSince)||p.status==='unknown'&&p.waiting)return statusOrder.idle
@@ -1382,8 +1430,12 @@ function Rail({storage,rest,preferences}){
  if(q.isError) return jsxs('div',{children:[jsx('p',{children:tr('settings.profilesUnknown')}),jsx('button',{onClick:()=>q.refetch(),children:tr('common.retry')})]})
  if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
+ const lastStatus=office.reason&&office.lastSuccessAt?tr('status.railReason.lastSuccess',new Date(office.lastSuccessAt).toLocaleString()):''
  return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'}),...profiles.map(p=>{
   const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected?.key===selectionKey,compact=active&&selected.mode==='menu'
+  const statusDetail=p.statusReason&&(p.statusReason==='onlineUnobserved'?tr('status.onlineUnobserved'):tr('status.railReason.'+p.statusReason))
+  const statusDetails=[statusDetail,p.statusReason===office.reason?lastStatus:''].filter(Boolean)
+  const activityDetail=activity?activityLabel(activity.observed_active_count,tr):''
   const isCurrent=()=>selectedRef.current?.key===selectionKey&&selectionEpoch.current===epoch&&host.state.connectionId.get()===connectionId&&host.state.profile.get()===profile
   const getLiveOwner=destination=>{
    const live=liveRoutes.current
@@ -1401,7 +1453,7 @@ function Rail({storage,rest,preferences}){
   const avatarActions={onContextMenu:openMenu,onKeyDown:e=>{if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10')openMenu(e)},onClick:e=>{if(compact){e.preventDefault();select(selectionKey)}}}
   const preserveFocus=e=>{const next=selectedRef.current;if(next&&(next.key!==selectionKey||selectionEpoch.current!==epoch))e.preventDefault()}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
-   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
+   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activityDetail,metadataLabel),'aria-description':statusDetails.join(' · ')||undefined,title:[activityDetail,metadataLabel,...statusDetails].filter(Boolean).join(' · ')||undefined}}),
    compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},isCurrent,getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(isCurrent())select(null)}})},'menu'):
    jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]},'panel')]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
