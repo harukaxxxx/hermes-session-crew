@@ -647,27 +647,34 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
  const activeConnection=useValue(host.state.connectionId),activeProfile=useValue(host.state.profile),activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const recentRest=useContext(DialogRestContext)
  const baseCount=normalizeRecentSessionCount(settings.recentSessionCount)
- const [page,setPage]=useState({baseCount,extra:0}),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false),latestIntent=useRef(null)
+ const [page,setPage]=useState({baseCount,extra:0}),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false),latestIntent=useRef(null),quickStarted=useRef(false)
  if(page.baseCount!==baseCount)setPage({baseCount,extra:0})
  const count=baseCount+(page.baseCount===baseCount?page.extra:0)
+ const key=ownerRouteKey(owner),queryKey=recentQueryKey([activeConnection,activeProfile,activation],owner),intentKey=JSON.stringify(queryKey)
+ const menuIsCurrent=menu?.isCurrent
  function liveMenuOwner(){
-  if(!owner||activation!==null&&typeof sdk.gatewayActivationEpoch==='function'&&sdk.gatewayActivationEpoch()!==activation)return null
+  if(!owner||!menuIsCurrent()||activation!==null&&typeof sdk.gatewayActivationEpoch==='function'&&sdk.gatewayActivationEpoch()!==activation)return null
   const target=menu.getLiveOwner(launchDestination(owner))
   return target?.route?.mode===owner.route?.mode?target:null
  }
  async function open(id){
   const target=menu?liveMenuOwner():owner
-  if(rowLock.current||!target)return
+  const quickOpens=menu?.quickOpens
+  if(rowLock.current||!target||quickOpens?.has(intentKey))return
+  quickOpens?.add(intentKey)
   rowLock.current=true;setBusy(true);setError('')
-  const watermark=completion.watermark(target,id,true)
-  try{await openOwned(target,id);if(!menu||menu.isCurrent()){await completion.ack(target,id,watermark,menu?.isCurrent);onOpened()}}
-  catch(e){if(!menu||menu.isCurrent())setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}
-  finally{rowLock.current=false;if(!menu||menu.isCurrent())setBusy(false)}
+  try{
+   const watermark=completion.watermark(target,id,true)
+   await openOwned(target,id)
+   if(!menu||menuIsCurrent())await completion.ack(target,id,watermark,menu?menuIsCurrent:undefined)
+   if(!menu||menuIsCurrent())onOpened()
+  }
+  catch(e){if(!menu||menuIsCurrent())setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}
+  finally{quickOpens?.delete(intentKey);rowLock.current=false;if(!menu||menuIsCurrent())setBusy(false)}
  }
- const key=ownerRouteKey(owner),queryKey=recentQueryKey([activeConnection,activeProfile,activation],owner)
  const queryState=()=>sdk.queryClient?.getQueryState?.(queryKey)
  // Consume the open/retry intent once; interval and focus callbacks stay background.
- const recentIntent=useRef(null),intentKey=JSON.stringify(queryKey)
+ const recentIntent=useRef(null)
  const q=useQuery({queryKey,queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,staleTime:recentStaleTime,refetchOnMount:true,refetchOnWindowFocus:!menu,refetchInterval:menu?false:15000})
  useEffect(()=>{if(q.data)recentIntent.current=intentKey},[intentKey,q.data])
  useEffect(()=>{
@@ -684,37 +691,45 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
  const routeStatus=phase==='loading'?tr('session.findingRoute'):localizeError(phase)||tr('common.connectionNotReady')
  const listStatus=q.isError?tr(!menu&&rows?.length?'session.refreshFailure':'session.loadFailure',localizeError(errorMessage(q.error,tr)||tr('errors.unknown'))):q.fetchStatus==='idle'||(menu&&q.fetchStatus==='paused')?tr('common.connectionNotReady'):tr('session.loading')
  const retryList=()=>jsx('button',{type:'button',disabled:q.isFetching,onClick:()=>void refetchRecent(),children:tr('common.retry')},'retry')
+ const openLatest=async()=>{
+  if(latestIntent.current||rowLock.current||menu.quickOpens?.has(intentKey)||!liveMenuOwner())return
+  const current=queryState()??q
+  const visible=recentRows(current.data,menu.getSettings())
+  if((!menu.quickOpens&&!visible?.length)||current.fetchStatus==='paused'||current.status==='error'&&current.fetchStatus!=='fetching')return
+  if(current.fetchStatus==='idle'&&recentFresh(current))return visible?.length?open(visible[0].id):undefined
+  // Join a running request or refresh this exact query key, never open stale rows.
+  const intent={key:intentKey,updatedAt:current.dataUpdatedAt,updateCount:current.dataUpdateCount}
+  latestIntent.current=intent;setBusy(true);setError('')
+  let latest
+  try{
+   const result=await refetchRecent()
+   const next=queryState()??result
+   const advanced=next.dataUpdatedAt>intent.updatedAt||next.dataUpdateCount>intent.updateCount
+   if(latestIntent.current===intent&&result.status==='success'&&next.fetchStatus==='idle'&&advanced&&recentFresh(next)&&liveMenuOwner())latest=recentRows(next.data,menu.getSettings())?.[0]
+  }finally{
+   if(latestIntent.current===intent){latestIntent.current=null;if(menuIsCurrent())setBusy(false)}
+  }
+  if(latest)await open(latest.id)
+ }
+ useEffect(()=>{
+  if(!menu?.quickOpens)return
+  if(q.fetchStatus==='paused'&&latestIntent.current){latestIntent.current=null;setBusy(false)}
+  // Wait only for the route already loading for this gesture, not later retries.
+  if(quickStarted.current||!owner&&phase==='loading')return
+  quickStarted.current=true
+  if(owner)void openLatest()
+ },[menu?.quickOpens,owner,phase,intentKey,q.fetchStatus])
  if(menu){
   const loading=owner?q.fetchStatus==='fetching':phase==='loading'
   const issue=owner?(!loading&&(q.isError||q.isPaused||q.isPending)?listStatus:null):loading?null:routeStatus
   const canOpen=owner&&!issue&&!!rows?.length
   const latestLabel=canOpen||issue?'session.openLatest':loading?'session.loadingLatest':'session.noRecentSessions'
   const canRead=completion.coverageReady&&completion.covers(menu.owner.name)
-  const openLatest=async()=>{
-   if(latestIntent.current||!liveMenuOwner())return
-   const current=queryState()??q
-   const visible=recentRows(current.data,menu.getSettings())
-   if(!visible?.length||current.fetchStatus==='paused'||current.status==='error'&&current.fetchStatus!=='fetching')return
-   if(current.fetchStatus==='idle'&&recentFresh(current))return open(visible[0].id)
-   // The click joins a running refresh or starts one for this exact query key.
-   const intent={key:intentKey,updatedAt:current.dataUpdatedAt,updateCount:current.dataUpdateCount}
-   latestIntent.current=intent;setBusy(true);setError('')
-   let latest
-   try{
-    const result=await refetchRecent()
-    const next=queryState()??result
-    const advanced=next.dataUpdatedAt>intent.updatedAt||next.dataUpdateCount>intent.updateCount
-    if(latestIntent.current===intent&&next.fetchStatus==='idle'&&advanced&&recentFresh(next)&&liveMenuOwner())latest=recentRows(next.data,menu.getSettings())?.[0]
-   }finally{
-    if(latestIntent.current===intent){latestIntent.current=null;if(menu.isCurrent())setBusy(false)}
-   }
-   if(latest)await open(latest.id)
-  }
   // Keep the first action focusable while the fresh list is loading.
-  const action=(label,disabled,run)=>jsx('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&!latestIntent.current&&menu.isCurrent())void run()},style:{...s.button,textAlign:'left',opacity:disabled ? .55 : 1,cursor:disabled?'default':'pointer'},children:label})
+  const action=(label,disabled,run)=>jsx('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&!latestIntent.current&&menuIsCurrent())void run()},style:{...s.button,textAlign:'left',opacity:disabled ? .55 : 1,cursor:disabled?'default':'pointer'},children:label})
   const markAll=async()=>{
    rowLock.current=true;setBusy(true);setError('')
-   try{await completion.ackAll(menu.owner,menu.isCurrent)}finally{rowLock.current=false;if(menu.isCurrent())setBusy(false)}
+   try{await completion.ackAll(menu.owner,menuIsCurrent)}finally{rowLock.current=false;if(menuIsCurrent())setBusy(false)}
   }
   return jsxs(React.Fragment,{children:[action(tr(latestLabel),busy||!canOpen,openLatest),action(tr('completion.markAllRead'),busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
  }
@@ -1344,13 +1359,16 @@ function Rail({storage,rest,preferences}){
   return next
   })
  },[idleStarts,idleFences,estimateFences])
- const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
+ const activation=activityScopeNow.epoch
+ const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),quickOpens=useRef(new Set()),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
  const launchEpoch=useRef(null),[,refreshLaunch]=useState(0)
- const select=useCallback((key,mode='panel')=>{
+ const select=useCallback((key,mode='panel',scope=null)=>{
   if(key===(selectedRef.current?.key??null)&&(!key||mode===selectedRef.current.mode))return
   selectionEpoch.current++;setProjectOwner(null)
-  const value=key===null?null:{key,mode};selectedRef.current=value;setSelected(value)
+  const value=key===null?null:{key,mode,scope};selectedRef.current=value;setSelected(value)
  },[])
+ const isSelectionScopeCurrent=()=>!selected?.scope||selected.scope.generation===activityScope.generation&&selected.scope.activation===(sdk.gatewayActivationEpoch?.()??activation)
+ useEffect(()=>{if(selectedRef.current===selected&&!isSelectionScopeCurrent())select(null)},[selected,activityScopeNow.generation,activation,select])
  useEffect(()=>{select(null)},[connectionId,profile,select])
  useEffect(()=>{
   // Observe transitions even if React batches a switch away and back.
@@ -1360,7 +1378,6 @@ function Rail({storage,rest,preferences}){
   const dispose=atoms.map(atom=>atom.subscribe?.(check))
   return()=>{dispose.forEach(fn=>fn?.());selectionEpoch.current++}
  },[select])
- const activation=activityScopeNow.epoch
  const routes=useQuery({queryKey:['sessioncrew','routes',connectionId,profile,routeGeneration,activation],queryFn:()=>typeof host.profileRoutes==='function'?bounded(()=>host.profileRoutes(),'common.routeLookup'):Promise.resolve(null),enabled:!!profile,retry:false})
  const liveRoutes=useRef(null)
  React.useLayoutEffect(()=>{liveRoutes.current=routes.isSuccess?{connectionId,profile,data:routes.data}:null},[connectionId,profile,routes.isSuccess,routes.data])
@@ -1413,7 +1430,7 @@ function Rail({storage,rest,preferences}){
   if(aRank===statusOrder.idle){const when=p=>Math.max(p.idleSince||0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
   return a.index-b.index
  })
- const routeStatus=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
+ const routeStatus=routes.isPending?(routes.fetchStatus==='fetching'?'loading':tr('common.connectionNotReady')):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
  const destinations=new Map(profiles.map(p=>{
   if(routeStatus)return [p.name,{owner:null,phase:routeStatus}]
   try{return [p.name,{owner:{connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)},phase:''}]}
@@ -1432,11 +1449,12 @@ function Rail({storage,rest,preferences}){
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
  const lastStatus=office.reason&&office.lastSuccessAt?tr('status.railReason.lastSuccess',new Date(office.lastSuccessAt).toLocaleString()):''
  return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'}),...profiles.map(p=>{
-  const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected?.key===selectionKey,compact=active&&selected.mode==='menu'
+  const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected?.key===selectionKey,compact=active&&selected.mode!=='panel',quick=compact&&selected.mode==='quick'
   const statusDetail=p.statusReason&&(p.statusReason==='onlineUnobserved'?tr('status.onlineUnobserved'):tr('status.railReason.'+p.statusReason))
   const statusDetails=[statusDetail,p.statusReason===office.reason?lastStatus:''].filter(Boolean)
   const activityDetail=activity?activityLabel(activity.observed_active_count,tr):''
   const isCurrent=()=>selectedRef.current?.key===selectionKey&&selectionEpoch.current===epoch&&host.state.connectionId.get()===connectionId&&host.state.profile.get()===profile
+  const recentIsCurrent=()=>isCurrent()&&isSelectionScopeCurrent()
   const getLiveOwner=destination=>{
    const live=liveRoutes.current
    if(!isCurrent()||!live||live.connectionId!==connectionId||live.profile!==profile)return null
@@ -1450,11 +1468,17 @@ function Rail({storage,rest,preferences}){
   }
   const {owner,phase}=destinations.get(p.name)
   const openMenu=e=>{e.preventDefault();if(!dialogActive.current)select(selectionKey,'menu')}
-  const avatarActions={onContextMenu:openMenu,onKeyDown:e=>{if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10')openMenu(e)},onClick:e=>{if(compact){e.preventDefault();select(selectionKey)}}}
+  const avatarActions={onContextMenu:openMenu,onKeyDown:e=>{if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10')openMenu(e)},onClick:e=>{
+   if(e.button===0&&e.detail>1){
+    // Radix calls the child handler before its own click toggle.
+    e.preventDefault()
+    if(e.detail===2&&!dialogActive.current)select(selectionKey,'quick',{generation:activityScope.generation,activation:sdk.gatewayActivationEpoch?.()??activation})
+   }else if(compact){e.preventDefault();select(selectionKey)}
+  }}
   const preserveFocus=e=>{const next=selectedRef.current;if(next&&(next.key!==selectionKey||selectionEpoch.current!==epoch))e.preventDefault()}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
    jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activityDetail,metadataLabel),'aria-description':statusDetails.join(' · ')||undefined,title:[activityDetail,metadataLabel,...statusDetails].filter(Boolean).join(' · ')||undefined}}),
-   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},isCurrent,getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(isCurrent())select(null)}})},'menu'):
+   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},quickOpens:quick?quickOpens.current:null,isCurrent:()=>!!parentContentRef.current&&recentIsCurrent(),getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(recentIsCurrent())select(null)}},selected.mode)},'menu'):
    jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]},'panel')]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }

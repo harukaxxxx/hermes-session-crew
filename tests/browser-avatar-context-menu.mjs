@@ -42,9 +42,19 @@ try{
    if(claimedImage){event.preventDefault();event.stopPropagation()}
   },true)
   window.listCalls=[]
+  window.listPriorities=[]
+  const params=new URLSearchParams(location.search)
+  if(params.has('quickJoin'))window.delayList='Mika'
+  if(params.has('quickRoute')){
+   window.delayList='Mika'
+   window.fixtureProfileRoutes=()=>new Promise(resolve=>{
+    window.finishRoutes=()=>resolve(window.fixtureProfiles.map(p=>({connectionId:'fixture',mode:'remote',profile:p.name,targetProfile:p.name})))
+   })
+  }
   window.fixtureRecentActivity={Aster:{'aster-latest':75},Mika:{old:10,'mika-latest':100,cron:200,live:50}}
-  window.fixtureSessionList=(route,{scope})=>{
+  window.fixtureSessionList=(route,{scope},_timeout,{spawnPriority}={})=>{
    window.listCalls.push([route.profile,scope])
+   window.listPriorities.push([route.profile,spawnPriority])
    const session=(id,source='desktop')=>({id,title:id,source})
    const stored=window.storedOverride?.[route.profile]??(route.profile==='Mika'?[session('old'),session('cron','cron'),session('mika-latest')]:[session('aster-latest')])
    const live=route.profile==='Mika'?[session('live')]:[]
@@ -247,4 +257,108 @@ try{
  assert.equal(await rows.first().locator('strong').textContent(),'mika-latest','left-click at the same image coordinates opens Recent')
  assert.equal(await menu.count(),0)
  console.log('PASS decoded rail avatar: coordinate right-click reaches the button through modeled capture; left-click opens Recent')
+
+ const quick=()=>avatar('Mika').dblclick()
+ const mikaLists=()=>page.evaluate(()=>window.listCalls.filter(([owner])=>owner==='Mika').map(([,scope])=>scope))
+ const mikaPriorities=()=>page.evaluate(()=>window.listPriorities.filter(([owner])=>owner==='Mika').map(([,priority])=>priority))
+ const expectOpens=async(ids)=>{
+  assert.deepEqual(await page.evaluate(()=>window.openCalls??[]),ids.map(id=>[id,{route:{connectionId:'fixture',mode:'remote',profile:'Mika',targetProfile:'Mika'},intent:'in-place'}]))
+  assert.equal(await page.evaluate(()=>window.createCalls?.length??0),0,'quick-open never creates a session')
+ }
+ const closeQuick=async()=>{await latest.press('Escape');await menu.waitFor({state:'detached'})}
+
+ // No cached route or recent list when the double-click lands. The visible
+ // quick popover waits, dispatches foreground once, then navigates by itself.
+ await page.goto(url+'&quickRoute')
+ await quick();await latestState('載入最近...',true)
+ assert.deepEqual(await mikaLists(),[])
+ await page.evaluate(()=>window.finishRoutes());await waitForList()
+ assert.deepEqual(await mikaLists(),['stored'])
+ assert.deepEqual(await mikaPriorities(),['foreground'])
+ await quick();await latestState('載入最近...',true)
+ assert.deepEqual(await mikaLists(),['stored'],'repeated double-click joins the held request')
+ await expectOpens([])
+ await finishList();await menu.waitFor({state:'detached'})
+ await expectOpens(['mika-latest'])
+ assert.deepEqual(await mikaLists(),['stored','live'])
+
+ // Warm double-click opens immediately despite a held-RPC fixture, and never
+ // sends a stored or live request. Desktop-like input still drives the click.
+ await page.evaluate(()=>window.delayList='Mika')
+ await quick();await page.waitForFunction(()=>window.openCalls?.length===2);await menu.waitFor({state:'detached'})
+ await expectOpens(['mika-latest','mika-latest'])
+ assert.deepEqual(await mikaLists(),['stored','live'])
+
+ // A new click sequence can remount the compact view while navigation is
+ // still pending. The second sequence must not send another open.
+ await page.evaluate(()=>window.fixtureOpenSession=()=>new Promise(resolve=>{window.finishQuickOpen=resolve}))
+ await quick();await page.waitForFunction(()=>typeof window.finishQuickOpen==='function')
+ await quick();await latestState('開啟最近',false)
+ await expectOpens(['mika-latest','mika-latest','mika-latest'])
+ await page.evaluate(()=>{window.finishQuickOpen();window.fixtureOpenSession=null})
+ await closeQuick()
+
+ await expire('Mika')
+ await page.evaluate(()=>{
+  window.storedOverride={Mika:[{id:'new-first',title:'New first',source:'desktop'},{id:'cron',title:'Cron',source:'cron'}]}
+  window.fixtureRecentActivity.Mika={'new-first':75,cron:200,live:10}
+ })
+ await quick();await menu.waitFor();await waitForList()
+ await expectOpens(['mika-latest','mika-latest','mika-latest'])
+ assert.deepEqual(await mikaLists(),['stored','live','stored'])
+ await finishList();await menu.waitFor({state:'detached'})
+ const opened=['mika-latest','mika-latest','mika-latest','new-first']
+ await expectOpens(opened)
+
+ await expire('Mika');await page.evaluate(()=>{window.emptyList=true;window.delayList='Mika'})
+ await quick();await waitForList();await finishList();await latestState('查無最近',true)
+ await expectOpens(opened)
+ // An unrelated cache refresh may update the button, but must not revive the gesture.
+ await page.evaluate(async()=>{
+  window.emptyList=false
+  await window.officeClient.refetchQueries({queryKey:['sessioncrew','recent'],type:'active'})
+ })
+ await latestState('開啟最近',false);await expectOpens(opened);await closeQuick()
+
+ await expire('Mika');await page.evaluate(()=>window.delayList='Mika')
+ await quick();await waitForList()
+ await page.evaluate(()=>window.finishList('quick fixture failure'))
+ await menu.getByRole('alert').getByText(/quick fixture failure/).waitFor()
+ await expectOpens(opened);await closeQuick()
+
+ await page.evaluate(()=>window.delayList='Mika')
+ await quick();await waitForList();await closeQuick()
+ await finishList();await waitForIdle();await expectOpens(opened)
+
+ await expire('Mika');await page.evaluate(()=>window.delayList='Mika')
+ await quick();await waitForList();await right('Aster')
+ await finishList();await waitForIdle();await expectOpens(opened)
+ assert.equal(await menu.getAttribute('aria-label'),'Aster');await closeQuick()
+
+ // A query paused at gesture time may resume normally, but not auto-open.
+ await expire('Mika')
+ await page.context().setOffline(true);await page.waitForFunction(()=>!navigator.onLine)
+ await quick();await menu.getByRole('alert').getByText('連線尚未準備好',{exact:true}).waitFor()
+ await expectOpens(opened)
+ await page.context().setOffline(false);await waitForIdle();await enabled(latest)
+ await expectOpens(opened);await closeQuick()
+
+ // Gateway changes in one batch can leave the same route and React values.
+ // The quick intent must still be canceled when the older result completes.
+ await expire('Mika');await page.evaluate(()=>window.delayList='Mika')
+ await quick();await waitForList()
+ await page.evaluate(()=>{window.fixtureSetGateway('closed');window.fixtureSetGateway('open')})
+ await menu.waitFor({state:'detached'})
+ await finishList();await waitForIdle();await expectOpens(opened)
+
+ // If prewarm got there first, keep the same cache request and use its result.
+ await page.goto(url+'&quickJoin');await waitForList()
+ assert.deepEqual(await mikaLists(),['stored'])
+ assert.deepEqual(await mikaPriorities(),['background'])
+ await quick();await latestState('載入最近...',true);await expectOpens([])
+ assert.deepEqual(await mikaLists(),['stored'])
+ await finishList();await menu.waitFor({state:'detached'});await expectOpens(['mika-latest'])
+ assert.deepEqual(await mikaLists(),['stored','live'])
+ assert.deepEqual(await mikaPriorities(),['background','background'])
+ console.log('PASS avatar double-click: cold foreground fetch, joined prewarm, warm cache, new ranking, filtered empty, error, pause, repeated navigation, dismissal, owner and scope cancellation')
 }finally{await browser.close()}
