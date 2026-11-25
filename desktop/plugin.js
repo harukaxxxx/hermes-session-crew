@@ -560,13 +560,39 @@ async function openOwned(owner,id){
  return host.openSession(id,{route:owner.route,intent:'in-place'})
 }
 // A plugin-owned overlay remains visible even when macOS hides native scrollbars.
-function RecentScroll({style,children,revision}){
- const list=useRef(null),drag=useRef(null),[metrics,setMetrics]=useState(null)
- const measure=useCallback(()=>{const el=list.current;if(!el)return;const {clientHeight:h,scrollHeight:total,scrollTop:top}=el;const height=Math.min(h,Math.max(18,h*h/total));setMetrics(total>h?{height,top:top/(total-h)*(h-height)}:null)},[])
- useEffect(()=>{measure();const el=list.current;if(!el||typeof ResizeObserver==='undefined')return;const observer=new ResizeObserver(measure);observer.observe(el);return()=>observer.disconnect()},[measure,revision])
- const move=e=>{if(!drag.current||!list.current)return;const el=list.current,track=el.clientHeight-metrics.height;if(track>0)el.scrollTop=drag.current.top+(e.clientY-drag.current.y)*(el.scrollHeight-el.clientHeight)/track}
- return jsxs('div',{style:{...style,overflow:'visible',position:'relative'},children:[jsx('div',{'data-recent-list':true,ref:list,onScroll:measure,style:{height:'calc(100% + 2px)',width:'calc(100% + 2px)',boxSizing:'border-box',marginTop:-2,marginLeft:-2,paddingTop:2,paddingLeft:2,overflowY:'auto',scrollbarWidth:'none'},children}),metrics?jsx('div',{'data-recent-scroll-cue':true,'aria-hidden':true,style:{position:'absolute',right:1,top:0,bottom:0,width:6,borderRadius:3,background:'var(--ui-stroke-secondary, #888)',opacity:.8},children:jsx('div',{'data-recent-scroll-thumb':true,onPointerDown:e=>{drag.current={y:e.clientY,top:list.current.scrollTop};e.currentTarget.setPointerCapture(e.pointerId)},onPointerMove:move,onPointerUp:()=>{drag.current=null},onPointerCancel:()=>{drag.current=null},style:{position:'absolute',top:metrics.top,height:metrics.height,width:'100%',borderRadius:3,background:'var(--ui-text-secondary, #555)',cursor:'grab',touchAction:'none'}})}):null,jsx('style',{children:'[data-recent-list]::-webkit-scrollbar{display:none}'})]})
+const scrollCueWidth=6,scrollCueRight=1
+const recentScrollViewport={height:'calc(100% + 2px)',width:'calc(100% + 2px)',marginTop:-2,marginLeft:-2,paddingTop:2,paddingLeft:2}
+function ScrollWithCue({kind,style,children,revision}){
+ const project=kind==='project',wrapper=useRef(null),list=useRef(null),drag=useRef(null),[metrics,setMetrics]=useState(null)
+ const measure=useCallback(()=>{
+  const el=list.current,track=wrapper.current?.clientHeight
+  if(!el)return
+  const {clientHeight,scrollHeight,scrollTop}=el,range=scrollHeight-clientHeight
+  if(!track||!clientHeight||range<=0){setMetrics(null);return}
+  const height=Math.min(track,Math.max(18,track*clientHeight/scrollHeight)),travel=track-height,top=scrollTop/range*travel
+  setMetrics(previous=>previous?.height===height&&previous.top===top&&previous.travel===travel&&previous.range===range?previous:{height,top,travel,range})
+ },[])
+ React.useLayoutEffect(measure,[measure,revision])
+ useEffect(()=>{if(typeof ResizeObserver==='undefined')return;const observer=new ResizeObserver(measure);observer.observe(list.current);observer.observe(wrapper.current);return()=>observer.disconnect()},[measure])
+ const start=e=>{
+  if(e.button!==0||!e.isPrimary)return
+  e.preventDefault()
+  drag.current={pointer:e.pointerId,y:e.clientY,top:list.current.scrollTop}
+  e.currentTarget.setPointerCapture(e.pointerId)
+ }
+ const move=e=>{const active=drag.current;if(active?.pointer===e.pointerId&&metrics.travel>0)list.current.scrollTop=active.top+(e.clientY-active.y)*metrics.range/metrics.travel}
+ const end=e=>{if(drag.current?.pointer===e.pointerId)drag.current=null}
+ const wheel=e=>{const el=list.current;if(!e.ctrlKey&&wrapper.current.contains(e.target)&&!el.contains(e.target))el.scrollTop+=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?el.clientHeight:1)}
+ return jsxs('div',{ref:wrapper,onWheel:wheel,style:{...style,overflow:'visible',position:'relative',...(project?{display:'flex',flexDirection:'column'}:{})},children:[
+  jsx('div',{[`data-${kind}-list`]:true,ref:list,onScroll:measure,style:{...(project?{minHeight:0,flex:'1 1 auto',marginRight:metrics?scrollCueWidth+scrollCueRight+1:0,transition:'none'}:recentScrollViewport),boxSizing:'border-box',overflowY:'auto',scrollbarWidth:'none'},children}),
+  metrics?jsx('div',{[`data-${kind}-scroll-cue`]:true,'aria-hidden':true,style:{position:'absolute',right:scrollCueRight,top:0,bottom:0,width:scrollCueWidth,borderRadius:scrollCueWidth/2,background:'var(--ui-stroke-secondary, #888)',opacity:.8,pointerEvents:'none'},children:jsx('div',{
+   [`data-${kind}-scroll-thumb`]:true,onPointerDown:start,onPointerMove:move,onPointerUp:end,onPointerCancel:end,onLostPointerCapture:end,
+   style:{position:'absolute',top:metrics.top,height:metrics.height,width:'100%',borderRadius:scrollCueWidth/2,background:'var(--ui-text-secondary, #555)',cursor:'grab',touchAction:'none',pointerEvents:'auto'}
+  })}):null,
+  jsx('style',{children:`[data-${kind}-list]::-webkit-scrollbar{display:none}`})
+ ]})
 }
+function RecentScroll(props){return jsx(ScrollWithCue,{...props,kind:'recent'})}
 // Adapted from Hermes Desktop styles.css, commit 2bd378e; see HERMES-ARC-LICENSE.
 const rowArcCss=`[data-session-waiting]{width:14px;text-align:center;transform:scale(.75);transform-origin:top left}@keyframes sessioncrew-arc{to{transform:translate(-50%,-50%)}}[data-session-arc]{position:absolute;inset:0;overflow:hidden;border-radius:7px;padding:.078125rem;pointer-events:none;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}[data-session-arc]::before{content:'';position:absolute;top:0;left:0;width:240%;height:240%;background:repeating-linear-gradient(160deg,transparent 0%,transparent 18.75%,var(--dt-foreground,var(--ui-text-primary)) 25%,color-mix(in srgb,var(--dt-foreground,var(--ui-text-primary)) 45%,transparent) 31.25%,transparent 43.75%,transparent 50%);will-change:transform;animation:sessioncrew-arc 2.23s linear infinite}@media(prefers-reduced-motion:reduce){[data-session-arc]::before{animation:none}}`
 // One generation per host scope, shared by all observers and retained across
@@ -1119,7 +1145,7 @@ function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaun
     jsxs(PopoverContent,{side:projectLayout.side,align:'start',avoidCollisions:!projectLayout.overlay,sideOffset:projectLayout.sideOffset,alignOffset:projectLayout.alignOffset,onCloseAutoFocus:e=>{e.preventDefault();if(isCurrent())projectTrigger.current?.focus({preventScroll:true})},onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||rowLayer.current||parentContentRef?.current?.contains(e.target))e.preventDefault()},style:{...s.bubble,padding:'min(16px, 2vh)',boxSizing:'border-box',maxHeight:projectLayout.verticalLimit===undefined?projectDesiredHeight:`min(${projectDesiredHeight}, ${projectLayout.verticalLimit}px)`,overflow:'hidden'},children:[
      jsxs('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,height:30},children:[jsx('strong',{children:tr('project.title')}),jsx('button',{type:'button','aria-label':tr('project.new'),title:unknownProjects.current.has(unknownKey)?tr('project.unknownList'):dialogAvailable?tr('project.newForProfile'):tr('errors.projectUiUnsupported'),disabled:busy||!dialogAvailable||unknownProjects.current.has(unknownKey),onClick:()=>void createProject(),style:{...s.button,border:0},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]}),
      unknownProjects.current.has(unknownKey)?jsx('div',{role:'alert',children:unknownWarning,style:{fontSize:12,overflowY:'auto',flexShrink:1}}):null,rowActions.notice,
-     projects.isPending&&!choices.length?tr('project.loadingList'):projects.isError&&!choices.length?jsxs('div',{role:'alert',children:[tr('project.loadFailed'),jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')})]}):!choices.length?tr('project.empty'):jsx('div',{'data-project-list':true,style:{minHeight:0,maxHeight:96,overflowY:'auto',flex:'0 1 auto'},children:choices.map(renderRow)})
+     projects.isPending&&!choices.length?tr('project.loadingList'):projects.isError&&!choices.length?jsxs('div',{role:'alert',children:[tr('project.loadFailed'),jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')})]}):!choices.length?tr('project.empty'):jsx(ScrollWithCue,{kind:'project',style:{minHeight:0,maxHeight:96,flex:'0 1 auto'},revision:choices.length,children:choices.map(renderRow)})
     ]})
    ]})
   ]}),unconfirmed||error?jsx('div',{role:'alert',children:unconfirmed?tr('session.createUnconfirmed'):localizeError(error)}):null

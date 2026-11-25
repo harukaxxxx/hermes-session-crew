@@ -7,18 +7,25 @@ const rootRequire=createRequire(hermes+'/package.json'), desktopRequire=createRe
 const require=(()=>{try{rootRequire.resolve('@vscode/codicons/dist/codicon.css');return rootRequire}catch{return desktopRequire}})();
 const {chromium}=(()=>{try{return require('playwright')}catch(e){if(e.code!=='MODULE_NOT_FOUND')throw e;return createRequire(desktopRequire.resolve('@playwright/test'))('playwright')}})();
 const codiconCss=pathToFileURL(require.resolve('@vscode/codicons/dist/codicon.css')).href;
-const browser=await chromium.launch({headless:true,executablePath:(process.env.CHROME_PATH||(()=>{throw Error('Set CHROME_PATH')})())});
+const sdkCss=pathToFileURL(path.resolve('tests/sdk-css/styles.css')).href;
+const browser=await chromium.launch({headless:true,ignoreDefaultArgs:['--hide-scrollbars'],executablePath:(process.env.CHROME_PATH||(()=>{throw Error('Set CHROME_PATH')})())});
 try {
- for(const {width,height,count} of [{width:900,height:700,count:2},{width:900,height:700,count:8},{width:900,height:300,count:8},{width:280,height:430,count:8}]) {
+ for(const {width,height,count} of [{width:900,height:700,count:2},{width:900,height:700,count:3},{width:900,height:700,count:4},{width:900,height:700,count:8},{width:900,height:300,count:8},{width:280,height:430,count:8}]) {
   const page=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
-  await page.addInitScript(n=>{window.fixtureProjects=[
+  await page.addInitScript(n=>{window.fixtureSessionList=async()=>({sessions:Array.from({length:24},(_,i)=>({id:'id'+i,title:'Fixture session '+i}))});window.fixtureProjects=[
    ...Array.from({length:n},(_,i)=>({id:'p'+i,label:'Project '+i+' '+('long name '.repeat(12)),path:'/fixture/project'+i,sessionIds:i===0?[]:['id0'],repos:[],icon:i===0?'rocket':null,isAuto:i===1,isNoProject:false,previewSessions:i===1?[{cwd:'/fixture/project1',git_branch:'feature/fixture-very-long-branch-name-0123456789'}]:[]})),
    {id:'__no_project__',label:'Fixture Home',isNoProject:true,sessionIds:['home-session'],repos:[]},
    {id:'auto:/fixture/empty-auto',label:'Empty auto repo',isAuto:true,path:'/fixture/empty-auto',sessionIds:[],repos:[]},
   ]},count);
-  await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office');await page.addStyleTag({url:codiconCss});
-  await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]');await page.getByRole('button',{name:'▦ 開啟專案'}).click();
-  const dialogs=page.locator('[data-slot="popover-content"]'), main=dialogs.first(), sub=dialogs.last(),rows=sub.locator('[data-project-row]'),list=sub.locator('[data-project-list]');
+  await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office');await page.addStyleTag({url:sdkCss});await page.addStyleTag({url:codiconCss});
+  await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]');
+  const recent=page.locator('[data-recent-list]'),recentCue=page.locator('[data-recent-scroll-cue]');
+  const compareRecent=width===900&&height===700&&count===8;
+  if(compareRecent){await page.locator('[data-recent-more]').click();await recentCue.waitFor()}
+  await page.getByRole('button',{name:'▦ 開啟專案'}).click();
+  await page.mouse.move(0,0);
+  const dialogs=page.locator('[data-slot="popover-content"]'),sub=dialogs.last(),rows=sub.locator('[data-project-row]'),list=sub.locator('[data-project-list]');
+  const cue=sub.locator('[data-project-scroll-cue]');
   await rows.first().waitFor();assert.equal(await rows.count(),count);assert.equal(await sub.getByRole('button',{name:'新增專案'}).isDisabled(),false);
   assert.match(await rows.first().locator('[data-project-name]').innerText(),/^Project 0 /);assert.match(await rows.nth(1).locator('[data-project-name]').innerText(),/^Project 1 /);assert.doesNotMatch(await list.innerText(),/Fixture Home|Empty auto repo/);
   assert.equal(await rows.first().locator('[data-project-icon]').getAttribute('data-project-icon'),'rocket');assert.equal(await rows.nth(1).locator('[data-project-icon]').getAttribute('data-project-icon'),'repo');assert.equal(await rows.first().locator('.codicon-rocket').count(),1);assert.equal(await rows.nth(1).locator('.codicon-repo').count(),1);
@@ -26,17 +33,87 @@ try {
   for(const control of [page.getByRole('button',{name:'快速新增'}),sub.getByRole('button',{name:'新增專案'}),rows.first().locator('[data-project-launch]')]){const icon=control.locator('.codicon-add');assert.equal(await icon.count(),1);assert.equal(await icon.evaluate(e=>getComputedStyle(e).fontSize),'12px');assert.notEqual(await icon.evaluate(e=>getComputedStyle(e,'::before').content),'none')}
   const geometry=await sub.evaluate(e=>{const l=e.querySelector('[data-project-list]'),m=document.querySelector('[data-slot="popover-content"]');return {width:e.getBoundingClientRect().width,main:m.getBoundingClientRect().width,list:l.clientHeight,scroll:l.scrollHeight,rows:[...l.children].map(x=>x.getBoundingClientRect().height),clip:[...l.querySelectorAll('[data-project-name]')].map(x=>getComputedStyle(x).textOverflow)}});
   assert.ok(Math.abs(geometry.width-geometry.main)<1);assert.ok(geometry.rows.every(h=>h===32));assert.ok(geometry.clip.every(x=>x==='ellipsis'));
-  if(height===700){assert.equal(geometry.list,Math.min(count,3)*32);if(count>3)assert.ok(geometry.scroll>geometry.list)}
+  assert.equal(await list.evaluate(e=>e.offsetWidth-e.clientWidth),0,'the viewport has no native scrollbar gutter');
+  if(height===700){assert.equal(geometry.list,Math.min(count,3)*32);assert.equal(geometry.scroll,count*32)}
+  let appearance;
+  if(count<=3){assert.equal(await cue.count(),0,'rows that fit have no cue');assert.equal(await list.evaluate(e=>getComputedStyle(e).marginRight),'0px')}
+  else{
+   assert.ok(geometry.scroll>geometry.list);
+   await cue.waitFor({timeout:2000});
+   appearance=await scrollbarAppearance(cue);
+   assert.deepEqual(appearance.slice(0,5),['6px','1px','3px','0.8','3px']);
+   if(compareRecent)assert.deepEqual(appearance,await scrollbarAppearance(recentCue));
+   for(const selector of ['[data-project-menu]','[data-project-launch]']){
+    const button=await rows.first().locator(selector).boundingBox(),track=await cue.boundingBox();
+    assert.ok(button.x+button.width<track.x,`cue clears the full ${selector}: ${button.x+button.width} < ${track.x}`);
+   }
+   await verifyIdleScrollbar(page,list,cue,recent,dialogs);
+  }
   await rows.first().locator('[data-project-name]').click();assert.equal(await page.evaluate(()=>window.createCalls?.length||0),0);
+  await page.mouse.move(0,0);
   await page.screenshot({path:`evidence/project-list-initial-${width}x${height}-${count}.png`});
-  if(count>3){await list.hover();await page.mouse.wheel(0,1200);await page.waitForFunction(()=>{const e=document.querySelector('[data-project-list]');return e.scrollTop>0});for(const control of await rows.last().locator('button').all())assert.ok(await control.evaluate(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2))}),'wheel reaches a hittable final row')}
+  if(count>3){
+   const recentTop=await recent.evaluate(e=>e.scrollTop);
+   await list.hover();await page.mouse.wheel(0,1200);
+   await page.waitForFunction(()=>{const e=document.querySelector('[data-project-list]');return Math.abs(e.scrollTop-(e.scrollHeight-e.clientHeight))<1});
+   assert.equal(await recent.evaluate(e=>e.scrollTop),recentTop,'wheel leaves Recent Sessions in place');
+   for(const selector of ['[data-project-menu]','[data-project-launch]'])assert.ok(await rows.last().locator(selector).evaluate(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2))}),'wheel reaches a hittable final '+selector);
+  }
   await page.screenshot({path:`evidence/project-list-${width}x${height}-${count}.png`});
+  if(compareRecent){
+   await page.evaluate(()=>{
+    const key=window.officeClient.getQueryCache().findAll({queryKey:['sessioncrew','projects']}).find(q=>q.getObserversCount()&&q.state.data?.choices.length===8).queryKey;
+    const original=window.officeClient.getQueryData(key);window.officeClient.setQueryData(key,{...original,choices:original.choices.slice(0,3)});
+    window.restoreChoices=()=>window.officeClient.setQueryData(key,original);
+   });
+   await cue.waitFor({state:'detached'});assert.equal(await rows.count(),3);
+   assert.deepEqual(await list.evaluate(e=>[e.clientHeight,e.scrollHeight,e.scrollTop]),[96,96,0]);
+   await page.setViewportSize({width,height:300});await cue.waitFor();
+   assert.ok(await list.evaluate(e=>e.scrollHeight>e.clientHeight));
+   await page.setViewportSize({width,height});await cue.waitFor({state:'detached'});
+   await page.evaluate(()=>window.restoreChoices());await cue.waitFor();assert.equal(await rows.count(),8);
+  }
   await page.keyboard.press('Escape');assert.equal(await dialogs.count(),1);await page.getByRole('button',{name:'▦ 開啟專案'}).click();await page.locator('[data-project-row]').first().locator('[data-project-launch]').click();await page.waitForFunction(()=>window.openCalls?.length===1);const calls=await page.evaluate(()=>({create:window.createCalls[0],open:window.openCalls[0]}));assert.equal(calls.create.route.profile,'Aster');assert.equal(calls.create.params.cwd,'/fixture/project0');assert.equal(calls.create.params.cwd_explicit,true);assert.equal(calls.open[1].route.profile,'Aster');
-  console.log(JSON.stringify({width,height,count,geometry}));await page.close();
+  console.log(JSON.stringify({width,height,count,geometry,appearance}));await page.close();
  }
  await verifyProjectMenus(browser);
  console.log('PASS controlled project list and row menus');
 } finally {await browser.close()}
+
+function scrollbarAppearance(cue){
+ return cue.evaluate(e=>{const track=getComputedStyle(e),thumb=getComputedStyle(e.firstElementChild);return [track.width,track.right,track.borderRadius,track.opacity,thumb.borderRadius,track.backgroundColor,thumb.backgroundColor,thumb.cursor]});
+}
+
+async function verifyIdleScrollbar(page,list,cue,recent,dialogs){
+ await page.waitForFunction(()=>{
+  const r=document.querySelector('[data-project-scroll-cue]')?.getBoundingClientRect();
+  return r&&r.top>=0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight;
+ });
+ assert.equal(await list.evaluate(e=>e.matches(':hover')),false);
+ assert.equal(await list.evaluate(e=>e.scrollTop),0);
+ const thumb=cue.locator('[data-project-scroll-thumb]'),box=await cue.boundingBox(),thumbBox=await thumb.boundingBox();
+ const x=Math.floor(thumbBox.x+thumbBox.width/2),top=Math.floor(thumbBox.y+thumbBox.height/2),bottom=Math.floor(box.y+box.height-5);
+ const expectedHeight=await list.evaluate(e=>Math.max(18,e.clientHeight**2/e.scrollHeight));
+ assert.ok(Math.abs(thumbBox.height-expectedHeight)<=1/64);
+ const recentTop=await recent.evaluate(e=>e.scrollTop);
+ // Compare rendered pixels from the thumb and track before any pointer entry.
+ const png=await page.screenshot({clip:{x,y:top,width:1,height:bottom-top+1},scale:'css'});
+ const [thumbPixel,trackPixel]=await page.evaluate(async source=>{
+  const img=await createImageBitmap(await (await fetch(source)).blob());
+  const ctx=new OffscreenCanvas(img.width,img.height).getContext('2d');ctx.drawImage(img,0,0);
+  return [0,img.height-1].map(y=>Array.from(ctx.getImageData(0,y,1,1).data));
+ },`data:image/png;base64,${png.toString('base64')}`);
+ assert.ok(thumbPixel.slice(0,3).some((value,i)=>Math.abs(value-trackPixel[i])>=12),`thumb is painted before hover (${thumbPixel} vs ${trackPixel})`);
+ await page.mouse.move(x,top);await page.mouse.down();
+ assert.equal(await list.evaluate(e=>e.scrollTop),0,'pressing the thumb does not page the list');
+ await page.mouse.move(x,box.y+box.height+12,{steps:8});await page.mouse.up();
+ assert.equal(await dialogs.count(),2,'capture keeps both popovers open when released outside the list');
+ assert.equal(await list.evaluate(e=>e.scrollHeight-e.clientHeight-e.scrollTop),0,'drag reaches the end');
+ assert.equal(await recent.evaluate(e=>e.scrollTop),recentTop,'drag leaves Recent Sessions in place');
+
+ await thumb.hover();await page.mouse.wheel(0,-1200);
+ await page.waitForFunction(()=>document.querySelector('[data-project-list]')?.scrollTop===0);
+}
 
 async function verifyProjectMenus(browser){
  const page=await browser.newPage({viewport:{width:1000,height:800},reducedMotion:'reduce'});
@@ -79,7 +156,7 @@ async function verifyProjectMenus(browser){
    };
   });
   await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office&locale=en');
-  await page.addStyleTag({url:pathToFileURL(path.resolve('tests/sdk-css/styles.css')).href});await page.addStyleTag({url:codiconCss});
+  await page.addStyleTag({url:sdkCss});await page.addStyleTag({url:codiconCss});
   const panels=page.locator('[data-slot="popover-content"]'),menu=page.getByRole('menu'),dialog=page.locator('[data-slot="dialog-content"]');
   const row=label=>page.locator('[data-project-row]').filter({has:page.locator('[data-project-name]',{hasText:new RegExp('^'+label+'$')})});
   const button=label=>row(label).getByRole('button',{name:'Project actions for '+label,exact:true});
