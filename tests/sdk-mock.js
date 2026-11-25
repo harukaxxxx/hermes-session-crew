@@ -1,5 +1,8 @@
 export { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.tsx'
 export { Codicon } from '@/components/ui/codicon.tsx'
+export { ColorSwatches } from '@/components/ui/color-swatches.tsx'
+export { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu.tsx'
+export { PROFILE_SWATCHES } from '@/lib/profile-color.ts'
 export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog.tsx'
 export { Button } from '@/components/ui/button.tsx'
 export { Input } from '@/components/ui/input.tsx'
@@ -32,6 +35,7 @@ if(window.fixtureProfileRoutes)host.profileRoutes=window.fixtureProfileRoutes
 const fixtureRequestProfile=host.requestProfile
 host.requestProfile=(route,method,params,...rest)=>{
  if(method==='session.list'&&window.fixtureSessionList)return window.fixtureSessionList(route,params,...rest)
+ if(method.startsWith('projects.')&&window.fixtureProjectRequest)return window.fixtureProjectRequest(route,method,params)
  if(method==='session.active_list'||method==='subagent.roster'){
   window.fixtureActivityCalls=(window.fixtureActivityCalls||[]).concat([{route,method,params}])
   if(window.fixtureActivityRequest)return window.fixtureActivityRequest(route,method,params)
@@ -41,4 +45,8 @@ host.requestProfile=(route,method,params,...rest)=>{
  return method==='session.create'&&window.fixtureCreateSession?window.fixtureCreateSession(route,params):result
 }
 window.fixtureSetConnection = value => host.state.connectionId.set(value)
+export async function writeClipboardText(text){
+ if(window.fixtureClipboard)return window.fixtureClipboard(text)
+ return navigator.clipboard.writeText(text)
+}
 export const useValue = x => useSyncExternalStore(x.subscribe,x.get,x.get)
