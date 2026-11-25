@@ -29,7 +29,7 @@ const messages = {
       newForProfile: "New project for this profile",
       uncategorized: "Uncategorized",
       untitled: "Untitled project",
-      empty: "No projects with sessions",
+      empty: "No projects",
       generating: "Generating…",
       generateIdea: "Generate idea (using the selected profile's LLM)",
       ideaLearning: "Build a tool to organize learning resources",
@@ -243,7 +243,7 @@ const messages = {
       newForProfile: "新增此設定檔的專案",
       uncategorized: "未分類",
       untitled: "未命名專案",
-      empty: "沒有參與的專案",
+      empty: "沒有專案",
       generating: "生成中…",
       generateIdea: "生成點子（使用所選設定檔的 LLM）",
       ideaLearning: "製作學習資源整理工具",
@@ -515,7 +515,7 @@ async function projectData(owner,spawnPriority='background'){
  if(tree?.error || !Array.isArray(tree?.projects)) throw new LocalizedError('errors.projectFormat')
  const projects=new Map()
  for(const p of tree.projects){const label=p.isNoProject?{fallback:'project.home'}:typeof p.label==='string'&&p.label.trim()?p.label:{fallback:'project.uncategorized'};for(const id of p.sessionIds||[]) if(typeof id==='string'&&!projects.has(id)) projects.set(id,label);for(const repo of p.repos||[]) for(const group of repo.groups||[]) for(const row of group.sessions||[]) if(typeof row.id==='string'&&!projects.has(row.id)) projects.set(row.id,label)}
- return {labels:Object.fromEntries(projects),choices:tree.projects.filter(p=>!p.isNoProject&&Array.isArray(p.sessionIds)&&p.sessionIds.some(id=>typeof id==='string'&&id)).map(p=>{const path=typeof p.path==='string'&&p.path.trim()?p.path.trim():(p.repos||[]).find(r=>typeof r.path==='string'&&r.path.trim())?.path?.trim()||'';return {id:p.id,label:p.label||p.id||{fallback:'project.untitled'},path,icon:typeof p.icon==='string'&&p.icon.trim()?p.icon.trim():'',color:typeof p.color==='string'?p.color:'',isAuto:!!p.isAuto}})}
+ return {labels:Object.fromEntries(projects),choices:tree.projects.filter(p=>!p.isNoProject&&(!p.isAuto||(Array.isArray(p.sessionIds)&&p.sessionIds.some(id=>typeof id==='string'&&id)))).map(p=>{const path=typeof p.path==='string'&&p.path.trim()?p.path.trim():(p.repos||[]).find(r=>typeof r.path==='string'&&r.path.trim())?.path?.trim()||'';return {id:p.id,label:p.label||p.id||{fallback:'project.untitled'},path,icon:typeof p.icon==='string'&&p.icon.trim()?p.icon.trim():'',color:typeof p.color==='string'?p.color:'',isAuto:!!p.isAuto}})}
 }
 function routeFor(name,connectionId,activeProfile,routes){
  if(routes===null){if(connectionId==null) return name;throw new LocalizedError('errors.routingUnsupported')}

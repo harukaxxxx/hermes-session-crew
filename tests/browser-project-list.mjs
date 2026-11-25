@@ -9,11 +9,16 @@ const browser=await chromium.launch({headless:true,executablePath:(process.env.C
 try {
  for(const {width,height,count} of [{width:900,height:700,count:2},{width:900,height:700,count:8},{width:900,height:300,count:8},{width:280,height:430,count:8}]) {
   const page=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
-  await page.addInitScript(n=>{window.fixtureProjects=Array.from({length:n},(_,i)=>({id:'p'+i,label:'Project '+i+' '+('long name '.repeat(12)),path:'/fixture/project'+i,sessionIds:['id0'],repos:[],icon:i===0?'rocket':null,isAuto:i===1,previewSessions:i===0?[{cwd:'/fixture/project0',git_branch:'feature/fixture-very-long-branch-name-0123456789'}]:[]}))},count);
+  await page.addInitScript(n=>{window.fixtureProjects=[
+   ...Array.from({length:n},(_,i)=>({id:'p'+i,label:'Project '+i+' '+('long name '.repeat(12)),path:'/fixture/project'+i,sessionIds:i===0?[]:['id0'],repos:[],icon:i===0?'rocket':null,isAuto:i===1,previewSessions:i===1?[{cwd:'/fixture/project1',git_branch:'feature/fixture-very-long-branch-name-0123456789'}]:[]})),
+   {id:'__no_project__',label:'Fixture Home',isNoProject:true,sessionIds:['home-session'],repos:[]},
+   {id:'auto:/fixture/empty-auto',label:'Empty auto repo',isAuto:true,path:'/fixture/empty-auto',sessionIds:[],repos:[]},
+  ]},count);
   await page.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office');await page.addStyleTag({url:codiconCss});
   await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]');await page.getByRole('button',{name:'▦ 開啟專案'}).click();
   const dialogs=page.locator('[data-slot="popover-content"]'), main=dialogs.first(), sub=dialogs.last(),rows=sub.locator('[data-project-row]'),list=sub.locator('[data-project-list]');
   await rows.first().waitFor();assert.equal(await rows.count(),count);assert.equal(await sub.getByRole('button',{name:'新增專案'}).isDisabled(),false);
+  assert.match(await rows.first().locator('[data-project-name]').innerText(),/^Project 0 /);assert.match(await rows.nth(1).locator('[data-project-name]').innerText(),/^Project 1 /);assert.doesNotMatch(await list.innerText(),/Fixture Home|Empty auto repo/);
   assert.equal(await rows.first().locator('[data-project-icon]').getAttribute('data-project-icon'),'rocket');assert.equal(await rows.nth(1).locator('[data-project-icon]').getAttribute('data-project-icon'),'repo');assert.equal(await rows.first().locator('.codicon-rocket').count(),1);assert.equal(await rows.nth(1).locator('.codicon-repo').count(),1);
   assert.doesNotMatch(await sub.innerText(),/feature\/fixture|分支資訊/);assert.equal(await sub.locator('[data-project-branch]').count(),0);
   for(const control of [page.getByRole('button',{name:'快速新增'}),sub.getByRole('button',{name:'新增專案'}),rows.first().locator('button')]){const icon=control.locator('.codicon-add');assert.equal(await icon.count(),1);assert.equal(await icon.evaluate(e=>getComputedStyle(e).fontSize),'12px');assert.notEqual(await icon.evaluate(e=>getComputedStyle(e,'::before').content),'none')}
