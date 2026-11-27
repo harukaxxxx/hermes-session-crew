@@ -84,7 +84,7 @@ try{
   await refresh();await until(expected)
   assert.equal(avatar('beta').dataset.stateName,'working','healthy sibling survives bad rows')
   assert.equal(elapsed('alpha'),'0h2m','healthy sibling retains its idle history')
-  diagnostic('alpha','online_unobserved',/online.*no activity observed/i)
+  diagnostic('alpha','online_unobserved',/^online(?:$| Elapsed since last confirmed idle; current activity unknown$)/)
   for(const name of ['duplicate-first','duplicate-last','duplicate-valid'])diagnostic(name,'unknown',/duplicate status rows/i)
   diagnostic('malformed','unknown',/malformed status row/i)
   for(const name of ['blank-online','blank-offline'])diagnostic(name,'unknown',/malformed status row/i)

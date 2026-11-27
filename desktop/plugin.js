@@ -111,23 +111,23 @@ const messages = {
       noProfiles: "No profiles available",
     },
     status: {
-      waitingQuote: "Taking a moment to wait before continuing.",
+      waitingQuote: "I'm waiting for your reply., I still need a few more details from you., I'll pause here until you confirm., I'll pick this up after you reply., Let me know what to do next.",
       workingLabel: "Working",
       thinkingWords: "pondering,contemplating,musing,cogitating,ruminating,deliberating,mulling,reflecting,processing,reasoning,analyzing,computing,synthesizing,formulating,brainstorming",
-      offlineQuote: "Offline for now; see you later.",
-      idleQuote: "I'm here whenever you need me.",
-      onlineUnobservedQuote: "Online; no activity observed for this profile.",
-      workingQuote: "Focusing on the task at hand.",
-      quote: "Status quote",
-      unknownQuote: "Not enough status information yet.",
-      saveFailed: "Could not save quote; try again",
-      readFailed: "Could not read quote; reopen the panel",
-      editQuote: "Edit status quote",
+      offlineQuote: "I'm offline right now., Temporarily offline., I'm away at the moment., Let's talk when I'm back online., Check back later to see if I'm around.",
+      idleQuote: "I'm free right now., You can reach me if you need anything., I'm not busy right now., Feel free to send me a new task., I can take the next task.",
+      onlineUnobservedQuote: "I'm online., I'm connected., I'm here., I've got a connection., I'm online now.",
+      workingQuote: "I'm busy right now., I'm still working on this., I'm on it. Give me a moment., It's not done yet. I'll keep going., Let me work on this first.",
+      unknownQuote: "My status is still unclear., I can't report my status yet., My status isn't showing right now., I don't have a status to report yet., I'm not sure whether I'm online yet.",
+      saveFailed: "Could not confirm all saves. Try again.",
+      savePartial: "Other changes were saved.",
+      readFailed: "Could not read some quotes. Reopen the panel to retry.",
+      quoteHelp: 'Separate phrases with an ASCII comma (,), for example: Ready, Back soon. Clear a field to restore its default.',
 
       working: "working",
       waiting: "waiting",
       idle: "idle",
-      onlineUnobserved: "online · no activity observed",
+      onlineUnobserved: "online",
       historicalIdle: "Elapsed since last confirmed idle; current activity unknown",
       observedIdle: "Elapsed since work was observed to end; other activity may be unknown",
       lastActivityElapsed: "Elapsed since last recorded session activity; idle not confirmed",
@@ -147,7 +147,7 @@ const messages = {
         lastSuccess: time => `Last successful status response: ${time}`,
       },
       label: value => `Status: ${value}`,
-      editLocal: state => `Edit ${state} (local only)`,
+      editTitle: "Edit status quote",
       profileAria: (name, state, unread, activity, metadata) => `${name} · state ${state}${unread ? " · unread completions" : ""}${activity ? ` · ${activity}` : ""}${metadata ? ` · ${metadata}` : ""}`,
     },
     completion: {
@@ -336,23 +336,23 @@ const messages = {
       noProfiles: "沒有設定檔",
     },
     status: {
-      waitingQuote: "先稍作等待，準備好再繼續。",
+      waitingQuote: "我在等你回覆。, 還需要你補充一下。, 我先停在這裡，等你確認。, 你回我之後，我再接著做。, 下一步等你說。",
       workingLabel: "工作中",
       thinkingWords: "pondering,contemplating,musing,cogitating,ruminating,deliberating,mulling,reflecting,processing,reasoning,analyzing,computing,synthesizing,formulating,brainstorming,思考,琢磨,沉思,推敲,斟酌,盤算,反思,處理,推理,分析,運算,整合,構思,腦力激盪",
-      offlineQuote: "暫時不在線，稍後再見。",
-      idleQuote: "有需要時，隨時可以找我。",
-      onlineUnobservedQuote: "在線，尚未觀察到此設定檔的活動。",
-      workingQuote: "正在專心整理眼前的事情。",
-      quote: "狀態短句",
-      unknownQuote: "目前還沒有足夠的狀態資訊。",
-      saveFailed: "短句無法儲存，請重試",
-      readFailed: "短句無法讀取，請重新開啟面板",
-      editQuote: "編輯狀態短句",
+      offlineQuote: "我現在不在線。, 暫時離線。, 這會兒不在。, 等我上線再聊。, 晚點再看看我在不在。",
+      idleQuote: "我現在有空。, 有事可以找我。, 現在沒在忙。, 有新任務，可以交給我。, 我可以接下一件事。",
+      onlineUnobservedQuote: "我在線上。, 我有連上。, 我在這裡。, 這邊有連線。, 我現在在線。",
+      workingQuote: "我正在忙。, 這件事還在做。, 正在處理，稍等一下。, 還沒做完，我繼續。, 我先忙這件事。",
+      unknownQuote: "我的狀態還不確定。, 我這邊還回報不了狀態。, 我的狀態暫時沒顯示。, 我這邊還沒有狀態可回報。, 先不確定我在不在線。",
+      saveFailed: "部分短句未能確認儲存，請重試。",
+      savePartial: "其他變更已儲存。",
+      readFailed: "部分短句無法讀取，請重新開啟面板再試一次。",
+      quoteHelp: '請用半形逗號 (,) 分隔短句，例如：準備好了, 稍後回來。清空欄位即可還原預設短句。',
 
       working: "工作中",
       waiting: "等待中",
       idle: "閒置",
-      onlineUnobserved: "在線・未觀察到活動",
+      onlineUnobserved: "在線",
       historicalIdle: "自上次確認閒置起經過的時間；目前活動狀態未知",
       observedIdle: "自觀察到工作結束起經過的時間；其他活動可能未知",
       lastActivityElapsed: "距上次記錄的工作階段活動已過的時間；未確認閒置",
@@ -372,7 +372,7 @@ const messages = {
         lastSuccess: time => `上次成功收到狀態回應：${time}`,
       },
       label: value => `狀態：${value}`,
-      editLocal: state => `編輯 ${state}（僅本機）`,
+      editTitle: "編輯狀態短句",
       profileAria: (name, state, unread, activity, metadata) => `${name} · 狀態 ${state}${unread ? " · 有未讀完成" : ""}${activity ? ` · ${activity}` : ""}${metadata ? ` · ${metadata}` : ""}`,
     },
     completion: {
@@ -1038,7 +1038,7 @@ const projectDesiredHeight=`clamp(0px, ${projectViewportPercent}vh - ${projectHe
 const primaryViewportHeight='calc(100vh - 24px)'
 // Keep one readable session row above the fixed controls when space allows.
 const primaryWithProjectsHeight=`max(min(${152+recentRowHeight}px, ${primaryViewportHeight}), calc(${primaryViewportHeight} - ${projectDesiredHeight}))`
-function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss,onOpened,pending,projectOpen,setProjectOpen,createdProjects,dialogActive,unknownProjects,parentContentRef,rowLayer,rowChanges,refreshRowChanges}){
+function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss,onOpened,pending,projectOpen,setProjectOpen,createdProjects,dialogActive,statusDialog,unknownProjects,parentContentRef,rowLayer,rowChanges,refreshRowChanges}){
  const tr=useTranslator()
  const [error,setError]=useState(''),[projectGeneration,setProjectGeneration]=useState(0),[dialogOpen,setDialogOpen]=useState(false),projectTrigger=useRef(null),[projectLayout,setProjectLayout]=useState({side:'bottom'})
  useEffect(()=>{
@@ -1139,10 +1139,10 @@ function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaun
   rowActions.dialog,dialogOpen?jsx(ProjectDialog,{owner,ownerName,isCurrent,onClose:closeDialog,onCreated:rememberProject,onRefresh:refreshProjects,unknownProjects}):null,
   jsxs('div',{style:s.footer,children:[
    jsx('button',{type:'button',disabled:launchDisabled||!owner,onClick:()=>create(),style:{...s.button,flex:1,minWidth:0},children:retryable?tr('session.retryOpen'):jsxs('span',{style:{display:'inline-flex',alignItems:'center',gap:4},children:[jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true}),tr('session.quickCreate')]})}),
-   jsxs(Popover,{open:projectOpen,onOpenChange:open=>{if(!open&&isLaunching())onDismiss();else if(open||!dialogActive.current&&!rowLayer.current)setProjectOpen(open)},children:[
+   jsxs(Popover,{open:projectOpen,onOpenChange:open=>{if(statusDialog.current)return;if(!open&&isLaunching())onDismiss();else if(open||!dialogActive.current&&!rowLayer.current)setProjectOpen(open)},children:[
     jsx(PopoverTrigger,{asChild:true,children:jsx('span',{'aria-hidden':true,tabIndex:-1,style:{position:'absolute',inset:0,pointerEvents:'none'}})}),
     jsx('button',{ref:projectTrigger,type:'button',disabled:busy||!owner,'aria-expanded':projectOpen,'aria-haspopup':'dialog',onClick:()=>setProjectOpen(!projectOpen),style:{...s.button,flex:1,minWidth:0},children:tr('project.open')}),
-    jsxs(PopoverContent,{side:projectLayout.side,align:'start',avoidCollisions:!projectLayout.overlay,sideOffset:projectLayout.sideOffset,alignOffset:projectLayout.alignOffset,onCloseAutoFocus:e=>{e.preventDefault();if(isCurrent())projectTrigger.current?.focus({preventScroll:true})},onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||rowLayer.current||parentContentRef?.current?.contains(e.target))e.preventDefault()},style:{...s.bubble,padding:'min(16px, 2vh)',boxSizing:'border-box',maxHeight:projectLayout.verticalLimit===undefined?projectDesiredHeight:`min(${projectDesiredHeight}, ${projectLayout.verticalLimit}px)`,overflow:'hidden'},children:[
+    jsxs(PopoverContent,{side:projectLayout.side,align:'start',avoidCollisions:!projectLayout.overlay,sideOffset:projectLayout.sideOffset,alignOffset:projectLayout.alignOffset,onCloseAutoFocus:e=>{e.preventDefault();if(isCurrent())projectTrigger.current?.focus({preventScroll:true})},onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||statusDialog.current||rowLayer.current||parentContentRef?.current?.contains(e.target))e.preventDefault()},style:{...s.bubble,padding:'min(16px, 2vh)',boxSizing:'border-box',maxHeight:projectLayout.verticalLimit===undefined?projectDesiredHeight:`min(${projectDesiredHeight}, ${projectLayout.verticalLimit}px)`,overflow:'hidden'},children:[
      jsxs('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,height:30},children:[jsx('strong',{children:tr('project.title')}),jsx('button',{type:'button','aria-label':tr('project.new'),title:unknownProjects.current.has(unknownKey)?tr('project.unknownList'):dialogAvailable?tr('project.newForProfile'):tr('errors.projectUiUnsupported'),disabled:busy||!dialogAvailable||unknownProjects.current.has(unknownKey),onClick:()=>void createProject(),style:{...s.button,border:0},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]}),
      unknownProjects.current.has(unknownKey)?jsx('div',{role:'alert',children:unknownWarning,style:{fontSize:12,overflowY:'auto',flexShrink:1}}):null,rowActions.notice,
      projects.isPending&&!choices.length?tr('project.loadingList'):projects.isError&&!choices.length?jsxs('div',{role:'alert',children:[tr('project.loadFailed'),jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')})]}):!choices.length?tr('project.empty'):jsx(ScrollWithCue,{kind:'project',style:{minHeight:0,maxHeight:96,flex:'0 1 auto'},revision:choices.length,children:choices.map(renderRow)})
@@ -1157,7 +1157,16 @@ function statusText(value){
  const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text)].map(x=>x.segment):Array.from(text.matchAll(/(?:\P{Mark}\p{Mark}*|\p{Mark}+)(?:\uFE0F|[\u{1F3FB}-\u{1F3FF}])?(?:\u200D(?:\P{Mark}\p{Mark}*)(?:\uFE0F|[\u{1F3FB}-\u{1F3FF}])?)*/gu),x=>x[0])
  return parts.slice(0,28).join('')
 }
-const quoteDefaults={working:'status.workingQuote',waiting:'status.waitingQuote',idle:'status.idleQuote',online_unobserved:'status.onlineUnobservedQuote',offline:'status.offlineQuote',unknown:'status.unknownQuote'}
+const quoteStates={working:'working',waiting:'waiting',idle:'idle',online_unobserved:'onlineUnobserved',offline:'offline',unknown:'unknown'}
+const quoteStateKeys=Object.keys(quoteStates),quoteRefreshes=5,quoteHistoryLimit=128*quoteStateKeys.length
+const quoteKey=(owner,state)=>owner+':quote-v1:'+state
+const normalizePhrases=phrases=>[...new Set(phrases.map(statusText).filter(Boolean))]
+function storedPhrases(raw,allowList){
+ if(raw==null)return []
+ if(typeof raw==='string')return normalizePhrases([raw])
+ if(allowList&&Array.isArray(raw)&&raw.every(p=>typeof p==='string'))return normalizePhrases(raw)
+ throw Error('invalid status quote')
+}
 const quoteQueues=new WeakMap()
 function queueQuote(storage,key,task){
  let queues=quoteQueues.get(storage);if(!queues){queues=new Map();quoteQueues.set(storage,queues)}
@@ -1165,20 +1174,133 @@ function queueQuote(storage,key,task){
  job.finally(()=>{if(queues.get(key)===job)queues.delete(key)}).catch(()=>{})
  return job
 }
-function StatusQuote({storage,ownerKey,status}){
- const state=Object.hasOwn(quoteDefaults,status)?status:'unknown'
- return jsx(StatusQuoteEntry,{storage,ownerKey,state},JSON.stringify([ownerKey,state]))
+const quoteEditorAvailable=['Dialog','DialogContent','DialogHeader','DialogTitle','DialogFooter','Button','Input'].every(k=>!!sdk[k])
+function StatusQuote({storage,ownerKey,status,statusDialog,statusRefresh=0,lastQuotes}){
+ const [source,setSource]=useState({storage,generation:0})
+ if(source.storage!==storage)setSource({storage,generation:source.generation+1})
+ const state=Object.hasOwn(quoteStates,status)?status:'unknown'
+ return jsx(StatusQuoteEntry,{storage,ownerKey,state,statusDialog,statusRefresh,lastQuotes},JSON.stringify([ownerKey,source.generation]))
 }
-function StatusQuoteEntry({storage,ownerKey,state}){
+function StatusQuoteEntry({storage,ownerKey,state,statusDialog,statusRefresh,lastQuotes}){
  const tr=useTranslator()
- const [text,setText]=useState(''),[draft,setDraft]=useState(''),[editing,setEditing]=useState(false),[expanded,setExpanded]=useState(false),[error,setError]=useState(''),[ready,setReady]=useState(false),[busy,setBusy]=useState(false)
- const alive=useRef(false),lock=useRef(false),key=ownerKey+':quote-v1:'+state
- useEffect(()=>{let active=true;alive.current=true;setReady(false);Promise.resolve().then(async()=>{if(typeof storage?.get!=='function')throw Error('storage.get unavailable');const legacy=await storage.get(ownerKey),saved=await storage.get(key);const raw=saved==null?legacy:saved;const first=saved!=null&&Array.isArray(raw)?raw[0]:raw;if(first!=null&&typeof first!=='string')throw Error('invalid quote');if(active){setText(statusText(first));setReady(true)}}).catch(()=>{if(active)setError({message:()=>tr('status.readFailed')})});return()=>{active=false;alive.current=false}},[storage,ownerKey,key])
- const value=text||tr(quoteDefaults[state])
- const quoteRef=useRef(null),[preview,setPreview]=useState(value)
- useEffect(()=>{const el=quoteRef.current;if(!el)return;const fit=()=>{const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');if(!ctx){setPreview(value);return}const css=getComputedStyle(el);ctx.font=`${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(value)].map(x=>x.segment):Array.from(value);let next=value;if(ctx.measureText(next).width>el.clientWidth){while(parts.length&&ctx.measureText(parts.join('')+'...').width>el.clientWidth)parts.pop();next=parts.join('')+'...'}setPreview(next)};if(typeof ResizeObserver==='function'){const observer=new ResizeObserver(fit);observer.observe(el);fit();return()=>observer.disconnect()}setPreview(value)},[value])
- async function save(){if(lock.current||!ready)return;lock.current=true;setBusy(true);try{if(typeof storage?.set!=='function'||typeof storage?.get!=='function')throw Error();const clean=statusText(draft);await queueQuote(storage,key,async()=>{await storage.set(key,clean);const confirmed=await storage.get(key);if(confirmed!==clean)throw Error()});if(alive.current){setText(clean);setEditing(false);setError('')}}catch{if(alive.current)setError({message:()=>tr('status.saveFailed')})}finally{lock.current=false;if(alive.current)setBusy(false)}}
- return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0},children:[jsx('button',{ref:quoteRef,'data-status-quote':true,type:'button',onClick:()=>setExpanded(x=>!x),title:value,'aria-label':tr('status.label',value),style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',cursor:'pointer'},children:preview}),jsx('button',{'data-status-edit':true,type:'button',disabled:!ready||busy,onClick:()=>{setDraft(text);setEditing(x=>!x)},style:{...s.button,border:0,padding:4},'aria-label':tr('status.editQuote'),children:'✎'})]}),expanded?jsx('div',{'data-status-full':true,tabIndex:0,style:{whiteSpace:'nowrap',overflowX:'auto',maxWidth:'100%',color:'var(--ui-text-secondary)',fontSize:12},children:value}):null,editing?jsxs('div',{children:[jsx('span',{children:tr('status.editLocal',tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[state]))}),jsx('input',{'data-status-input':true,disabled:busy,value:draft,onChange:e=>setDraft(e.target.value),maxLength:512,'aria-label':tr('status.quote'),style:{maxWidth:'100%',boxSizing:'border-box'}}),jsx('button',{'data-status-save':true,type:'button',onClick:save,children:tr('common.save')})]}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
+ const [rows,setRows]=useState({}),[editor,setEditor]=useState(null),[busy,setBusy]=useState(false)
+ const alive=useRef(false),lock=useRef(false),pencil=useRef(null),input=useRef(null),token=useRef(Symbol()),formId=React.useId()
+ const releaseDialog=()=>{if(statusDialog.current===token.current)statusDialog.current=null}
+ React.useLayoutEffect(()=>{alive.current=true;return()=>{alive.current=false;releaseDialog()}},[statusDialog])
+ useEffect(()=>{
+  let active=true,legacy
+  for(const row of quoteStateKeys){
+   const key=quoteKey(ownerKey,row)
+   const update=phrases=>{if(active)setRows(current=>({...current,[row]:phrases}))}
+   void (async()=>{
+    // Wait for an earlier mount's save and read-back before reading that key.
+    await quoteQueues.get(storage)?.get(key)?.catch(()=>{})
+    if(!active)return
+    const raw=await storage.get(key,null)
+    if(!active)return
+    update(raw==null?await (legacy??=Promise.resolve().then(()=>storage.get(ownerKey,null)).then(raw=>storedPhrases(raw,false))):storedPhrases(raw,true))
+   })().catch(()=>update(null))
+  }
+  return()=>{active=false}
+ },[storage,ownerKey])
+ const defaultFor=row=>tr('status.'+quoteStates[row]+'Quote')
+ const defaultText=defaultFor(state)
+ const defaultPhrases=React.useMemo(()=>defaultText.split(', '),[defaultText])
+ // Don't draw from the defaults before we know whether this state has a saved list.
+ const savedPhrases=rows[state],phrases=savedPhrases===undefined?null:savedPhrases?.length?savedPhrases:defaultPhrases
+ const fieldValue=row=>rows[row]?.join(', ')||defaultFor(row)
+ function openEditor(){if(statusDialog.current)return;statusDialog.current=token.current;setEditor({drafts:{},failed:[],partial:false})}
+ function closeEditor(){releaseDialog();setEditor(null)}
+ async function save(){
+  if(lock.current||!editor)return
+  const changed=quoteStateKeys.filter(row=>rows[row]&&((Object.hasOwn(editor.drafts,row)&&editor.drafts[row]!==fieldValue(row))||editor.failed.includes(row)))
+  if(!changed.length){closeEditor();return}
+  lock.current=true;setBusy(true)
+  const results=await Promise.all(changed.map(async row=>{
+   try{
+    const key=quoteKey(ownerKey,row),draft=editor.drafts[row]
+    const phrases=draft===fieldValue(row)?rows[row]:normalizePhrases(draft.split(','))
+    if(!phrases.length&&!rows[row].length&&!editor.failed.includes(row))return {row}
+    const payload=phrases.length>1?phrases:phrases[0]??''
+    await queueQuote(storage,key,async()=>{await storage.set(key,payload);if(JSON.stringify(await storage.get(key,null))!==JSON.stringify(payload))throw Error('status quote read-back mismatch')})
+    return {row,phrases}
+   }catch{return {row,phrases:null}}
+  }))
+  lock.current=false
+  if(!alive.current)return
+  setBusy(false)
+  const saved=results.filter(result=>result.phrases),failed=results.filter(result=>result.phrases===null).map(result=>result.row)
+  if(saved.length)setRows(current=>({...current,...Object.fromEntries(saved.map(({row,phrases})=>[row,phrases]))}))
+  if(!failed.length){closeEditor();return}
+  setEditor({drafts:Object.fromEntries(failed.map(row=>[row,editor.drafts[row]])),failed,partial:editor.partial||saved.length>0})
+ }
+ const readFailed=quoteStateKeys.some(row=>rows[row]===null),helpId=formId+'-help'
+ const isComposing=e=>e.isComposing||e.keyCode===229
+ return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[
+  jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0},children:[
+   jsx(RotatingStatusQuote,{state,historyKey:quoteKey(ownerKey,state),lastQuotes,phrases,editorOpen:!!editor,label:tr,statusRefresh}),
+   jsx('button',{ref:pencil,'data-status-edit':true,type:'button',disabled:rows[state]===undefined||!quoteEditorAvailable,onClick:openEditor,style:{...s.button,border:0,padding:4},'aria-label':tr('status.editTitle'),'aria-haspopup':'dialog',children:'✎'})
+  ]}),
+  editor?jsx(sdk.Dialog,{open:true,onOpenChange:open=>{if(!open&&!lock.current)closeEditor()},children:jsxs(sdk.DialogContent,{className:'max-w-md',style:{maxHeight:'calc(100dvh - 24px)'},'aria-describedby':helpId,'data-status-editor':true,
+   onEscapeKeyDown:e=>{if(isComposing(e)||lock.current)e.preventDefault()},
+   onKeyDown:e=>{if(e.key==='Escape'&&!isComposing(e.nativeEvent)){e.preventDefault();e.stopPropagation();if(!lock.current)closeEditor()}},
+   onOpenAutoFocus:e=>{e.preventDefault();input.current?.focus();input.current?.select()},
+   onCloseAutoFocus:e=>{e.preventDefault();if(alive.current&&!statusDialog.current)pencil.current?.focus({preventScroll:true})},children:[
+    jsxs(sdk.DialogHeader,{children:[jsx(sdk.DialogTitle,{children:tr('status.editTitle')}),jsx('p',{id:helpId,style:{fontSize:12,color:'var(--ui-text-secondary)'},children:tr('status.quoteHelp')})]}),
+    jsx('div',{style:{display:'grid',gridTemplateColumns:'max-content minmax(0, 1fr)',alignItems:'center',gap:'6px 12px'},children:quoteStateKeys.map(row=>{
+     const id=formId+'-'+row
+     return jsxs(React.Fragment,{children:[
+      jsx('label',{htmlFor:id,style:{fontSize:13},children:tr('status.'+quoteStates[row])}),
+      jsx(sdk.Input,{id,ref:row===state?input:undefined,type:'text',size:'sm','data-status-input':row,readOnly:busy||!rows[row],value:editor.drafts[row]??(rows[row]?fieldValue(row):''),maxLength:512,'aria-invalid':rows[row]===null||editor.failed.includes(row)||undefined,onChange:e=>{const draft=e.target.value;setEditor(current=>({...current,drafts:{...current.drafts,[row]:draft}}))},onKeyDown:e=>{if(e.key==='Enter'&&!isComposing(e.nativeEvent)){e.preventDefault();void save()}}})
+     ]},row)
+    })}),
+    readFailed?jsx('small',{role:'alert',children:tr('status.readFailed')}):null,
+    editor.failed.length?jsx('small',{role:'alert',children:[tr('status.saveFailed'),editor.partial?' '+tr('status.savePartial'):'']}):null,
+    jsxs(sdk.DialogFooter,{children:[jsx(sdk.Button,{type:'button',variant:'ghost',disabled:busy,onClick:()=>{if(!lock.current)closeEditor()},children:tr('common.cancel')}),jsx(sdk.Button,{'data-status-save':true,type:'button',disabled:busy,onClick:()=>void save(),children:tr('common.save')})]})
+   ]})}):readFailed?jsx('small',{role:'alert',children:tr('status.readFailed')}):null
+ ]})
+}
+function RotatingStatusQuote({state,historyKey,lastQuotes,phrases,editorOpen,label,statusRefresh}){
+ const [hovered,setHovered]=useState(false),held=editorOpen||hovered
+ const [value,setValue]=useState(''),[preview,setPreview]=useState('')
+ const rotation=useRef(null),quoteRef=useRef(null),hover=useRef(false),reflow=useRef(null)
+ React.useLayoutEffect(()=>{
+  const previous=rotation.current,sameState=previous?.state===state
+  // Keep the current phrase during a hold, even if a partial save changed the list.
+  const list=held&&sameState&&previous.phrases?previous.phrases:phrases
+  const sameList=sameState&&(list===previous.phrases||list&&previous.phrases&&list.length===previous.phrases.length&&list.every((text,i)=>text===previous.phrases[i]))
+  const delta=sameList?statusRefresh-previous.statusRefresh:0
+  // Discard samples during a hold without losing pre-hold progress.
+  const steps=sameList&&delta>=0?previous.steps+(held||previous.held?0:delta):0
+  let next=sameState?previous.value:''
+  if(!list)next=''
+  else if(!list.includes(next)||steps>=quoteRefreshes){
+   // A batch crossing multiple thresholds still makes just one visible draw.
+   const last=next||lastQuotes.get(historyKey),alternatives=list.filter(text=>text!==last)
+   next=alternatives.length>1?alternatives[Math.floor(Math.random()*alternatives.length)]:alternatives[0]??list[0]
+  }
+  rotation.current={state,phrases:list,statusRefresh,held,steps:steps%quoteRefreshes,value:next}
+  if(next!==previous?.value)setValue(next)
+ },[state,historyKey,lastQuotes,phrases,held,statusRefresh])
+ React.useLayoutEffect(()=>{
+  // Remember committed text in this registration only, newest entries last.
+  if(!value||rotation.current.value!==value)return
+  lastQuotes.delete(historyKey);lastQuotes.set(historyKey,value)
+  if(lastQuotes.size>quoteHistoryLimit)lastQuotes.delete(lastQuotes.keys().next().value)
+ },[historyKey,lastQuotes,value])
+ React.useLayoutEffect(()=>{
+  if(!value){setPreview('');return}
+  const el=quoteRef.current;if(!el)return
+  const fit=()=>{const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');if(!ctx){setPreview(value);return}const css=getComputedStyle(el);ctx.font=`${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(value)].map(x=>x.segment):Array.from(value);let next=value;if(ctx.measureText(next).width>el.clientWidth){while(parts.length&&ctx.measureText(parts.join('')+'...').width>el.clientWidth)parts.pop();next=parts.join('')+'...'}setPreview(next)}
+  if(typeof ResizeObserver!=='function'){setPreview(value);return}
+  reflow.current=fit
+  const observer=new ResizeObserver(()=>{if(!hover.current)fit()});observer.observe(el);fit()
+  return()=>{reflow.current=null;observer.disconnect()}
+ },[value])
+ return jsxs('span',{ref:quoteRef,'data-status-quote':true,title:value,onPointerEnter:()=>{hover.current=true;setHovered(true)},onPointerLeave:()=>{hover.current=false;setHovered(false);reflow.current?.()},style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',position:'relative'},children:[
+  jsx('span',{'aria-hidden':true,children:preview}),
+  jsx('span',{style:{position:'absolute',width:1,height:1,overflow:'hidden',clipPath:'inset(50%)'},children:value?label('status.label',value):null})
+ ]})
 }
 // SessionCrew's own namespace; never depends on Office being mounted.
 const STATUS_TTL=15000
@@ -1231,14 +1353,15 @@ function snapshotReason(q,now,enabled){
 function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
  const scope=JSON.stringify([connection,profile,epoch,generation]), current=useRef(scope);current.current=scope
  const sameScope=()=>current.current===scope&&activityScope.generation===generation&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
- const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),idleFences:new Map(),estimateFences:new Map(),oneshotFences:new Map()}
+ const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),idleFences:new Map(),estimateFences:new Map(),oneshotFences:new Map(),statusRefresh:0}
+ const statusHistory=history.current
  const [clock,tick]=useState(()=>Date.now())
  const enabled=!!profile&&typeof rest==='function'
  const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch,generation],enabled,retry:false,staleTime:STATUS_TTL,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async({signal}={})=>{
  try{
   const sampledAt=Date.now()
   const data=await rest('/status',{method:'GET',timeoutMs:10000})
-  if(signal?.aborted||!sameScope())throw new LocalizedError('errors.connectionChanged')
+  if(signal?.aborted||history.current!==statusHistory||!sameScope())throw new LocalizedError('errors.connectionChanged')
   if(!Array.isArray(data))throw new LocalizedError('errors.statusFormat')
   const {rows}=partitionRailSnapshot(data),samples=new Map()
   const starts=history.current.starts,now=Date.now();if(history.current.lastAt&&now-history.current.lastAt>STATUS_TTL)starts.clear();history.current.lastAt=now
@@ -1255,9 +1378,11 @@ function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
    samples.set(row.profile,status==='idle'?{...sample,idleSampledAt:sampledAt}:sample)
   }
   for(const name of starts.keys())if(!rows.has(name))starts.delete(name)
-  // Keep Query's existing array shape. Derive the Map-based snapshot outside the cache.
-  return data.map(row=>samples.get(row?.profile)??row)
- }catch(error){if(!signal?.aborted&&sameScope())history.current.starts.clear();throw error}
+  // Count successful /status requests (polls and native refetches), not cache writes or clock renders.
+  const result=data.map(row=>samples.get(row?.profile)??row)
+  statusHistory.statusRefresh++
+  return result
+ }catch(error){if(!signal?.aborted&&history.current===statusHistory&&sameScope())statusHistory.starts.clear();throw error}
  }})
  useEffect(()=>{
   if(!enabled||gateway!=='open'||typeof host.onEvent!=='function')return
@@ -1279,7 +1404,7 @@ function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
   else if(status==='online_unobserved'&&sharedIdleHistory(row)&&start)rows.set(name,{...row,presentationIdleSince:start.since,idleSampledAt:start.sampledAt,historicalIdle:true})
   else rows.set(name,row)
  }
- return [{rows,invalidOwners:snapshot.invalidOwners,reason,lastSuccessAt},clock,starts,idleFences,estimateFences,oneshotFences]
+ return [{rows,invalidOwners:snapshot.invalidOwners,reason,lastSuccessAt,statusRefresh:statusHistory.statusRefresh},clock,starts,idleFences,estimateFences,oneshotFences]
 }
 function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
 const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
@@ -1583,7 +1708,7 @@ function useRecentPrewarm({connection,profile,activation,owners,ready,rest,selec
  },[connection,profile,activation,rest,selectedRef])
  React.useLayoutEffect(()=>{latest.current={owners,ready};wake.current?.()})
 }
-function Rail({storage,rest,preferences}){
+function Rail({storage,rest,preferences,lastQuotes}){
  const tr=useTranslator()
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
@@ -1607,7 +1732,7 @@ function Rail({storage,rest,preferences}){
  },[idleStarts,idleFences,estimateFences])
  const activation=activityScopeNow.epoch
  const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),quickOpens=useRef(new Set()),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
- const rowLayer=useRef(null),rowChanges=useRef(new Map()),[,refreshRowChanges]=useState(0)
+ const statusDialog=useRef(null),rowLayer=useRef(null),rowChanges=useRef(new Map()),[,refreshRowChanges]=useState(0)
  const launchEpoch=useRef(null),[,refreshLaunch]=useState(0)
  const select=useCallback((key,mode='panel',scope=null)=>{
   if(key===(selectedRef.current?.key??null)&&(!key||mode===selectedRef.current.mode))return
@@ -1714,23 +1839,23 @@ function Rail({storage,rest,preferences}){
    return()=>{if(launchEpoch.current===epoch)launchEpoch.current=null;refreshLaunch(n=>n+1)}
   }
   const {owner,phase}=destinations.get(p.name)
-  const openMenu=e=>{e.preventDefault();if(!dialogActive.current)select(selectionKey,'menu')}
+  const openMenu=e=>{e.preventDefault();if(!dialogActive.current&&!statusDialog.current)select(selectionKey,'menu')}
   const avatarActions={onContextMenu:openMenu,onKeyDown:e=>{if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10')openMenu(e)},onClick:e=>{
    if(e.button===0&&e.detail>1){
     // Radix calls the child handler before its own click toggle.
     e.preventDefault()
-    if(e.detail===2&&!dialogActive.current)select(selectionKey,'quick',{generation:activityScope.generation,activation:sdk.gatewayActivationEpoch?.()??activation})
+    if(e.detail===2&&!dialogActive.current&&!statusDialog.current)select(selectionKey,'quick',{generation:activityScope.generation,activation:sdk.gatewayActivationEpoch?.()??activation})
    }else if(compact){e.preventDefault();select(selectionKey)}
   }}
   const preserveFocus=e=>{const next=selectedRef.current;if(next&&(next.key!==selectionKey||selectionEpoch.current!==epoch))e.preventDefault()}
-  return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(!open&&(dialogActive.current||rowLayer.current?.target.owner.name===p.name))return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
+  return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(statusDialog.current||!open&&(dialogActive.current||rowLayer.current?.target.owner.name===p.name))return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
    jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activityDetail,metadataLabel),'aria-description':statusDetails.join(' · ')||undefined,title:[activityDetail,metadataLabel,...statusDetails].filter(Boolean).join(' · ')||undefined}}),
    compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},quickOpens:quick?quickOpens.current:null,isCurrent:()=>!!parentContentRef.current&&recentIsCurrent(),getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(recentIsCurrent())select(null)}},selected.mode)},'menu'):
-   jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||rowLayer.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[
-    jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),
+   jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||statusDialog.current||rowLayer.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[
+    jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status,statusDialog,statusRefresh:office.statusRefresh,lastQuotes},JSON.stringify([epoch,activityScopeNow.generation,activation]))]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),
     active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,
-    active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,rowLayer,rowChanges,refreshRowChanges,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null
+    active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,statusDialog,rowLayer,rowChanges,refreshRowChanges,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null
    ]},'panel')]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }
-export default {id:'sessioncrew',name:'SessionCrew',defaultEnabled:true,register(ctx){pluginI18n=typeof ctx.i18n?.register==='function'&&typeof ctx.i18n?.t==='function'?ctx.i18n:null;pluginI18n?.register(messages);const rest=typeof ctx.rest==='function'?(path,opts)=>ctx.rest(path,opts):null;const preferences=createPreferences(ctx.storage);ctx.registerSettingsPage?.({id:'settings',title:'SessionCrew',icon:'account',render:()=>jsx(LocalizedRoot,{children:jsx(Settings,{preferences})})});ctx.register({id:'rail',area:'panes',title:'SessionCrew',data:{placement:'left',dock:{pane:'workspace',pos:'left'},width:'80px',minWidth:'80px'},render:()=>jsx(LocalizedRoot,{children:jsx(DialogRestContext.Provider,{value:rest,children:jsx(Rail,{storage:ctx.storage,rest,preferences})})})})}}
+export default {id:'sessioncrew',name:'SessionCrew',defaultEnabled:true,register(ctx){pluginI18n=typeof ctx.i18n?.register==='function'&&typeof ctx.i18n?.t==='function'?ctx.i18n:null;pluginI18n?.register(messages);const rest=typeof ctx.rest==='function'?(path,opts)=>ctx.rest(path,opts):null;const preferences=createPreferences(ctx.storage),lastQuotes=new Map();ctx.registerSettingsPage?.({id:'settings',title:'SessionCrew',icon:'account',render:()=>jsx(LocalizedRoot,{children:jsx(Settings,{preferences})})});ctx.register({id:'rail',area:'panes',title:'SessionCrew',data:{placement:'left',dock:{pane:'workspace',pos:'left'},width:'80px',minWidth:'80px'},render:()=>jsx(LocalizedRoot,{children:jsx(DialogRestContext.Provider,{value:rest,children:jsx(Rail,{storage:ctx.storage,rest,preferences,lastQuotes})})})})}}
