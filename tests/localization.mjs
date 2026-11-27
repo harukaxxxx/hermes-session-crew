@@ -46,29 +46,63 @@ assert.match(translate('zh-hant','activity.observed',2),/^已觀察到 2 個/)
 assert.equal(translate('en','session.loadFailure','SERVER'),'Could not load sessions: SERVER')
 assert.equal(translate('zh-hant','session.loadFailure','SERVER'),'工作階段無法載入：SERVER')
 assert.equal(translate('en','status.profileAria','A','working',true,'',''),'A · state working · unread completions')
+assert.equal(translate('en','status.editTitle'),'Edit status quote')
+assert.equal(translate('zh-hant','status.editTitle'),'編輯狀態短句')
+assert.match(translate('en','status.quoteHelp'),/\(,\).*Ready, Back soon.*restore its default/)
+assert.match(translate('zh-hant','status.quoteHelp'),/半形逗號 \(,\).*準備好了, 稍後回來.*還原預設短句/)
 assert.equal(translate('en','session.newInProject','My project'),'New conversation in My project')
 assert.equal(translate('zh-hant','session.newInProject','My project'),'在 My project 新增對話')
 const prefs=createPreferences(storage),client=new QueryClient({defaultOptions:{queries:{retry:false}}}),root=createRoot(document.getElementById('root'))
 const completion={watermark:()=>[],coverageReady:false,ackAll:()=>{}}
-function Fixture(){return React.createElement(React.Fragment,null,React.createElement(Settings,{preferences:prefs}),React.createElement(DialogRestContext.Provider,{value:rest},React.createElement(Recent,{owner:{name:'alpha',connectionId:'c',route:{targetProfile:'alpha'}},completion})),React.createElement(StatusQuote,{storage,ownerKey:'quote',status:'working'}))}
+const statusDialog={current:null},lastQuotes=new Map()
+Math.random=()=>0
+function Fixture(){return React.createElement(React.Fragment,null,React.createElement(Settings,{preferences:prefs}),React.createElement(DialogRestContext.Provider,{value:rest},React.createElement(Recent,{owner:{name:'alpha',connectionId:'c',route:{targetProfile:'alpha'}},completion})),React.createElement(StatusQuote,{storage,ownerKey:'quote',status:'working',statusDialog,lastQuotes}))}
 const wrap=child=>React.createElement(QueryClientProvider,{client},React.createElement(LocalizedRoot,null,child))
 await React.act(async()=>{root.render(wrap(React.createElement(Fixture)));await new Promise(r=>setTimeout(r,80))})
 async function waitFor(text){for(let i=0;i<40&&!document.body.textContent.includes(text);i++)await React.act(async()=>new Promise(r=>setTimeout(r,10)));assert.ok(document.body.textContent.includes(text),`missing ${text}: ${document.body.textContent}`)}
-await waitFor('Untitled');await waitFor('Home');await waitFor('Focusing on the task at hand.')
+await waitFor('Untitled');await waitFor('Home');await waitFor("I'm busy right now.")
 assert.match(document.body.textContent,/Hide offline profiles/);assert.match(document.body.textContent,/Custom project/)
-const quoteButton=document.querySelector('[data-status-quote]');assert.equal(quoteButton.title,'Focusing on the task at hand.')
+const accessibleQuote=()=>document.querySelector('[data-status-quote] span:not([aria-hidden])').textContent
+assert.equal(accessibleQuote(),"Status: I'm busy right now.")
 await React.act(async()=>{document.querySelector('[data-recent-row]').click();await new Promise(r=>setTimeout(r,10))})
 await waitFor('Could not open: Custom server failure')
-await change('zh-hant');await waitFor('未命名');await waitFor('主頁');await waitFor('正在專心整理眼前的事情。')
-assert.match(document.body.textContent,/隱藏離線設定檔/);assert.equal(quoteButton.title,'正在專心整理眼前的事情。');assert.match(document.body.textContent,/Custom title/);assert.match(document.body.textContent,/Custom project/)
+await change('zh-hant');await waitFor('未命名');await waitFor('主頁');await waitFor('我正在忙。')
+assert.match(document.body.textContent,/隱藏離線設定檔/);assert.equal(accessibleQuote(),'狀態：我正在忙。');assert.match(document.body.textContent,/Custom title/);assert.match(document.body.textContent,/Custom project/)
 await waitFor('開啟失敗：Custom server failure');assert.equal(errorMessage(new LocalizedError('errors.otherProfilesUnsupported'),(key,...args)=>translate('zh-hant',key,...args)),'此版本不支援讀取其他設定檔')
 assert.equal(errorMessage(new LocalizedTimeoutError('settings.profileList'),(key,...args)=>translate('zh-hant',key,...args)),'設定檔清單逾時')
 assert.equal(errorMessage({localizationKey:'errors.otherProfilesUnsupported',message:'External error'}),'External error')
 // External text is not translated merely because it matches plugin copy.
 assert.equal(localizeError('Could not save settings; try again'),'Could not save settings; try again')
-await change('fr');assert.equal(quoteButton.title,'Focusing on the task at hand.');assert.match(document.body.textContent,/Hide offline profiles/)
+await change('fr');assert.equal(accessibleQuote(),"Status: I'm busy right now.");assert.match(document.body.textContent,/Hide offline profiles/)
 await React.act(async()=>root.unmount());client.clear()
+const zhDefaults={
+ working:['我正在忙。','這件事還在做。','正在處理，稍等一下。','還沒做完，我繼續。','我先忙這件事。'],
+ waiting:['我在等你回覆。','還需要你補充一下。','我先停在這裡，等你確認。','你回我之後，我再接著做。','下一步等你說。'],
+ idle:['我現在有空。','有事可以找我。','現在沒在忙。','有新任務，可以交給我。','我可以接下一件事。'],
+ online_unobserved:['我在線上。','我有連上。','我在這裡。','這邊有連線。','我現在在線。'],
+ offline:['我現在不在線。','暫時離線。','這會兒不在。','等我上線再聊。','晚點再看看我在不在。'],
+ unknown:['我的狀態還不確定。','我這邊還回報不了狀態。','我的狀態暫時沒顯示。','我這邊還沒有狀態可回報。','先不確定我在不在線。'],
+}
+for(const [key,value] of Object.entries(messages.en.status).filter(([key])=>key.endsWith('Quote'))){
+ assert.match(value,/^[^,]+(?:, [^,]+){4}$/,key)
+}
+await change('zh-hant')
+const defaultRoot=createRoot(document.getElementById('root'))
+let refresh=0
+const renderQuote=(status,statusRefresh)=>React.act(async()=>defaultRoot.render(wrap(React.createElement(StatusQuote,{storage,ownerKey:'defaults',status,statusDialog,statusRefresh,lastQuotes}))))
+
+for(const [state,phrases] of Object.entries(zhDefaults)){
+ const key=state==='online_unobserved'?'onlineUnobserved':state
+ assert.deepEqual(translate('zh-hant',`status.${key}Quote`).split(', '),phrases)
+ await renderQuote(state,refresh);assert.equal(accessibleQuote(),`狀態：${phrases[0]}`,state)
+ for(let step=1;step<=25;step++){
+  await renderQuote(state,++refresh)
+  assert.equal(accessibleQuote(),`狀態：${phrases[Math.floor(step/5)%2]}`,`${state} after ${step} refreshes despite new translator functions`)
+ }
+}
+await React.act(async()=>defaultRoot.unmount());assert.equal(saved.size,0,'reading and rotating defaults does not write storage')
 // Settings subscribes independently, and an already-stored error follows locale.
+await change('en')
 const failing=createPreferences({get:async()=>{throw Error('storage')},set:async()=>{}}),settingsRoot=createRoot(document.getElementById('root'))
 await React.act(async()=>{settingsRoot.render(wrap(React.createElement(Settings,{preferences:failing})));await new Promise(r=>setTimeout(r,40))})
 await waitFor('Could not read settings');await change('zh-hant');await waitFor('設定無法讀取')
@@ -77,7 +111,7 @@ await React.act(async()=>settingsRoot.unmount());client.clear()
 // Persisted custom quote is user content, not a dictionary key or translated fallback.
 await change('en');saved.set('quote:quote-v1:working','使用者自訂');const root2=createRoot(document.getElementById('root'))
 await React.act(async()=>{root2.render(wrap(React.createElement(Fixture)));await new Promise(r=>setTimeout(r,60))})
-await waitFor('使用者自訂');await change('zh-hant');assert.equal(document.querySelector('[data-status-quote]').title,'使用者自訂')
+await waitFor('使用者自訂');await change('zh-hant');assert.equal(accessibleQuote(),'狀態：使用者自訂')
 await React.act(async()=>root2.unmount());client.clear()
 // The complete translated dialog title interpolates the owner in each locale.
 await change('en');const dialogRoot=createRoot(document.getElementById('root'))
@@ -93,4 +127,4 @@ assert.match(document.body.textContent,/Hide offline profiles/);assert.doesNotMa
 await React.act(async()=>root3.render(wrap(React.createElement(ProjectDialog,{owner:{connectionId:'c',route:{connectionId:'c',targetProfile:'alpha'}},ownerName:'A$&',isCurrent:()=>true,onClose:()=>{},onCreated:()=>{},onRefresh:()=>{},unknownProjects:{current:new Set()}}))))
 assert.equal(document.querySelector('h2').textContent,'New project (A$&)')
 await React.act(async()=>root3.unmount());client.clear()
-console.log('PASS locale registration, reactive en/zh-Hant, fallback, cached labels and custom quote')
+console.log('PASS locale registration, reactive en/zh-Hant, all six exact zh-Hant lists and rotation, fallback, cached labels and custom quote')

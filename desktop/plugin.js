@@ -29,7 +29,7 @@ const messages = {
       newForProfile: "New project for this profile",
       uncategorized: "Uncategorized",
       untitled: "Untitled project",
-      empty: "No projects with sessions",
+      empty: "No projects",
       generating: "Generating…",
       generateIdea: "Generate idea (using the selected profile's LLM)",
       ideaLearning: "Build a tool to organize learning resources",
@@ -55,6 +55,17 @@ const messages = {
       unknownFailure: error => `Creation outcome unknown. Check the selected profile's native project list first; reloading clears the in-memory safeguard. ${error}`,
       newForOwner: owner => `New project (${owner})`,
       created: (label, id) => `Project created: ${label} (${id})`,
+      menu: label => `Project actions for ${label}`,
+      rename: "Rename", appearance: "Appearance", copyPath: "Copy path", delete: "Delete",
+      actionTarget: (label, owner) => `Project “${label}” · profile ${owner}`,
+      deleteTarget: (label, owner) => `Remove “${label}” from profile ${owner}? This deletes the project record and its folder associations, not the folders or conversations.`,
+      routeUnverified: "The project owner could not be verified on this route.",
+      readFailed: "Could not verify the stored project. No change was sent.",
+      changeUnknown: label => `Could not confirm the change to “${label}”. Check its status before trying again.`,
+      actionRefreshFailed: label => `The change to “${label}” was acknowledged, but the project list could not be refreshed.`,
+      checkChange: "Check change status",
+      copyFailed: "Could not copy the project path.",
+      clearColor: "Clear color", clearIcon: "Clear icon", icon: "Project icon",
     },
     common: {
       primary: "Primary",
@@ -100,23 +111,23 @@ const messages = {
       noProfiles: "No profiles available",
     },
     status: {
-      waitingQuote: "Taking a moment to wait before continuing.",
+      waitingQuote: "I'm waiting for your reply., I still need a few more details from you., I'll pause here until you confirm., I'll pick this up after you reply., Let me know what to do next.",
       workingLabel: "Working",
       thinkingWords: "pondering,contemplating,musing,cogitating,ruminating,deliberating,mulling,reflecting,processing,reasoning,analyzing,computing,synthesizing,formulating,brainstorming",
-      offlineQuote: "Offline for now; see you later.",
-      idleQuote: "I'm here whenever you need me.",
-      onlineUnobservedQuote: "Online; no activity observed for this profile.",
-      workingQuote: "Focusing on the task at hand.",
-      quote: "Status quote",
-      unknownQuote: "Not enough status information yet.",
-      saveFailed: "Could not save quote; try again",
-      readFailed: "Could not read quote; reopen the panel",
-      editQuote: "Edit status quote",
+      offlineQuote: "I'm offline right now., Temporarily offline., I'm away at the moment., Let's talk when I'm back online., Check back later to see if I'm around.",
+      idleQuote: "I'm free right now., You can reach me if you need anything., I'm not busy right now., Feel free to send me a new task., I can take the next task.",
+      onlineUnobservedQuote: "I'm online., I'm connected., I'm here., I've got a connection., I'm online now.",
+      workingQuote: "I'm busy right now., I'm still working on this., I'm on it. Give me a moment., It's not done yet. I'll keep going., Let me work on this first.",
+      unknownQuote: "My status is still unclear., I can't report my status yet., My status isn't showing right now., I don't have a status to report yet., I'm not sure whether I'm online yet.",
+      saveFailed: "Could not confirm all saves. Try again.",
+      savePartial: "Other changes were saved.",
+      readFailed: "Could not read some quotes. Reopen the panel to retry.",
+      quoteHelp: 'Separate phrases with an ASCII comma (,), for example: Ready, Back soon. Clear a field to restore its default.',
 
       working: "working",
       waiting: "waiting",
       idle: "idle",
-      onlineUnobserved: "online · no activity observed",
+      onlineUnobserved: "online",
       historicalIdle: "Elapsed since last confirmed idle; current activity unknown",
       observedIdle: "Elapsed since work was observed to end; other activity may be unknown",
       lastActivityElapsed: "Elapsed since last recorded session activity; idle not confirmed",
@@ -124,8 +135,19 @@ const messages = {
       unreadCompletionElapsed: "Elapsed since an unread completion was observed; idle not confirmed",
       offline: "offline",
       unknown: "unknown",
+      railReason: {
+        pending: "Waiting for the first status response",
+        unavailable: "Status source unavailable",
+        requestError: "Status request failed",
+        expired: "Status response expired",
+        missing: "Status response has no row for this profile",
+        malformed: "Malformed status row for this profile",
+        duplicate: "Duplicate status rows for this profile",
+        backendUnknown: "Backend reported an unknown status",
+        lastSuccess: time => `Last successful status response: ${time}`,
+      },
       label: value => `Status: ${value}`,
-      editLocal: state => `Edit ${state} (local only)`,
+      editTitle: "Edit status quote",
       profileAria: (name, state, unread, activity, metadata) => `${name} · state ${state}${unread ? " · unread completions" : ""}${activity ? ` · ${activity}` : ""}${metadata ? ` · ${metadata}` : ""}`,
     },
     completion: {
@@ -191,6 +213,11 @@ const messages = {
       remove: path => `Remove ${path}`,
     },
     session: {
+      heading: "Sessions",
+      markAllRead: "Mark all as read",
+      openLatest: "Open latest",
+      loadingLatest: "Loading latest...",
+      noRecentSessions: "No recent sessions",
       quickCreate: "Quick create",
       limit: "Showing at most 200 fetched items",
       untitled: "Untitled",
@@ -202,6 +229,7 @@ const messages = {
       showMore: "Show more sessions",
       openFailure: error => `Could not open: ${error}; try again`,
       loadFailure: error => `Could not load sessions: ${error}`,
+      refreshFailure: error => `Could not refresh sessions. Showing the previous list: ${error}`,
       createdOpenFailure: (id, error) => `Created ${id}, but opening failed; retry only opens it: ${error}`,
       newInProject: project => `New conversation in ${project}`,
     },
@@ -228,7 +256,7 @@ const messages = {
       newForProfile: "新增此設定檔的專案",
       uncategorized: "未分類",
       untitled: "未命名專案",
-      empty: "沒有參與的專案",
+      empty: "沒有專案",
       generating: "生成中…",
       generateIdea: "生成點子（使用所選設定檔的 LLM）",
       ideaLearning: "製作學習資源整理工具",
@@ -254,6 +282,17 @@ const messages = {
       unknownFailure: error => `建立結果未知，請先核對正確設定檔的原生專案清單；重新載入會清除記憶體防護。 ${error}`,
       newForOwner: owner => `新增專案（${owner}）`,
       created: (label, id) => `已建立專案：${label} (${id})`,
+      menu: label => `「${label}」的專案操作`,
+      rename: "重新命名", appearance: "外觀", copyPath: "複製路徑", delete: "刪除",
+      actionTarget: (label, owner) => `專案「${label}」・設定檔 ${owner}`,
+      deleteTarget: (label, owner) => `從設定檔 ${owner} 移除「${label}」？只會刪除專案記錄和資料夾關聯，不會刪除資料夾或對話。`,
+      routeUnverified: "無法確認此路由所屬的專案設定檔。",
+      readFailed: "無法核對已儲存的專案，未送出變更。",
+      changeUnknown: label => `無法確認「${label}」的變更。請先檢查變更狀態再重試。`,
+      actionRefreshFailed: label => `已收到「${label}」的變更回覆，但無法重新整理專案清單。`,
+      checkChange: "檢查變更狀態",
+      copyFailed: "無法複製專案路徑。",
+      clearColor: "清除顏色", clearIcon: "清除圖示", icon: "專案圖示",
     },
     common: {
       primary: "主要",
@@ -299,23 +338,23 @@ const messages = {
       noProfiles: "沒有設定檔",
     },
     status: {
-      waitingQuote: "先稍作等待，準備好再繼續。",
+      waitingQuote: "我在等你回覆。, 還需要你補充一下。, 我先停在這裡，等你確認。, 你回我之後，我再接著做。, 下一步等你說。",
       workingLabel: "工作中",
       thinkingWords: "pondering,contemplating,musing,cogitating,ruminating,deliberating,mulling,reflecting,processing,reasoning,analyzing,computing,synthesizing,formulating,brainstorming,思考,琢磨,沉思,推敲,斟酌,盤算,反思,處理,推理,分析,運算,整合,構思,腦力激盪",
-      offlineQuote: "暫時不在線，稍後再見。",
-      idleQuote: "有需要時，隨時可以找我。",
-      onlineUnobservedQuote: "在線，尚未觀察到此設定檔的活動。",
-      workingQuote: "正在專心整理眼前的事情。",
-      quote: "狀態短句",
-      unknownQuote: "目前還沒有足夠的狀態資訊。",
-      saveFailed: "短句無法儲存，請重試",
-      readFailed: "短句無法讀取，請重新開啟面板",
-      editQuote: "編輯狀態短句",
+      offlineQuote: "我現在不在線。, 暫時離線。, 這會兒不在。, 等我上線再聊。, 晚點再看看我在不在。",
+      idleQuote: "我現在有空。, 有事可以找我。, 現在沒在忙。, 有新任務，可以交給我。, 我可以接下一件事。",
+      onlineUnobservedQuote: "我在線上。, 我有連上。, 我在這裡。, 這邊有連線。, 我現在在線。",
+      workingQuote: "我正在忙。, 這件事還在做。, 正在處理，稍等一下。, 還沒做完，我繼續。, 我先忙這件事。",
+      unknownQuote: "我的狀態還不確定。, 我這邊還回報不了狀態。, 我的狀態暫時沒顯示。, 我這邊還沒有狀態可回報。, 先不確定我在不在線。",
+      saveFailed: "部分短句未能確認儲存，請重試。",
+      savePartial: "其他變更已儲存。",
+      readFailed: "部分短句無法讀取，請重新開啟面板再試一次。",
+      quoteHelp: '請用半形逗號 (,) 分隔短句，例如：準備好了, 稍後回來。清空欄位即可還原預設短句。',
 
       working: "工作中",
       waiting: "等待中",
       idle: "閒置",
-      onlineUnobserved: "在線・未觀察到活動",
+      onlineUnobserved: "在線",
       historicalIdle: "自上次確認閒置起經過的時間；目前活動狀態未知",
       observedIdle: "自觀察到工作結束起經過的時間；其他活動可能未知",
       lastActivityElapsed: "距上次記錄的工作階段活動已過的時間；未確認閒置",
@@ -323,8 +362,19 @@ const messages = {
       unreadCompletionElapsed: "自觀察到未讀完成起經過的時間；未確認閒置",
       offline: "離線",
       unknown: "未知",
+      railReason: {
+        pending: "尚未收到第一次狀態回應",
+        unavailable: "狀態來源不可用",
+        requestError: "狀態請求失敗",
+        expired: "狀態回應已過期",
+        missing: "狀態回應缺少此角色的資料",
+        malformed: "此角色的狀態資料格式無效",
+        duplicate: "此角色有重複的狀態資料",
+        backendUnknown: "後端回報狀態未知",
+        lastSuccess: time => `上次成功收到狀態回應：${time}`,
+      },
       label: value => `狀態：${value}`,
-      editLocal: state => `編輯 ${state}（僅本機）`,
+      editTitle: "編輯狀態短句",
       profileAria: (name, state, unread, activity, metadata) => `${name} · 狀態 ${state}${unread ? " · 有未讀完成" : ""}${activity ? ` · ${activity}` : ""}${metadata ? ` · ${metadata}` : ""}`,
     },
     completion: {
@@ -390,6 +440,11 @@ const messages = {
       remove: path => `移除 ${path}`,
     },
     session: {
+      heading: "工作階段",
+      markAllRead: "全部標示為已讀",
+      openLatest: "開啟最近",
+      loadingLatest: "載入最近...",
+      noRecentSessions: "查無最近",
       quickCreate: "快速新增",
       limit: "最多顯示已取得的 200 筆",
       untitled: "未命名",
@@ -401,6 +456,7 @@ const messages = {
       showMore: "顯示更多工作階段",
       openFailure: error => `開啟失敗：${error}，請再試一次`,
       loadFailure: error => `工作階段無法載入：${error}`,
+      refreshFailure: error => `工作階段無法更新，目前顯示上次的清單：${error}`,
       createdOpenFailure: (id, error) => `已建立 ${id}，開啟失敗；重試只會開啟：${error}`,
       newInProject: project => `在 ${project} 新增對話`,
     },
@@ -419,7 +475,7 @@ const localizeError=value=>typeof value?.message==='function'?value.message():va
 const TranslationContext=createContext(null)
 function LocalizedRoot({children}){const hook=typeof sdk.usePluginI18n==='function'?sdk.usePluginI18n('sessioncrew'):null,t=pluginI18n&&hook?hook:english;return jsx(TranslationContext.Provider,{value:t,children})}
 function useTranslator(){const current=useContext(TranslationContext)||tr,ref=useRef(current);ref.current=current;return useCallback((...args)=>ref.current(...args),[])}
-const s={rail:{height:'100%',width:50,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',gap:10,paddingTop:18},hit:{width:45,height:37,padding:0,border:0,background:'transparent',cursor:'pointer',color:'var(--ui-text-primary)'},avatar:{width:34,height:34,borderRadius:'22%',border:'2px solid var(--ui-stroke-secondary)',objectFit:'cover',display:'grid',placeItems:'center'},bubble:{zIndex:50,width:310,maxWidth:'calc(100vw - 24px)',display:'flex',flexDirection:'column',padding:16,borderRadius:12,border:'1px solid var(--ui-stroke-secondary)',background:'var(--ui-bg-elevated)',color:'var(--ui-text-primary)'},quote:{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'var(--ui-text-secondary)',fontSize:11,margin:'4px 0 0'},sessions:{overflowY:'auto',minHeight:35,flex:'1 1 auto',color:'var(--ui-text-secondary)'},footer:{display:'flex',justifyContent:'space-between',gap:8,marginTop:8,flexShrink:0},button:{color:'var(--ui-text-secondary)',background:'transparent',border:'1px solid var(--ui-stroke-secondary)',borderRadius:6,padding:'6px 8px'}}
+const s={rail:{height:'100%',width:50,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',gap:10,paddingTop:18},hit:{width:45,height:37,padding:0,border:0,background:'transparent',cursor:'pointer',color:'var(--ui-text-primary)'},avatar:{width:34,height:34,borderRadius:'22%',border:'2px solid var(--ui-stroke-secondary)',objectFit:'cover',display:'grid',placeItems:'center'},bubble:{zIndex:50,width:310,maxWidth:'calc(100vw - 24px)',display:'flex',flexDirection:'column',padding:16,borderRadius:12,border:'1px solid var(--ui-stroke-secondary)',background:'var(--ui-bg-elevated)',color:'var(--ui-text-primary)'},quote:{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'var(--ui-text-secondary)',fontSize:11,lineHeight:'14px'},sessions:{overflowY:'auto',minHeight:35,flex:'1 1 auto',color:'var(--ui-text-secondary)'},footer:{display:'flex',justifyContent:'space-between',gap:8,marginTop:8,flexShrink:0},button:{color:'var(--ui-text-secondary)',background:'transparent',border:'1px solid var(--ui-stroke-secondary)',borderRadius:6,padding:'6px 8px'}}
 function displayName(p){
  const trim=v=>typeof v==='string'?v.trim():''
  const title=trim(p?.ui_meta?.['hermes-bots']?.title)||trim(p?.title)||trim(p?.bot_title)
@@ -436,26 +492,30 @@ function bounded(task,label){
  let timer
  return Promise.race([Promise.resolve().then(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new LocalizedTimeoutError(label)),DEADLINE)})]).finally(()=>clearTimeout(timer))
 }
-async function requestOwner(owner,method,params,spawnPriority='background'){
- if(typeof host.requestProfile==='function') return bounded(()=>host.requestProfile(owner.route,method,params,DEADLINE,{spawnPriority}),method)
- if(host.state.connectionId.get()===owner.connectionId && host.state.profile.get()===owner.name && typeof host.request==='function') return bounded(()=>host.request(method,params),method)
+async function requestOwner(owner,method,params,spawnPriority='background',beforeDispatch){
+ if(typeof host.requestProfile==='function') return bounded(()=>{beforeDispatch?.();return host.requestProfile(owner.route,method,params,DEADLINE,{spawnPriority})},method)
+ if(!beforeDispatch&&host.state.connectionId.get()===owner.connectionId && host.state.profile.get()===owner.name && typeof host.request==='function') return bounded(()=>host.request(method,params),method)
  throw new LocalizedError('errors.otherProfilesUnsupported')
 }
 async function recentData(owner,spawnPriority='background',rest=null){
- const connection=host.state.connectionId.get(),profile=host.state.profile.get();let changed=false
+ const connection=host.state.connectionId.get(),profile=host.state.profile.get(),activation=sdk.gatewayActivationEpoch?.();let changed=false
  const dispose=[host.state.connectionId,host.state.profile].map(atom=>typeof atom.subscribe==='function'?atom.subscribe(()=>{if(host.state.connectionId.get()!==connection||host.state.profile.get()!==profile)changed=true}):null)
- const sameScope=()=>!changed&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile
+ const sameScope=()=>!changed&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&sdk.gatewayActivationEpoch?.()===activation
  try{return await recentDataScoped(owner,spawnPriority,rest,sameScope)}finally{for(const off of dispose)if(typeof off==='function')off()}
 }
 async function recentDataScoped(owner,spawnPriority,rest,sameScope){
+ const list=params=>{
+  if(!sameScope())throw new LocalizedError('errors.connectionChanged')
+  return requestOwner(owner,'session.list',params,spawnPriority)
+ }
  let result
- try { result=await requestOwner(owner,'session.list',{limit:200,scope:'stored'},spawnPriority); if(result?.error) throw result.error }
- catch(e){if(!scopeError(e)) throw e;result=await requestOwner(owner,'session.list',{limit:200},spawnPriority)}
+ try { result=await list({limit:200,scope:'stored'}); if(result?.error) throw result.error }
+ catch(e){if(!scopeError(e)) throw e;result=await list({limit:200})}
  if(result?.error || !Array.isArray(result?.sessions) || (result.scope!=null && result.scope!=='stored')) throw new LocalizedError('errors.sessionFormat')
  // Canonical stored history excludes open canonical sessions; legacy has no scope.
  let sessions=result.sessions
  if(result.scope==='stored'){
-  const live=await requestOwner(owner,'session.list',{limit:200,scope:'live'},spawnPriority)
+  const live=await list({limit:200,scope:'live'})
   if(live?.error || live?.scope!=='live' || !Array.isArray(live.sessions)) throw new LocalizedError('errors.liveSessionFormat')
   sessions=[...live.sessions,...sessions]
  }
@@ -476,12 +536,12 @@ async function recentDataScoped(owner,spawnPriority,rest,sameScope){
  const rows=unique.map((x,index)=>({x,index,time:typeof activity[x.id]==='number'&&Number.isFinite(activity[x.id])&&activity[x.id]>0?activity[x.id]:null})).sort((a,b)=>(b.time??-Infinity)-(a.time??-Infinity)||a.index-b.index).slice(0,200).map(({x,time})=>({id:x.id,title:typeof x.title==='string'?x.title:'',source:x.source,sourceConflict:x.sourceConflict,last_activity_at:time,last_active:x.last_active,updated_at:x.updated_at,started_at:x.started_at}))
  return {rows}
 }
-async function projectData(owner,spawnPriority='background'){
- const tree=await requestOwner(owner,'projects.tree',{session_limit:2000,preview_limit:1},spawnPriority)
+async function projectData(owner,spawnPriority='background',beforeDispatch){
+ const tree=await requestOwner(owner,'projects.tree',{session_limit:2000,preview_limit:1,...(storedProjectRoute(owner)?{profile:owner.route.targetProfile}:{})},spawnPriority,beforeDispatch)
  if(tree?.error || !Array.isArray(tree?.projects)) throw new LocalizedError('errors.projectFormat')
  const projects=new Map()
  for(const p of tree.projects){const label=p.isNoProject?{fallback:'project.home'}:typeof p.label==='string'&&p.label.trim()?p.label:{fallback:'project.uncategorized'};for(const id of p.sessionIds||[]) if(typeof id==='string'&&!projects.has(id)) projects.set(id,label);for(const repo of p.repos||[]) for(const group of repo.groups||[]) for(const row of group.sessions||[]) if(typeof row.id==='string'&&!projects.has(row.id)) projects.set(row.id,label)}
- return {labels:Object.fromEntries(projects),choices:tree.projects.filter(p=>!p.isNoProject&&Array.isArray(p.sessionIds)&&p.sessionIds.some(id=>typeof id==='string'&&id)).map(p=>{const path=typeof p.path==='string'&&p.path.trim()?p.path.trim():(p.repos||[]).find(r=>typeof r.path==='string'&&r.path.trim())?.path?.trim()||'';return {id:p.id,label:p.label||p.id||{fallback:'project.untitled'},path,icon:typeof p.icon==='string'&&p.icon.trim()?p.icon.trim():'',color:typeof p.color==='string'?p.color:'',isAuto:!!p.isAuto}})}
+ return {labels:Object.fromEntries(projects),choices:tree.projects.filter(p=>!p.isNoProject&&(!p.isAuto||(Array.isArray(p.sessionIds)&&p.sessionIds.some(id=>typeof id==='string'&&id)))).map(p=>{const path=typeof p.path==='string'&&p.path.trim()?p.path.trim():(p.repos||[]).find(r=>typeof r.path==='string'&&r.path.trim())?.path?.trim()||'';return {id:p.id,label:p.label||p.id||{fallback:'project.untitled'},path,copyPath:typeof p.path==='string'?p.path:'',icon:typeof p.icon==='string'&&p.icon.trim()?p.icon.trim():'',color:typeof p.color==='string'?p.color:'',isAuto:!!p.isAuto,stored:p.isAuto===false&&p.isNoProject===false}})}
 }
 function routeFor(name,connectionId,activeProfile,routes){
  if(routes===null){if(connectionId==null) return name;throw new LocalizedError('errors.routingUnsupported')}
@@ -504,13 +564,40 @@ async function openOwned(owner,id){
  return host.openSession(id,{route:owner.route,intent:'in-place'})
 }
 // A plugin-owned overlay remains visible even when macOS hides native scrollbars.
-function RecentScroll({style,children,revision}){
- const list=useRef(null),drag=useRef(null),[metrics,setMetrics]=useState(null)
- const measure=useCallback(()=>{const el=list.current;if(!el)return;const {clientHeight:h,scrollHeight:total,scrollTop:top}=el;const height=Math.min(h,Math.max(18,h*h/total));setMetrics(total>h?{height,top:top/(total-h)*(h-height)}:null)},[])
- useEffect(()=>{measure();const el=list.current;if(!el||typeof ResizeObserver==='undefined')return;const observer=new ResizeObserver(measure);observer.observe(el);return()=>observer.disconnect()},[measure,revision])
- const move=e=>{if(!drag.current||!list.current)return;const el=list.current,track=el.clientHeight-metrics.height;if(track>0)el.scrollTop=drag.current.top+(e.clientY-drag.current.y)*(el.scrollHeight-el.clientHeight)/track}
- return jsxs('div',{style:{...style,overflow:'visible',position:'relative'},children:[jsx('div',{'data-recent-list':true,ref:list,onScroll:measure,style:{height:'calc(100% + 2px)',width:'calc(100% + 2px)',boxSizing:'border-box',marginTop:-2,marginLeft:-2,paddingTop:2,paddingLeft:2,overflowY:'auto',scrollbarWidth:'none'},children}),metrics?jsx('div',{'data-recent-scroll-cue':true,'aria-hidden':true,style:{position:'absolute',right:1,top:0,bottom:0,width:6,borderRadius:3,background:'var(--ui-stroke-secondary, #888)',opacity:.8},children:jsx('div',{'data-recent-scroll-thumb':true,onPointerDown:e=>{drag.current={y:e.clientY,top:list.current.scrollTop};e.currentTarget.setPointerCapture(e.pointerId)},onPointerMove:move,onPointerUp:()=>{drag.current=null},onPointerCancel:()=>{drag.current=null},style:{position:'absolute',top:metrics.top,height:metrics.height,width:'100%',borderRadius:3,background:'var(--ui-text-secondary, #555)',cursor:'grab',touchAction:'none'}})}):null,jsx('style',{children:'[data-recent-list]::-webkit-scrollbar{display:none}'})]})
+const scrollCueWidth=6,scrollCueRight=1
+const recentScrollViewport={height:'calc(100% + 2px)',width:'calc(100% + 2px)',marginTop:-2,marginLeft:-2,paddingTop:2,paddingLeft:2}
+function ScrollWithCue({kind,style,children,revision,onBottomChange}){
+ const project=kind==='project',wrapper=useRef(null),list=useRef(null),drag=useRef(null),[metrics,setMetrics]=useState(null)
+ const measure=useCallback(()=>{
+  const el=list.current,track=wrapper.current?.clientHeight
+  if(!el)return
+  const {clientHeight,scrollHeight,scrollTop}=el,range=scrollHeight-clientHeight
+  onBottomChange?.(!!track&&clientHeight>0&&range>0&&range-scrollTop<=1)
+  if(!track||!clientHeight||range<=0){setMetrics(null);return}
+  const height=Math.min(track,Math.max(18,track*clientHeight/scrollHeight)),travel=track-height,top=scrollTop/range*travel
+  setMetrics(previous=>previous?.height===height&&previous.top===top&&previous.travel===travel&&previous.range===range?previous:{height,top,travel,range})
+ },[onBottomChange])
+ React.useLayoutEffect(measure,[measure,revision])
+ useEffect(()=>{if(typeof ResizeObserver==='undefined')return;const observer=new ResizeObserver(measure);observer.observe(list.current);observer.observe(wrapper.current);return()=>observer.disconnect()},[measure])
+ const start=e=>{
+  if(e.button!==0||!e.isPrimary)return
+  e.preventDefault()
+  drag.current={pointer:e.pointerId,y:e.clientY,top:list.current.scrollTop}
+  e.currentTarget.setPointerCapture(e.pointerId)
+ }
+ const move=e=>{const active=drag.current;if(active?.pointer===e.pointerId&&metrics.travel>0)list.current.scrollTop=active.top+(e.clientY-active.y)*metrics.range/metrics.travel}
+ const end=e=>{if(drag.current?.pointer===e.pointerId)drag.current=null}
+ const wheel=e=>{const el=list.current;if(!e.ctrlKey&&wrapper.current.contains(e.target)&&!el.contains(e.target))el.scrollTop+=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?el.clientHeight:1)}
+ return jsxs('div',{ref:wrapper,onWheel:wheel,style:{...style,overflow:'visible',position:'relative',...(project?{display:'flex',flexDirection:'column'}:{})},children:[
+  jsx('div',{[`data-${kind}-list`]:true,ref:list,onScroll:measure,style:{...(project?{minHeight:0,flex:'1 1 auto',marginRight:metrics?scrollCueWidth+scrollCueRight+1:0,transition:'none'}:recentScrollViewport),boxSizing:'border-box',overflowY:'auto',scrollbarWidth:'none'},children}),
+  metrics?jsx('div',{[`data-${kind}-scroll-cue`]:true,'aria-hidden':true,style:{position:'absolute',right:scrollCueRight,top:0,bottom:0,width:scrollCueWidth,borderRadius:scrollCueWidth/2,background:'var(--ui-stroke-secondary, #888)',opacity:.8,pointerEvents:'none'},children:jsx('div',{
+   [`data-${kind}-scroll-thumb`]:true,onPointerDown:start,onPointerMove:move,onPointerUp:end,onPointerCancel:end,onLostPointerCapture:end,
+   style:{position:'absolute',top:metrics.top,height:metrics.height,width:'100%',borderRadius:scrollCueWidth/2,background:'var(--ui-text-secondary, #555)',cursor:'grab',touchAction:'none',pointerEvents:'auto'}
+  })}):null,
+  jsx('style',{children:`[data-${kind}-list]::-webkit-scrollbar{display:none}`})
+ ]})
 }
+function RecentScroll(props){return jsx(ScrollWithCue,{...props,kind:'recent'})}
 // Adapted from Hermes Desktop styles.css, commit 2bd378e; see HERMES-ARC-LICENSE.
 const rowArcCss=`[data-session-waiting]{width:14px;text-align:center;transform:scale(.75);transform-origin:top left}@keyframes sessioncrew-arc{to{transform:translate(-50%,-50%)}}[data-session-arc]{position:absolute;inset:0;overflow:hidden;border-radius:7px;padding:.078125rem;pointer-events:none;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}[data-session-arc]::before{content:'';position:absolute;top:0;left:0;width:240%;height:240%;background:repeating-linear-gradient(160deg,transparent 0%,transparent 18.75%,var(--dt-foreground,var(--ui-text-primary)) 25%,color-mix(in srgb,var(--dt-foreground,var(--ui-text-primary)) 45%,transparent) 31.25%,transparent 43.75%,transparent 50%);will-change:transform;animation:sessioncrew-arc 2.23s linear infinite}@media(prefers-reduced-motion:reduce){[data-session-arc]::before{animation:none}}`
 // One generation per host scope, shared by all observers and retained across
@@ -602,36 +689,148 @@ const messagingSources=new Set(messagingPlatforms.flatMap(([,sources])=>sources)
 const isMessagingSource=source=>messagingSources.has(source)
 const sourceVisible=(source,hidden)=>!isMessagingSource(source)||!hidden?.includes(source)
 const recentSessionCounts=[3,5,10,15],defaultRecentSessionCount=5,recentRowHeight=52
+// Match the per-project launch column in the stacked, scrollable layout without shifting when the cue appears.
+const recentRowPadding=8,recentChevron={width:12,flexShrink:0,textAlign:'center'},recentActionSize=20
+const recentRowPaddingRight=recentRowPadding+scrollCueWidth+scrollCueRight
 const normalizeRecentSessionCount=count=>recentSessionCounts.includes(count)?count:defaultRecentSessionCount
-function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false,hiddenMessagingSources:[]}}){
+const recentStaleTime=10000
+const ownerRouteKey=owner=>{const route=owner?.route;return [owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]}
+const recentQueryKey=(scope,owner)=>['sessioncrew','recent',...scope,...ownerRouteKey(owner),0]
+const recentRows=(data,settings)=>data?.rows.filter(row=>row.sourceConflict||(settings.showCron||row.source!=='cron')&&sourceVisible(row.source,settings.hiddenMessagingSources))
+const recentFresh=query=>query.status==='success'&&!query.isInvalidated&&Date.now()-query.dataUpdatedAt<recentStaleTime
+const avatarContextCss=`
+[data-avatar-context] > button {
+ display:flex;align-items:center;gap:.5rem;width:100%;box-sizing:border-box;
+ padding:.25rem .5rem;border:0;border-radius:var(--radius-md,.375rem);
+ background:transparent;color:inherit;text-align:left;user-select:none;
+ font-size:var(--text-xs,.75rem);line-height:var(--text-xs--line-height,1rem);
+}
+[data-avatar-context] > button:focus,
+[data-avatar-context] > button:not([aria-disabled]):hover {
+ background:var(--ui-bg-tertiary,var(--ui-control-active-background));color:var(--ui-text-primary);
+ outline:2px solid transparent;outline-offset:2px;
+}
+[data-avatar-context] > button[aria-disabled] {opacity:.5;cursor:default}
+[data-avatar-context] > button > i {flex:none;pointer-events:none}
+[data-avatar-context] > [role="alert"] {display:block}
+`
+function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false,hiddenMessagingSources:[]},menu}){
  const tr=useTranslator()
  const activeConnection=useValue(host.state.connectionId),activeProfile=useValue(host.state.profile),activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const recentRest=useContext(DialogRestContext)
  const baseCount=normalizeRecentSessionCount(settings.recentSessionCount)
- const [page,setPage]=useState({baseCount,extra:0}),[generation,setGeneration]=useState(0),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false)
+ const [page,setPage]=useState({baseCount,extra:0}),[atBottom,setAtBottom]=useState(false),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false),latestIntent=useRef(null),quickStarted=useRef(false)
  if(page.baseCount!==baseCount)setPage({baseCount,extra:0})
- const count=baseCount+(page.baseCount===baseCount?page.extra:0)
- async function open(id){if(rowLock.current)return;rowLock.current=true;setBusy(true);setError('');const watermark=completion.watermark(owner,id,true);try{await openOwned(owner,id);await completion.ack(owner,id,watermark);onOpened()}catch(e){setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}finally{rowLock.current=false;setBusy(false)}}
- const route=owner?.route, key=[owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]
+ const count=baseCount*3+(page.baseCount===baseCount?page.extra:0)
+ const key=ownerRouteKey(owner),queryKey=recentQueryKey([activeConnection,activeProfile,activation],owner),intentKey=JSON.stringify(queryKey)
+ const menuIsCurrent=menu?.isCurrent
+ function liveMenuOwner(){
+  if(!owner||!menuIsCurrent()||activation!==null&&typeof sdk.gatewayActivationEpoch==='function'&&sdk.gatewayActivationEpoch()!==activation)return null
+  const target=menu.getLiveOwner(launchDestination(owner))
+  return target?.route?.mode===owner.route?.mode?target:null
+ }
+ async function open(id){
+  const target=menu?liveMenuOwner():owner
+  const quickOpens=menu?.quickOpens
+  if(rowLock.current||!target||quickOpens?.has(intentKey))return
+  quickOpens?.add(intentKey)
+  rowLock.current=true;setBusy(true);setError('')
+  try{
+   const watermark=completion.watermark(target,id,true)
+   await openOwned(target,id)
+   if(!menu||menuIsCurrent())await completion.ack(target,id,watermark,menu?menuIsCurrent:undefined)
+   if(!menu||menuIsCurrent())onOpened()
+  }
+  catch(e){if(!menu||menuIsCurrent())setError({message:()=>tr('session.openFailure',errorMessage(e,tr)||tr('errors.unknown'))})}
+  finally{quickOpens?.delete(intentKey);rowLock.current=false;if(!menu||menuIsCurrent())setBusy(false)}
+ }
+ const queryState=()=>sdk.queryClient?.getQueryState?.(queryKey)
  // Consume the open/retry intent once; interval and focus callbacks stay background.
- const recentIntent=useRef(null),intentKey=JSON.stringify([...key,generation])
- const result=useQuery({queryKey:['sessioncrew','recent',activeConnection,activeProfile,activation,...key,generation],queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000})
- const q=result.data?{...result,data:{...result.data,rows:result.data.rows.filter(row=>row.sourceConflict||(settings.showCron||row.source!=='cron')&&sourceVisible(row.source,settings.hiddenMessagingSources))}}:result
- const activity=useRowActivity(owner,q.data?.rows)
+ const recentIntent=useRef(null)
+ const q=useQuery({queryKey,queryFn:()=>{const priority=recentIntent.current===intentKey?'background':'foreground';recentIntent.current=intentKey;return recentData(owner,priority,recentRest)},enabled:!!owner,retry:false,staleTime:recentStaleTime,refetchOnMount:true,refetchOnWindowFocus:!menu,refetchInterval:menu?false:15000})
+ useEffect(()=>{if(q.data)recentIntent.current=intentKey},[intentKey,q.data])
+ useEffect(()=>{
+  if(latestIntent.current&&latestIntent.current.key!==intentKey){latestIntent.current=null;setBusy(false)}
+ },[intentKey])
+ const refetchRecent=()=>{
+  if((queryState()??q).fetchStatus==='idle')recentIntent.current=null
+  return q.refetch({cancelRefetch:false})
+ }
+ const rows=recentRows(q.data,settings)
+ const activity=useRowActivity(menu?null:owner,menu?null:rows)
  const projectIntent=useRef(0)
- const projects=useQuery({queryKey:['sessioncrew','projects',...key,projectGeneration],queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner,retry:false})
- // Match the loaded list and footer from the first render; allow shrinking in short viewports.
+ const projects=useQuery({queryKey:['sessioncrew','projects',...key,projectGeneration],queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner&&!menu,retry:false})
+ const routeStatus=phase==='loading'?tr('session.findingRoute'):localizeError(phase)||tr('common.connectionNotReady')
+ const listStatus=q.isError?tr(!menu&&rows?.length?'session.refreshFailure':'session.loadFailure',localizeError(errorMessage(q.error,tr)||tr('errors.unknown'))):q.fetchStatus==='idle'||(menu&&q.fetchStatus==='paused')?tr('common.connectionNotReady'):tr('session.loading')
+ const retryList=()=>jsx('button',{type:'button',disabled:q.isFetching,onClick:()=>void refetchRecent(),children:tr('common.retry')},'retry')
+ const openLatest=async()=>{
+  if(latestIntent.current||rowLock.current||menu.quickOpens?.has(intentKey)||!liveMenuOwner())return
+  const current=queryState()??q
+  const visible=recentRows(current.data,menu.getSettings())
+  if((!menu.quickOpens&&!visible?.length)||current.fetchStatus==='paused'||current.status==='error'&&current.fetchStatus!=='fetching')return
+  if(current.fetchStatus==='idle'&&recentFresh(current))return visible?.length?open(visible[0].id):undefined
+  // Join a running request or refresh this exact query key, never open stale rows.
+  const intent={key:intentKey,updatedAt:current.dataUpdatedAt,updateCount:current.dataUpdateCount}
+  latestIntent.current=intent;setBusy(true);setError('')
+  let latest
+  try{
+   const result=await refetchRecent()
+   const next=queryState()??result
+   const advanced=next.dataUpdatedAt>intent.updatedAt||next.dataUpdateCount>intent.updateCount
+   if(latestIntent.current===intent&&result.status==='success'&&next.fetchStatus==='idle'&&advanced&&recentFresh(next)&&liveMenuOwner())latest=recentRows(next.data,menu.getSettings())?.[0]
+  }finally{
+   if(latestIntent.current===intent){latestIntent.current=null;if(menuIsCurrent())setBusy(false)}
+  }
+  if(latest)await open(latest.id)
+ }
+ useEffect(()=>{
+  if(!menu?.quickOpens)return
+  if(q.fetchStatus==='paused'&&latestIntent.current){latestIntent.current=null;setBusy(false)}
+  // Wait only for the route already loading for this gesture, not later retries.
+  if(quickStarted.current||!owner&&phase==='loading')return
+  quickStarted.current=true
+  if(owner)void openLatest()
+ },[menu?.quickOpens,owner,phase,intentKey,q.fetchStatus])
+ if(menu){
+  const loading=owner?q.fetchStatus==='fetching':phase==='loading'
+  const issue=owner?(!loading&&(q.isError||q.isPaused||q.isPending)?listStatus:null):loading?null:routeStatus
+  const canOpen=owner&&!issue&&!!rows?.length
+  const latestLabel=canOpen||issue?'session.openLatest':loading?'session.loadingLatest':'session.noRecentSessions'
+  const canRead=completion.coverageReady&&completion.covers(menu.owner.name)
+  // Keep the first action focusable while the fresh list is loading.
+  const action=(label,icon,disabled,run)=>jsxs('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&!latestIntent.current&&menuIsCurrent())void run()},children:[sdk.Codicon?jsx(sdk.Codicon,{name:icon,size:'0.875rem','aria-hidden':true}):null,label]})
+  const markAll=async()=>{
+   rowLock.current=true;setBusy(true);setError('')
+   try{await completion.ackAll(menu.owner,menuIsCurrent)}finally{rowLock.current=false;if(menuIsCurrent())setBusy(false)}
+  }
+  return jsxs(React.Fragment,{children:[action(tr(latestLabel),'history',busy||!canOpen,openLatest),action(tr('completion.markAllRead'),'check-all',busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
+ }
+
  const reserve=baseCount*recentRowHeight
- const recentLayout={minHeight:0,display:'flex',flexDirection:'column',flex:'1 1 auto',marginTop:12},recentList={...s.sessions,minHeight:0,height:reserve,flex:'1 1 auto',maxHeight:reserve,overflowY:'auto'}
- const placeholder=(children,center=false)=>jsxs('div',{style:recentLayout,children:[jsx('div',{'data-recent-list':true,style:center?{...recentList,display:'grid',placeItems:'center'}:recentList,children}),jsx('div',{style:{height:18,flexShrink:0}})]})
- if(!owner) return placeholder([jsx('span',{children:phase==='loading'?tr('session.findingRoute'):localizeError(phase)||tr('common.connectionNotReady')},'message'),phase!=='loading'?jsx('button',{onClick:retryRoutes,children:tr('common.retry')},'retry'):null])
- if(q.isPending) return placeholder(q.fetchStatus==='idle'?tr('common.connectionNotReady'):tr('session.loading'),q.fetchStatus!=='idle')
- if(q.isError) return placeholder([jsx('span',{children:tr('session.loadFailure',localizeError(errorMessage(q.error,tr)||tr('errors.unknown')))},'message'),jsx('button',{onClick:()=>setGeneration(n=>n+1),children:tr('common.retry')},'retry')])
-
-
+ const recentLayout={minHeight:0,display:'flex',flexDirection:'column',flex:'1 1 auto'},recentList={...s.sessions,minHeight:0,height:reserve,flex:'1 1 auto',maxHeight:reserve,overflowY:'auto'}
+ const placeholder=(children,center=false)=>jsx('div',{'data-recent-list':true,style:center?{...recentList,display:'grid',placeItems:'center'}:recentList,children})
+ const listReady=!!owner&&!q.isPending&&(!q.isError||!!rows?.length)
+ const readDisabled=!listReady||!completion.coverageReady
+ const readLabel=tr('session.markAllRead')
+ const readIcon=sdk.Codicon?jsx(sdk.Codicon,{name:'check-all',size:'0.75rem','aria-hidden':true}):jsx('svg',{'aria-hidden':true,width:'0.75rem',height:'0.75rem',viewBox:'0 0 16 16',fill:'none',stroke:'currentColor',strokeWidth:1.3,strokeLinecap:'round',strokeLinejoin:'round',children:jsx('path',{d:'m1 8 3 3 6-6m-3 6 1 1 7-7'})})
+ const header=jsxs('div',{'data-recent-header':true,style:{height:'clamp(12px, 4vh, 20px)',marginTop:'clamp(0px, calc(4vh - 12px), 8px)',marginBottom:'clamp(0px, calc(2vh - 6px), 4px)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`0 ${recentRowPaddingRight}px 0 ${recentRowPadding}px`},children:[
+  jsx('h2',{style:{margin:0,fontSize:11,fontWeight:600,lineHeight:'12px',color:'var(--ui-accent)'},children:tr('session.heading')}),
+  jsx('span',{title:readLabel,style:{...recentChevron,display:'flex',justifyContent:'center',height:'100%'},children:jsx('button',{
+   'data-completion-read-all':true,type:'button','aria-label':readLabel,disabled:readDisabled,onClick:()=>void completion.ackAll(owner),
+   style:{...s.button,display:'grid',placeItems:'center',width:recentActionSize,flexShrink:0,height:'100%',padding:0,border:0,cursor:readDisabled?'default':'pointer',opacity:readDisabled ? .55 : 1,pointerEvents:readDisabled?'none':undefined},children:readIcon
+  })})
+ ]})
+ const footer=jsx('div',{'data-recent-footer':true,style:{display:'flex',alignItems:'center',justifyContent:'center',height:18,flexShrink:0},children:listReady&&atBottom&&count<rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null})
  const ellipsis={whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}
  const projectLabel=id=>projects.isError?tr('project.loadFailed'):projects.isPending?tr('project.loading'):(typeof projects.data?.labels?.[id]==='object'?tr(projects.data.labels[id].fallback):projects.data?.labels?.[id])||tr('project.uncategorized')
- return jsxs('div',{style:recentLayout,children:[jsx('style',{children:rowArcCss}),jsx(RecentScroll,{style:recentList,revision:Math.min(count,q.data.rows.length),children:q.data.rows.length?q.data.rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:'9px 8px',background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:4},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,children:'›'})]},row.id)):tr('session.empty')},baseCount),error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[count<q.data.rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
+ const content=!owner?placeholder([jsx('span',{children:routeStatus},'message'),phase!=='loading'?jsx('button',{onClick:retryRoutes,children:tr('common.retry')},'retry'):null]):q.isPending?placeholder(listStatus,q.fetchStatus!=='idle'):!listReady?placeholder([jsx('span',{role:'alert',children:listStatus},'message'),retryList()]):jsxs(React.Fragment,{children:[
+  jsx('style',{children:rowArcCss}),
+  jsx(RecentScroll,{style:recentList,revision:Math.min(count,rows.length),onBottomChange:setAtBottom,children:rows.length?rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:`9px ${recentRowPaddingRight}px 9px ${recentRowPadding}px`,background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:0},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,style:recentChevron,children:'›'})]},row.id)):tr('session.empty')},baseCount),
+  q.isError?jsxs('div',{role:'alert',children:[listStatus,retryList()]}):null,
+  error?jsx('div',{role:'alert',children:localizeError(error)}):null,
+  projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null
+ ]})
+ return jsxs('div',{style:recentLayout,children:[header,content,footer]})
 }
 const unreadCircle={width:10,height:10,borderRadius:'50%',background:'var(--ui-red, #e53935)'}
 function FolderBreadcrumbs({root,path,busy,go}){
@@ -667,9 +866,184 @@ function FolderBrowser({rest,valid,onCancel,onSelect,mkdirUnknown}){
  }
  const D=sdk.Dialog,C=sdk.DialogContent,T=sdk.DialogTitle,Desc=sdk.DialogDescription,B=sdk.Button,G=sdk.Codicon,I=sdk.Input
  const row=(name,disabled,onClick)=>jsxs('button',{type:'button',disabled,onClick,className:'row-hover flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-(--ui-text-secondary) hover:text-foreground disabled:pointer-events-none disabled:opacity-40',children:[jsx(G,{name:'folder',size:'0.875rem','aria-hidden':true}),jsx('span',{className:'min-w-0 truncate',children:name})]},name)
- return jsx(D,{open:true,onOpenChange:open=>{if(!open)onCancel()},children:jsxs(C,{className:'h-[min(36rem,calc(100vh-4rem))] max-w-lg',bodyClassName:'flex min-h-0 flex-col gap-0 overflow-hidden p-0',onInteractOutside:e=>e.preventDefault(),onEscapeKeyDown:e=>{if(folderName!==null){e.preventDefault();setFolderName(null);setFolderError('')}},children:[jsxs('div',{className:'shrink-0 border-b border-border/70 px-4 py-3',children:[jsx(T,{className:'text-sm',children:tr('folder.choose')}),jsx(Desc,{className:'mt-1 text-xs',children:tr('folder.description')})]}),jsxs('div',{className:'flex min-h-0 flex-1 flex-col','data-folder-browser':true,children:[jsx(FolderBreadcrumbs,{root,path,busy:busy||creating,go:load}),jsxs('div',{className:'min-h-0 flex-1 overflow-y-auto p-2',children:[row('..',busy||creating||!path||path==='/',()=>load(path.slice(0,path.lastIndexOf('/'))||'/')),folderName!==null?jsxs('div',{className:'px-2 py-1',children:[jsxs('div',{className:'flex items-center gap-2',children:[jsx(G,{name:'new-folder',size:'0.875rem'}),jsx(I,{'aria-label':tr('folder.name'),autoFocus:true,disabled:creating,value:folderName,onChange:e=>{setFolderName(e.target.value);setFolderError('')},onKeyDown:e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing){e.preventDefault();void createFolder()}},size:'sm'}),jsx(B,{'aria-label':tr('folder.create'),type:'button',disabled:creating||mkdirUnknown.current,onClick:createFolder,size:'icon-xs',variant:'ghost',children:jsx(G,{name:creating?'loading':'check',size:'0.875rem',spinning:creating})})]}),folderError?jsx('div',{role:'alert',className:'mt-1 pl-6 text-xs text-destructive',children:localizeError(folderError)}):null]}):null,...items.map(name=>row(name,busy||creating,()=>load((path==='/'?'':path)+'/'+name))),cursor?jsx(B,{type:'button',variant:'ghost',disabled:busy||creating,onClick:()=>load(path,cursor),children:tr('common.loadMore')}):null,error?jsx('div',{role:'alert',children:localizeError(error)}):null]})]}),jsxs('div',{className:'shrink-0 flex items-center justify-between gap-2 border-t border-border/70 px-4 py-3',children:[jsx('div',{className:'min-w-0 truncate text-xs text-muted-foreground',children:path}),jsxs('div',{className:'flex shrink-0 items-center gap-2',children:[jsx(B,{type:'button',size:'sm',variant:'ghost',disabled:!directoryId||busy||creating||folderName!==null||!!error||mkdirUnknown.current,onClick:()=>setFolderName(''),title:mkdirUnknown.current?tr('folder.unknownShort'):'',children:jsxs('span',{children:[jsx(G,{name:'new-folder',size:'0.875rem'}),tr('folder.new')]})}),jsx(B,{type:'button',size:'sm',variant:'ghost',onClick:onCancel,children:tr('common.cancel')}),jsx(B,{type:'button',size:'sm',disabled:busy||creating||!root||!!error||!valid(),onClick:()=>onSelect({path,rootId:root.id,directoryId,runtimeId:root.runtimeId}),children:tr('folder.selectCurrent')})]})]}),refreshPath&&error?jsx(B,{type:'button',disabled:busy,onClick:()=>load(refreshPath),children:tr('common.retryRefresh')}):mkdirUnknown.current?jsx('small',{className:'px-4 pb-2 text-destructive',children:tr('folder.unknownRetry')}):null]})})
+ return jsx(D,{open:true,onOpenChange:open=>{if(!open)onCancel()},children:jsxs(C,{className:'h-[min(36rem,calc(100vh-4rem))] max-w-lg',bodyClassName:'flex min-h-0 flex-col gap-0 overflow-hidden p-0',onInteractOutside:e=>e.preventDefault(),onEscapeKeyDown:e=>{if(folderName!==null){e.preventDefault();setFolderName(null);setFolderError('')}},children:[
+ jsxs('div',{className:'shrink-0 border-b border-border/70 px-4 py-3',children:[jsx(T,{className:'text-sm',children:tr('folder.choose')}),jsx(Desc,{className:'mt-1 text-xs',children:tr('folder.description')})]}),
+ jsxs('div',{className:'flex min-h-0 flex-1 flex-col','data-folder-browser':true,children:[jsx(FolderBreadcrumbs,{root,path,busy:busy||creating,go:load}),jsxs('div',{className:'min-h-0 flex-1 overflow-y-auto p-2',children:[row('..',busy||creating||!path||path==='/',()=>load(path.slice(0,path.lastIndexOf('/'))||'/')),folderName!==null?jsxs('div',{className:'px-2 py-1',children:[jsxs('div',{className:'flex items-center gap-2',children:[jsx(G,{name:'new-folder',size:'0.875rem'}),jsx(I,{'aria-label':tr('folder.name'),autoFocus:true,disabled:creating,value:folderName,onChange:e=>{setFolderName(e.target.value);setFolderError('')},onKeyDown:e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing){e.preventDefault();void createFolder()}},size:'sm'}),jsx(B,{'aria-label':tr('folder.create'),type:'button',disabled:creating||mkdirUnknown.current,onClick:createFolder,size:'icon-xs',variant:'ghost',children:jsx(G,{name:creating?'loading':'check',size:'0.875rem',spinning:creating})})]}),folderError?jsx('div',{role:'alert',className:'mt-1 pl-6 text-xs text-destructive',children:localizeError(folderError)}):null]}):null,...items.map(name=>row(name,busy||creating,()=>load((path==='/'?'':path)+'/'+name))),cursor?jsx(B,{type:'button',variant:'ghost',disabled:busy||creating,onClick:()=>load(path,cursor),children:tr('common.loadMore')}):null,error?jsx('div',{role:'alert',children:localizeError(error)}):null]})]}),
+ jsxs('div',{className:'shrink-0 flex items-center justify-between gap-2 border-t border-border/70 px-4 py-3',children:[jsx('div',{className:'min-w-0 truncate text-xs text-muted-foreground',children:path}),jsxs('div',{className:'flex shrink-0 items-center gap-2',children:[jsx(B,{type:'button',size:'sm',variant:'ghost',disabled:!directoryId||busy||creating||folderName!==null||!!error||mkdirUnknown.current,onClick:()=>setFolderName(''),title:mkdirUnknown.current?tr('folder.unknownShort'):'',children:jsxs('span',{children:[jsx(G,{name:'new-folder',size:'0.875rem'}),tr('folder.new')]})}),jsx(B,{type:'button',size:'sm',variant:'ghost',onClick:onCancel,children:tr('common.cancel')}),jsx(B,{type:'button',size:'sm',disabled:busy||creating||!root||!!error||!valid(),onClick:()=>onSelect({path,rootId:root.id,directoryId,runtimeId:root.runtimeId}),children:tr('folder.selectCurrent')})]})]}),
+ refreshPath&&error?jsx(B,{type:'button',disabled:busy,onClick:()=>load(refreshPath),children:tr('common.retryRefresh')}):mkdirUnknown?.current?jsx('small',{className:'px-4 pb-2 text-destructive',children:tr('folder.unknownRetry')}):null
+ ]})})
 }
 const DialogRestContext=createContext(null)
+const projectRowButton={...s.button,border:0,flex:'none'}
+const projectMenuActions=[['rename','edit'],['appearance','symbol-color'],['copyPath','copy'],['delete','trash']]
+const projectIcons=['folder-library','repo','rocket','beaker','flame','star-full','heart','zap','target','lightbulb','tools','device-desktop','device-mobile','terminal','dashboard','globe','broadcast','cloud','database','package','book','organization','bug','shield','key','gift','telescope','home']
+const projectLabelText=(row,tr)=>typeof row.label==='object'?tr(row.label.fallback):row.label
+const usableProjectPath=path=>typeof path==='string'&&!!path.trim()&&!path.includes('\0')
+// The public transport dials route.profile and some paths inject it on the wire.
+const storedProjectRoute=owner=>!!owner?.route&&typeof owner.name==='string'&&owner.route.profile===owner.name&&owner.name.trim()===owner.name&&owner.route.profile===owner.route.targetProfile&&owner.route.connectionId===owner.connectionId&&typeof host.requestProfile==='function'
+const projectActionOwnerKey=owner=>JSON.stringify([owner?.connectionId,owner?.name])
+
+function matchesProjectChange(change,result){
+ if(!result||result.error)return false
+ const {method,id,params}=change
+ if(method==='projects.delete')return Array.isArray(result.projects)&&result.projects.every(p=>typeof p?.id==='string'&&p.id&&p.id!==id)
+ const p=result.project
+ return p?.id===id&&Object.entries(params).every(([field,value])=>(p[field]??'')===value)
+}
+
+function ProjectRowDialog({action,close,restoreFocus,valid,onSave}){
+ const tr=useTranslator()
+ const {kind,target}=action,{row,label,owner}=target
+ const [name,setName]=useState(label),[color,setColor]=useState(row.color),[icon,setIcon]=useState(row.icon)
+ const confirmation=kind==='delete'
+ const content=kind==='rename'?jsx(sdk.Input,{'aria-label':tr('project.name'),value:name,onChange:e=>setName(e.target.value),autoFocus:true}):kind==='appearance'?jsxs(React.Fragment,{children:[
+  jsx(sdk.ColorSwatches,{swatches:sdk.PROFILE_SWATCHES,value:color||null,onChange:value=>setColor(value??''),clearLabel:tr('project.clearColor')}),
+  jsx('div',{className:'mt-2 grid grid-cols-6 gap-1.5',role:'group','aria-label':tr('project.icon'),children:[...new Set([...projectIcons,...(icon?[icon]:[]),''])].map(value=>jsx('button',{type:'button',className:'grid aspect-square place-items-center rounded-md hover:bg-(--ui-control-hover-background)','aria-label':value||tr('project.clearIcon'),'aria-pressed':icon===value,onClick:()=>setIcon(value),children:jsx(sdk.Codicon,{name:value||'circle-slash',size:'0.875rem','aria-hidden':true,style:{color:icon===value?color||undefined:undefined}})},value))})
+ ]}):null
+ const changes=kind==='rename'?(name.trim()&&name.trim()!==label?{name:name.trim()}:{}):kind==='appearance'?{...(color!==row.color?{color}:{}),...(icon!==row.icon?{icon}:{})}:{}
+ return jsx(sdk.Dialog,{open:true,onOpenChange:open=>{if(!open)close()},children:jsxs(sdk.DialogContent,{className:'max-w-md',onInteractOutside:e=>e.preventDefault(),onCloseAutoFocus:restoreFocus,children:[
+  jsxs(sdk.DialogHeader,{children:[jsx(sdk.DialogTitle,{children:tr('project.'+kind)}),jsx(sdk.DialogDescription,{children:tr(confirmation?'project.deleteTarget':'project.actionTarget',label,owner.name)})]}),
+  jsxs('form',{onSubmit:e=>{e.preventDefault();if(valid()&&(confirmation||Object.keys(changes).length))onSave(changes)},children:[content,jsxs(sdk.DialogFooter,{className:'mt-3',children:[jsx(sdk.Button,{type:'button',variant:'ghost',onClick:close,autoFocus:confirmation,children:tr('common.cancel')}),jsx(sdk.Button,{type:'submit',variant:confirmation?'destructive':'default',disabled:!valid()||(!confirmation&&!Object.keys(changes).length),children:tr(confirmation?'project.delete':'common.save')})]})]})
+ ]})})
+}
+
+function useProjectRowActions({owner,isCurrent,getLiveOwner,projectOpen,choices,queryKey,key,createdProjects,rowLayer,rowChanges,dialogActive,refreshRowChanges}){
+ const tr=useTranslator()
+ const [dialog,setDialog]=useState(null),[menuId,setMenuId]=useState(null),[notice,setNotice]=useState('')
+ const layer=useRef(null),panel=useRef(null),latest=useRef(null)
+ const ownerKey=projectActionOwnerKey(owner),pending=rowChanges.current.get(ownerKey)
+ const qualified=storedProjectRoute(owner)&&typeof sdk.gatewayActivationEpoch==='function'&&typeof host.activeConnectionId==='function'
+ const epoch=sdk.gatewayActivationEpoch?.()
+ React.useLayoutEffect(()=>{latest.current={projectOpen,choices};return()=>{latest.current=null}},[projectOpen,choices])
+ React.useLayoutEffect(()=>{
+  panel.current={}
+  setDialog(null);setMenuId(null);setNotice('')
+  return()=>{panel.current=null;clearLayer()}
+ },[projectOpen,epoch])
+ React.useLayoutEffect(()=>{
+  const target=layer.current?.target
+  if(target&&(!inScope(target)||!currentRow(target))){clearLayer();setMenuId(null);setDialog(null)}
+ })
+
+ function capture(row,trigger){
+  return {row,trigger,label:row?projectLabelText(row,tr):'',owner:{...owner,route:typeof owner.route==='string'?owner.route:{...owner.route}},
+   epoch:sdk.gatewayActivationEpoch?.(),profile:host.state.profile.get(),panel:panel.current}
+ }
+ function inScope(target){
+  if(!target?.panel||target.panel!==panel.current||!latest.current?.projectOpen||!isCurrent()||host.state.profile.get()!==target.profile||sdk.gatewayActivationEpoch?.()!==target.epoch)return false
+  const current=getLiveOwner(launchDestination(target.owner))
+  return !!current&&current.name===target.owner.name&&current.route?.mode===target.owner.route?.mode
+ }
+ function wireAvailable(connectionId,activation){return qualified&&Number.isSafeInteger(activation)&&host.activeConnectionId()===connectionId}
+ function wireScope(target){return inScope(target)&&wireAvailable(target.owner.connectionId,target.epoch)}
+ function currentRow(target){
+  const matches=latest.current?.choices.filter(row=>row.id===target.row.id)
+  return matches?.length===1&&matches[0].stored===target.row.stored&&matches[0].isAuto===target.row.isAuto?matches[0]:null
+ }
+ function actionValid(target){return wireScope(target)&&!!target.row?.stored&&typeof target.row.id==='string'&&!!target.row.id&&!!currentRow(target)}
+ function guard(ok){if(!ok)throw new LocalizedError('project.routeUnverified')}
+ function setLayer(kind,target){layer.current={kind,target};rowLayer.current=layer.current}
+ function clearLayer(){if(rowLayer.current===layer.current)rowLayer.current=null;layer.current=null}
+ function restoreFocus(target,event){event.preventDefault();if(inScope(target))target.trigger?.focus({preventScroll:true})}
+ function closeDialog(){clearLayer();setDialog(null)}
+
+ const cacheFilter={queryKey:queryKey.slice(0,-1)}
+ function invalidate(){return sdk.queryClient.invalidateQueries({...cacheFilter,refetchType:'none'})}
+ function clearOverlay(id){
+  const rows=createdProjects.current.get(key)
+  if(rows)createdProjects.current.set(key,rows.filter(p=>p.id!==id))
+ }
+ function rpc(target,method,params,check=()=>guard(wireScope(target))){
+  return requestOwner(target.owner,method,{...params,profile:target.owner.route.targetProfile},'foreground',check)
+ }
+ async function reconcile(target,change){
+  const list=await rpc(target,'projects.list',{})
+  guard(wireScope(target))
+  if(list?.error||!Array.isArray(list?.projects)||list.projects.some(p=>typeof p?.id!=='string'||!p.id))throw new LocalizedError('errors.projectFormat')
+  const entries=list.projects.filter(p=>p.id===change.id)
+  if(entries.length>1||!matchesProjectChange(change,{...list,project:entries[0]}))throw new LocalizedError('errors.projectFormat')
+  change.acknowledged=true
+  if(change.method==='projects.delete')clearOverlay(change.id)
+  await sdk.queryClient.cancelQueries(cacheFilter)
+  guard(wireScope(target))
+  const tree=await projectData(target.owner,'foreground',()=>guard(wireScope(target)))
+  guard(wireScope(target))
+  const found=tree.choices.find(p=>p.stored&&p.id===change.id)
+  if(change.method==='projects.delete'?found:!found||Object.entries(change.params).some(([field,value])=>found[field==='name'?'label':field]!==value))throw new LocalizedError('errors.projectFormat')
+  clearOverlay(change.id)
+  sdk.queryClient.setQueriesData(cacheFilter,tree)
+  rowChanges.current.delete(ownerKey)
+ }
+ async function run(target,kind,params={},retry=null){
+  if(retry?(!wireScope(target)||retry.inflight||rowChanges.current.get(ownerKey)!==retry):(!actionValid(target)||rowChanges.current.has(ownerKey)))return
+  const change=retry||{id:target.row.id,label:target.label,method:kind==='delete'?'projects.delete':'projects.update',params,sent:false,acknowledged:false}
+  rowChanges.current.set(ownerKey,change);change.inflight=true;refreshRowChanges(n=>n+1);setNotice('')
+  try{
+   if(!retry){
+    const result=await rpc(target,'projects.get',{id:change.id},()=>guard(actionValid(target)))
+    guard(actionValid(target))
+    const project=result?.project
+    if(result?.error||project?.id!==change.id||project.archived||typeof project.name!=='string'||(kind==='delete'&&project.name!==target.label))throw new LocalizedError('project.readFailed')
+   if(change.method==='projects.update'){
+     change.params=Object.fromEntries(Object.entries(params).filter(([field,value])=>(project[field]??'')!==value))
+     if(!Object.keys(change.params).length)return
+    }
+    const receipt=await rpc(target,change.method,{id:change.id,...change.params},()=>{guard(actionValid(target));change.sent=true})
+    guard(wireScope(target))
+    if(!matchesProjectChange(change,receipt))throw new LocalizedError('errors.responseFormat')
+    change.acknowledged=true
+    if(kind==='delete')clearOverlay(change.id)
+   }
+   await reconcile(target,change)
+  }catch{
+   if(!change.sent&&inScope(target))setNotice('project.readFailed')
+  }finally{
+   if(!change.sent)rowChanges.current.delete(ownerKey)
+   else if(rowChanges.current.get(ownerKey)===change){try{void invalidate().catch(()=>{})}catch{}}
+   change.inflight=false
+   refreshRowChanges(n=>n+1)
+  }
+ }
+ async function pick(kind,target){
+  const row=currentRow(target)
+  if(!inScope(target)||!row)return
+  setNotice('')
+  if(kind==='copyPath'){
+   try{const path=row.copyPath;if(!usableProjectPath(path))return
+    if(typeof sdk.writeClipboardText==='function')await sdk.writeClipboardText(path)
+    else await navigator.clipboard.writeText(path)
+   }catch{if(inScope(target))setNotice('project.copyFailed')}
+   return
+  }
+  if(!actionValid(target)||rowChanges.current.has(ownerKey))return
+  setLayer('dialog',target);setDialog({kind,target})
+ }
+
+ function menu(row){
+  if(!owner||!['DropdownMenu','DropdownMenuContent','DropdownMenuItem','DropdownMenuTrigger','Codicon'].every(k=>sdk[k])||!row.stored&&!row.isAuto)return null
+  const label=projectLabelText(row,tr)
+  const editor=['Dialog','DialogContent','DialogHeader','DialogTitle','DialogDescription','DialogFooter','Button','Input'].every(k=>sdk[k])
+  const reason=!row.isAuto&&!wireAvailable(owner.connectionId,epoch)?'project.routeUnverified':null
+  // Use the button's ref without changing the row's sibling/size contract.
+  let button=null
+  return jsxs(sdk.DropdownMenu,{modal:false,open:menuId===row.id,onOpenChange:open=>{
+   if(open){if(dialogActive.current||layer.current?.kind==='dialog')return;setLayer('menu',capture(row,button));setMenuId(row.id)}
+   else{setMenuId(id=>id===row.id?null:id);if(layer.current?.kind==='menu'&&layer.current.target.row.id===row.id)clearLayer()}
+  },children:[
+   jsx(sdk.DropdownMenuTrigger,{asChild:true,children:jsx('button',{type:'button',ref:node=>{button=node},'data-project-menu':true,'aria-label':tr('project.menu',label),style:projectRowButton,onClick:e=>e.stopPropagation(),children:jsx(sdk.Codicon,{name:'kebab-vertical',size:'0.75rem','aria-hidden':true})})}),
+   jsxs(sdk.DropdownMenuContent,{align:'end',style:{zIndex:51},onCloseAutoFocus:e=>{if(layer.current?.kind==='dialog'||!isCurrent())e.preventDefault()},children:[
+    ...projectMenuActions.filter(([kind])=>!row.isAuto||kind==='copyPath').map(([kind,icon])=>{
+     const explanation=kind==='copyPath'?null:reason
+     const disabled=kind==='copyPath'?!usableProjectPath(row.copyPath):!!reason||!!pending||!editor||kind==='appearance'&&(!sdk.ColorSwatches||!sdk.PROFILE_SWATCHES)
+     return jsxs(sdk.DropdownMenuItem,{disabled,variant:kind==='delete'?'destructive':'default','aria-description':explanation?tr(explanation):undefined,onSelect:()=>{const target=layer.current?.target;if(target?.row.id===row.id)void pick(kind,target)},children:[jsx(sdk.Codicon,{name:icon,size:'0.875rem','aria-hidden':true}),tr('project.'+kind)]},kind)
+    }),reason?jsx('small',{'aria-hidden':true,style:{display:'block',maxWidth:'14rem',fontSize:11,padding:'4px 6px',color:'var(--ui-text-secondary)'},children:tr(reason)}):null
+   ]})
+  ]})
+ }
+ return {menu,dialog:dialog?jsx(ProjectRowDialog,{action:dialog,close:closeDialog,restoreFocus:e=>restoreFocus(dialog.target,e),valid:()=>actionValid(dialog.target),onSave:params=>{if(layer.current?.kind!=='dialog'||layer.current.target!==dialog.target||rowChanges.current.has(ownerKey)||!actionValid(dialog.target))return;closeDialog();void run(dialog.target,dialog.kind,params)}}):null,
+  notice:notice||pending?.sent&&!pending.inflight?jsxs('div',{role:'alert',style:{fontSize:12,overflowY:'auto',flexShrink:1},children:[notice?tr(notice):tr(pending.acknowledged?'project.actionRefreshFailed':'project.changeUnknown',pending.label),!notice&&qualified?jsx(sdk.Button,{type:'button',size:'sm',variant:'ghost',onClick:()=>void run(capture(null,null),null,{},pending),children:tr('project.checkChange')}):null]}):null}
+}
+
 function ProjectDialog({owner:ownerProp,ownerName,isCurrent,onClose,onCreated,onRefresh,unknownProjects}){
  const tr=useTranslator()
  const dialogRest=useContext(DialogRestContext)
@@ -701,7 +1075,7 @@ const projectDesiredHeight=`clamp(0px, ${projectViewportPercent}vh - ${projectHe
 const primaryViewportHeight='calc(100vh - 24px)'
 // Keep one readable session row above the fixed controls when space allows.
 const primaryWithProjectsHeight=`max(min(${152+recentRowHeight}px, ${primaryViewportHeight}), calc(${primaryViewportHeight} - ${projectDesiredHeight}))`
-function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss,onOpened,pending,projectOpen,setProjectOpen,createdProjects,dialogActive,unknownProjects,parentContentRef}){
+function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss,onOpened,pending,projectOpen,setProjectOpen,createdProjects,dialogActive,statusDialog,unknownProjects,parentContentRef,rowLayer,rowChanges,refreshRowChanges}){
  const tr=useTranslator()
  const [error,setError]=useState(''),[projectGeneration,setProjectGeneration]=useState(0),[dialogOpen,setDialogOpen]=useState(false),projectTrigger=useRef(null),[projectLayout,setProjectLayout]=useState({side:'bottom'})
  useEffect(()=>{
@@ -738,7 +1112,7 @@ function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaun
  },[projectOpen,parentContentRef])
  const dialogAvailable=!!owner&&typeof owner.route==='object'&&!!owner.route&&typeof host.requestProfile==='function'&&['Dialog','DialogContent','DialogHeader','DialogTitle','DialogDescription','DialogFooter','Button','Input','Textarea'].every(k=>!!sdk[k])
  useEffect(()=>()=>{dialogActive.current=false},[dialogActive])
- const route=owner?.route, ownerScope=[owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]
+ const route=owner?.route, ownerScope=ownerRouteKey(owner)
  const queryKey=['sessioncrew','projects',...ownerScope,projectGeneration]
  const projectIntent=useRef(0)
  const projects=useQuery({queryKey,queryFn:()=>{const priority=projectIntent.current===projectGeneration?'background':'foreground';projectIntent.current=projectGeneration;return projectData(owner,priority)},enabled:!!owner,retry:false})
@@ -751,9 +1125,10 @@ function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaun
  const unknownKey=JSON.stringify([route?.connectionId,route?.targetProfile])
  const unknownWarning=tr('project.unknownWarning')
  const choices=[...(projects.data?.choices||[])];for(const project of createdProjects.current.get(key)||[])if(!choices.some(p=>p.id===project.id))choices.push(project)
+ const rowActions=useProjectRowActions({owner,isCurrent,getLiveOwner,projectOpen,choices,queryKey,key,createdProjects,rowLayer,rowChanges,dialogActive,refreshRowChanges})
  function createProject(){if(!dialogAvailable||dialogActive.current||unknownProjects.current.has(unknownKey))return;dialogActive.current=true;setDialogOpen(true)}
  function closeDialog(){dialogActive.current=false;setDialogOpen(false)}
- function rememberProject(project){const rows=createdProjects.current.get(key)||[];createdProjects.current.set(key,[...rows.filter(x=>x.id!==project.id),project]);try{Promise.resolve(sdk.queryClient?.invalidateQueries?.({queryKey:queryKey.slice(0,-1),refetchType:'none'})).catch(()=>{})}catch{}if(isCurrent())setProjectGeneration(n=>n+1)}
+ function rememberProject(project){const rows=createdProjects.current.get(key)||[];createdProjects.current.set(key,[...rows.filter(x=>x.id!==project.id),{...project,stored:true,copyPath:project.path||''}]);try{Promise.resolve(sdk.queryClient?.invalidateQueries?.({queryKey:queryKey.slice(0,-1),refetchType:'none'})).catch(()=>{})}catch{}if(isCurrent())setProjectGeneration(n=>n+1)}
  async function refreshProjects(){if(sdk.queryClient?.invalidateQueries)await sdk.queryClient.invalidateQueries({queryKey:queryKey.slice(0,-1),refetchType:'none'});if(isCurrent())setProjectGeneration(n=>n+1)}
  async function create(project=null){
   const dispatchOwner=owner&&getLiveOwner(destination)
@@ -789,7 +1164,29 @@ function Launchers({owner,ownerName,isCurrent,getLiveOwner,isLaunching,beginLaun
  }
  const ellipsis={display:'block',minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}
  const Glyph=sdk.Codicon||'span'
- return jsxs('div',{style:{flexShrink:0},children:[dialogOpen?jsx(ProjectDialog,{owner,ownerName,isCurrent,onClose:closeDialog,onCreated:rememberProject,onRefresh:refreshProjects,unknownProjects}):null,jsxs('div',{style:s.footer,children:[jsx('button',{type:'button',disabled:launchDisabled||!owner,onClick:()=>create(),style:{...s.button,flex:1,minWidth:0},children:retryable?tr('session.retryOpen'):jsxs('span',{style:{display:'inline-flex',alignItems:'center',gap:4},children:[jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true}),tr('session.quickCreate')]})}),jsxs(Popover,{open:projectOpen,onOpenChange:open=>{if(!open&&isLaunching())onDismiss();else if(open||!dialogActive.current)setProjectOpen(open)},children:[jsx(PopoverTrigger,{asChild:true,children:jsx('span',{'aria-hidden':true,tabIndex:-1,style:{position:'absolute',inset:0,pointerEvents:'none'}})}),jsx('button',{ref:projectTrigger,type:'button',disabled:busy||!owner,'aria-expanded':projectOpen,'aria-haspopup':'dialog',onClick:()=>setProjectOpen(!projectOpen),style:{...s.button,flex:1,minWidth:0},children:tr('project.open')}),jsxs(PopoverContent,{side:projectLayout.side,align:'start',avoidCollisions:!projectLayout.overlay,sideOffset:projectLayout.sideOffset,alignOffset:projectLayout.alignOffset,onCloseAutoFocus:e=>{e.preventDefault();if(isCurrent())projectTrigger.current?.focus({preventScroll:true})},onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||parentContentRef&&parentContentRef.current?.contains(e.target))e.preventDefault()},style:{...s.bubble,padding:'min(16px, 2vh)',boxSizing:'border-box',maxHeight:projectLayout.verticalLimit===undefined?projectDesiredHeight:`min(${projectDesiredHeight}, ${projectLayout.verticalLimit}px)`,overflow:'hidden'},children:[jsxs('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,height:30},children:[jsx('strong',{children:tr('project.title')}),jsx('button',{type:'button','aria-label':tr('project.new'),title:unknownProjects.current.has(unknownKey)?tr('project.unknownList'):dialogAvailable?tr('project.newForProfile'):tr('errors.projectUiUnsupported'),disabled:busy||!dialogAvailable||unknownProjects.current.has(unknownKey),onClick:()=>void createProject(),style:{...s.button,border:0},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]}),unknownProjects.current.has(unknownKey)?jsx('div',{role:'alert',children:unknownWarning,style:{fontSize:12,overflowY:'auto',flexShrink:1}}):null,projects.isPending&&!choices.length?tr('project.loadingList'):projects.isError&&!choices.length?jsxs('div',{role:'alert',children:[tr('project.loadFailed'),jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')})]}):!choices.length?tr('project.empty'):jsx('div',{'data-project-list':true,style:{minHeight:0,maxHeight:96,overflowY:'auto',flex:'0 1 auto'},children:choices.map(project=>jsxs('div',{'data-project-row':true,style:{height:32,boxSizing:'border-box',flexShrink:0,display:'flex',alignItems:'center',gap:8,minWidth:0},children:[project.color&&!project.icon?jsx('span',{'data-project-icon':'color','aria-hidden':true,style:{width:14,height:14,display:'grid',placeItems:'center',flex:'none'},children:jsx('span',{style:{width:4,height:4,borderRadius:'50%',background:project.color}})}):jsx('span',{'data-project-icon':project.icon||(project.isAuto?'repo':'folder-library'),'aria-hidden':true,style:{color:project.color||'var(--ui-text-tertiary)',width:14,flex:'none'},children:jsx(Glyph,{name:project.icon||(project.isAuto?'repo':'folder-library'),size:'0.875rem'})}),jsx('div',{style:{minWidth:0,flex:'1 1 auto'},children:jsx('strong',{'data-project-name':true,title:typeof project.label==='object'?tr(project.label.fallback):project.label,style:{...ellipsis,fontSize:12},children:typeof project.label==='object'?tr(project.label.fallback):project.label})}),jsx('button',{type:'button',disabled:launchDisabled,'aria-label':tr('session.newInProject',typeof project.label==='object'?tr(project.label.fallback):project.label),onClick:()=>create(project),style:{...s.button,border:0,flex:'none'},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]},project.id))})]})]})]}),unconfirmed||error?jsx('div',{role:'alert',children:unconfirmed?tr('session.createUnconfirmed'):localizeError(error)}):null]})
+ const renderRow=project=>{
+  const label=projectLabelText(project,tr),glyph=project.icon||(project.isAuto?'repo':'folder-library')
+  return jsxs('div',{'data-project-row':true,style:{height:32,boxSizing:'border-box',flexShrink:0,display:'flex',alignItems:'center',gap:8,minWidth:0},children:[
+   project.color&&!project.icon?jsx('span',{'data-project-icon':'color','aria-hidden':true,style:{width:14,height:14,display:'grid',placeItems:'center',flex:'none'},children:jsx('span',{style:{width:4,height:4,borderRadius:'50%',background:project.color}})}):jsx('span',{'data-project-icon':glyph,'aria-hidden':true,style:{color:project.color||'var(--ui-text-tertiary)',width:14,flex:'none'},children:jsx(Glyph,{name:glyph,size:'0.875rem'})}),
+   jsx('div',{style:{minWidth:0,flex:'1 1 auto'},children:jsx('strong',{'data-project-name':true,title:label,style:{...ellipsis,fontSize:12},children:label})}),
+   jsxs('div',{style:{display:'flex',alignItems:'center',gap:2,flex:'none'},children:[rowActions.menu(project),jsx('button',{type:'button','data-project-launch':true,disabled:launchDisabled,'aria-label':tr('session.newInProject',label),onClick:()=>create(project),style:projectRowButton,children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]})
+  ]},project.id)
+ }
+ return jsxs('div',{style:{flexShrink:0},children:[
+  rowActions.dialog,dialogOpen?jsx(ProjectDialog,{owner,ownerName,isCurrent,onClose:closeDialog,onCreated:rememberProject,onRefresh:refreshProjects,unknownProjects}):null,
+  jsxs('div',{style:s.footer,children:[
+   jsx('button',{type:'button',disabled:launchDisabled||!owner,onClick:()=>create(),style:{...s.button,flex:1,minWidth:0},children:retryable?tr('session.retryOpen'):jsxs('span',{style:{display:'inline-flex',alignItems:'center',gap:4},children:[jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true}),tr('session.quickCreate')]})}),
+   jsxs(Popover,{open:projectOpen,onOpenChange:open=>{if(statusDialog.current)return;if(!open&&isLaunching())onDismiss();else if(open||!dialogActive.current&&!rowLayer.current)setProjectOpen(open)},children:[
+    jsx(PopoverTrigger,{asChild:true,children:jsx('span',{'aria-hidden':true,tabIndex:-1,style:{position:'absolute',inset:0,pointerEvents:'none'}})}),
+    jsx('button',{ref:projectTrigger,type:'button',disabled:busy||!owner,'aria-expanded':projectOpen,'aria-haspopup':'dialog',onClick:()=>setProjectOpen(!projectOpen),style:{...s.button,flex:1,minWidth:0},children:tr('project.open')}),
+    jsxs(PopoverContent,{side:projectLayout.side,align:'start',avoidCollisions:!projectLayout.overlay,sideOffset:projectLayout.sideOffset,alignOffset:projectLayout.alignOffset,onCloseAutoFocus:e=>{e.preventDefault();if(isCurrent())projectTrigger.current?.focus({preventScroll:true})},onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||statusDialog.current||rowLayer.current||parentContentRef?.current?.contains(e.target))e.preventDefault()},style:{...s.bubble,padding:'min(16px, 2vh)',boxSizing:'border-box',maxHeight:projectLayout.verticalLimit===undefined?projectDesiredHeight:`min(${projectDesiredHeight}, ${projectLayout.verticalLimit}px)`,overflow:'hidden'},children:[
+     jsxs('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,height:30},children:[jsx('strong',{children:tr('project.title')}),jsx('button',{type:'button','aria-label':tr('project.new'),title:unknownProjects.current.has(unknownKey)?tr('project.unknownList'):dialogAvailable?tr('project.newForProfile'):tr('errors.projectUiUnsupported'),disabled:busy||!dialogAvailable||unknownProjects.current.has(unknownKey),onClick:()=>void createProject(),style:{...s.button,border:0},children:jsx(Glyph,{name:'add',size:'0.75rem','aria-hidden':true})})]}),
+     unknownProjects.current.has(unknownKey)?jsx('div',{role:'alert',children:unknownWarning,style:{fontSize:12,overflowY:'auto',flexShrink:1}}):null,rowActions.notice,
+     projects.isPending&&!choices.length?tr('project.loadingList'):projects.isError&&!choices.length?jsxs('div',{role:'alert',children:[tr('project.loadFailed'),jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')})]}):!choices.length?tr('project.empty'):jsx(ScrollWithCue,{kind:'project',style:{minHeight:0,maxHeight:96,flex:'0 1 auto'},revision:choices.length,children:choices.map(renderRow)})
+    ]})
+   ]})
+  ]}),unconfirmed||error?jsx('div',{role:'alert',children:unconfirmed?tr('session.createUnconfirmed'):localizeError(error)}):null
+ ]})
 }
 function statusText(value){
  const text=typeof value==='string'?value.replace(/\s+/gu,' ').trim():''
@@ -797,7 +1194,16 @@ function statusText(value){
  const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text)].map(x=>x.segment):Array.from(text.matchAll(/(?:\P{Mark}\p{Mark}*|\p{Mark}+)(?:\uFE0F|[\u{1F3FB}-\u{1F3FF}])?(?:\u200D(?:\P{Mark}\p{Mark}*)(?:\uFE0F|[\u{1F3FB}-\u{1F3FF}])?)*/gu),x=>x[0])
  return parts.slice(0,28).join('')
 }
-const quoteDefaults={working:'status.workingQuote',waiting:'status.waitingQuote',idle:'status.idleQuote',online_unobserved:'status.onlineUnobservedQuote',offline:'status.offlineQuote',unknown:'status.unknownQuote'}
+const quoteStates={working:'working',waiting:'waiting',idle:'idle',online_unobserved:'onlineUnobserved',offline:'offline',unknown:'unknown'}
+const quoteStateKeys=Object.keys(quoteStates),quoteRefreshes=5,quoteHistoryLimit=128*quoteStateKeys.length
+const quoteKey=(owner,state)=>owner+':quote-v1:'+state
+const normalizePhrases=phrases=>[...new Set(phrases.map(statusText).filter(Boolean))]
+function storedPhrases(raw,allowList){
+ if(raw==null)return []
+ if(typeof raw==='string')return normalizePhrases([raw])
+ if(allowList&&Array.isArray(raw)&&raw.every(p=>typeof p==='string'))return normalizePhrases(raw)
+ throw Error('invalid status quote')
+}
 const quoteQueues=new WeakMap()
 function queueQuote(storage,key,task){
  let queues=quoteQueues.get(storage);if(!queues){queues=new Map();quoteQueues.set(storage,queues)}
@@ -805,20 +1211,147 @@ function queueQuote(storage,key,task){
  job.finally(()=>{if(queues.get(key)===job)queues.delete(key)}).catch(()=>{})
  return job
 }
-function StatusQuote({storage,ownerKey,status}){
- const state=Object.hasOwn(quoteDefaults,status)?status:'unknown'
- return jsx(StatusQuoteEntry,{storage,ownerKey,state},JSON.stringify([ownerKey,state]))
+const quoteEditorAvailable=['Dialog','DialogContent','DialogHeader','DialogTitle','DialogFooter','Button','Input'].every(k=>!!sdk[k])
+function StatusQuote({storage,ownerKey,status,statusDialog,statusRefresh=0,lastQuotes}){
+ const [source,setSource]=useState({storage,generation:0})
+ if(source.storage!==storage)setSource({storage,generation:source.generation+1})
+ const state=Object.hasOwn(quoteStates,status)?status:'unknown'
+ return jsx(StatusQuoteEntry,{storage,ownerKey,state,statusDialog,statusRefresh,lastQuotes},JSON.stringify([ownerKey,source.generation]))
 }
-function StatusQuoteEntry({storage,ownerKey,state}){
+function StatusQuoteEntry({storage,ownerKey,state,statusDialog,statusRefresh,lastQuotes}){
  const tr=useTranslator()
- const [text,setText]=useState(''),[draft,setDraft]=useState(''),[editing,setEditing]=useState(false),[expanded,setExpanded]=useState(false),[error,setError]=useState(''),[ready,setReady]=useState(false),[busy,setBusy]=useState(false)
- const alive=useRef(false),lock=useRef(false),key=ownerKey+':quote-v1:'+state
- useEffect(()=>{let active=true;alive.current=true;setReady(false);Promise.resolve().then(async()=>{if(typeof storage?.get!=='function')throw Error('storage.get unavailable');const legacy=await storage.get(ownerKey),saved=await storage.get(key);const raw=saved==null?legacy:saved;const first=saved!=null&&Array.isArray(raw)?raw[0]:raw;if(first!=null&&typeof first!=='string')throw Error('invalid quote');if(active){setText(statusText(first));setReady(true)}}).catch(()=>{if(active)setError({message:()=>tr('status.readFailed')})});return()=>{active=false;alive.current=false}},[storage,ownerKey,key])
- const value=text||tr(quoteDefaults[state])
- const quoteRef=useRef(null),[preview,setPreview]=useState(value)
- useEffect(()=>{const el=quoteRef.current;if(!el)return;const fit=()=>{const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');if(!ctx){setPreview(value);return}const css=getComputedStyle(el);ctx.font=`${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(value)].map(x=>x.segment):Array.from(value);let next=value;if(ctx.measureText(next).width>el.clientWidth){while(parts.length&&ctx.measureText(parts.join('')+'...').width>el.clientWidth)parts.pop();next=parts.join('')+'...'}setPreview(next)};if(typeof ResizeObserver==='function'){const observer=new ResizeObserver(fit);observer.observe(el);fit();return()=>observer.disconnect()}setPreview(value)},[value])
- async function save(){if(lock.current||!ready)return;lock.current=true;setBusy(true);try{if(typeof storage?.set!=='function'||typeof storage?.get!=='function')throw Error();const clean=statusText(draft);await queueQuote(storage,key,async()=>{await storage.set(key,clean);const confirmed=await storage.get(key);if(confirmed!==clean)throw Error()});if(alive.current){setText(clean);setEditing(false);setError('')}}catch{if(alive.current)setError({message:()=>tr('status.saveFailed')})}finally{lock.current=false;if(alive.current)setBusy(false)}}
- return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0},children:[jsx('button',{ref:quoteRef,'data-status-quote':true,type:'button',onClick:()=>setExpanded(x=>!x),title:value,'aria-label':tr('status.label',value),style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',cursor:'pointer'},children:preview}),jsx('button',{'data-status-edit':true,type:'button',disabled:!ready||busy,onClick:()=>{setDraft(text);setEditing(x=>!x)},style:{...s.button,border:0,padding:4},'aria-label':tr('status.editQuote'),children:'✎'})]}),expanded?jsx('div',{'data-status-full':true,tabIndex:0,style:{whiteSpace:'nowrap',overflowX:'auto',maxWidth:'100%',color:'var(--ui-text-secondary)',fontSize:12},children:value}):null,editing?jsxs('div',{children:[jsx('span',{children:tr('status.editLocal',tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[state]))}),jsx('input',{'data-status-input':true,disabled:busy,value:draft,onChange:e=>setDraft(e.target.value),maxLength:512,'aria-label':tr('status.quote'),style:{maxWidth:'100%',boxSizing:'border-box'}}),jsx('button',{'data-status-save':true,type:'button',onClick:save,children:tr('common.save')})]}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
+ const [rows,setRows]=useState({}),[editor,setEditor]=useState(null),[busy,setBusy]=useState(false)
+ const alive=useRef(false),lock=useRef(false),pencil=useRef(null),input=useRef(null),token=useRef(Symbol()),formId=React.useId()
+ const releaseDialog=()=>{if(statusDialog.current===token.current)statusDialog.current=null}
+ React.useLayoutEffect(()=>{alive.current=true;return()=>{alive.current=false;releaseDialog()}},[statusDialog])
+ useEffect(()=>{
+  let active=true,legacy
+  for(const row of quoteStateKeys){
+   const key=quoteKey(ownerKey,row)
+   const update=phrases=>{if(active)setRows(current=>({...current,[row]:phrases}))}
+   void (async()=>{
+    // Wait for an earlier mount's save and read-back before reading that key.
+    await quoteQueues.get(storage)?.get(key)?.catch(()=>{})
+    if(!active)return
+    const raw=await storage.get(key,null)
+    if(!active)return
+    update(raw==null?await (legacy??=Promise.resolve().then(()=>storage.get(ownerKey,null)).then(raw=>storedPhrases(raw,false))):storedPhrases(raw,true))
+   })().catch(()=>update(null))
+  }
+  return()=>{active=false}
+ },[storage,ownerKey])
+ const defaultFor=row=>tr('status.'+quoteStates[row]+'Quote')
+ const defaultText=defaultFor(state)
+ const defaultPhrases=React.useMemo(()=>defaultText.split(', '),[defaultText])
+ // Don't draw from the defaults before we know whether this state has a saved list.
+ const savedPhrases=rows[state],phrases=savedPhrases===undefined?null:savedPhrases?.length?savedPhrases:defaultPhrases
+ const fieldValue=row=>rows[row]?.join(', ')||defaultFor(row)
+ function openEditor(){if(statusDialog.current)return;statusDialog.current=token.current;setEditor({drafts:{},failed:[],partial:false})}
+ function closeEditor(){releaseDialog();setEditor(null)}
+ async function save(){
+  if(lock.current||!editor)return
+  const changed=quoteStateKeys.filter(row=>rows[row]&&((Object.hasOwn(editor.drafts,row)&&editor.drafts[row]!==fieldValue(row))||editor.failed.includes(row)))
+  if(!changed.length){closeEditor();return}
+  lock.current=true;setBusy(true)
+  const results=await Promise.all(changed.map(async row=>{
+   try{
+    const key=quoteKey(ownerKey,row),draft=editor.drafts[row]
+    const phrases=draft===fieldValue(row)?rows[row]:normalizePhrases(draft.split(','))
+    if(!phrases.length&&!rows[row].length&&!editor.failed.includes(row))return {row}
+    const payload=phrases.length>1?phrases:phrases[0]??''
+    await queueQuote(storage,key,async()=>{await storage.set(key,payload);if(JSON.stringify(await storage.get(key,null))!==JSON.stringify(payload))throw Error('status quote read-back mismatch')})
+    return {row,phrases}
+   }catch{return {row,phrases:null}}
+  }))
+  lock.current=false
+  if(!alive.current)return
+  setBusy(false)
+  const saved=results.filter(result=>result.phrases),failed=results.filter(result=>result.phrases===null).map(result=>result.row)
+  if(saved.length)setRows(current=>({...current,...Object.fromEntries(saved.map(({row,phrases})=>[row,phrases]))}))
+  if(!failed.length){closeEditor();return}
+  setEditor({drafts:Object.fromEntries(failed.map(row=>[row,editor.drafts[row]])),failed,partial:editor.partial||saved.length>0})
+ }
+ const readFailed=quoteStateKeys.some(row=>rows[row]===null),helpId=formId+'-help'
+ const isComposing=e=>e.isComposing||e.keyCode===229
+ return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[
+  jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0,minHeight:14,paddingRight:recentRowPaddingRight-(recentActionSize-recentChevron.width)/2},children:[
+   jsx(RotatingStatusQuote,{state,historyKey:quoteKey(ownerKey,state),lastQuotes,phrases,editorOpen:!!editor,label:tr,statusRefresh}),
+   jsx('button',{ref:pencil,'data-status-edit':true,type:'button',disabled:rows[state]===undefined||!quoteEditorAvailable,onClick:openEditor,style:{...s.button,border:0,display:'grid',placeItems:'center',width:recentActionSize,height:recentActionSize,flexShrink:0,padding:0,marginBlock:-4,lineHeight:s.quote.lineHeight},'aria-label':tr('status.editTitle'),'aria-haspopup':'dialog',children:'✎'})
+  ]}),
+  editor?jsx(sdk.Dialog,{open:true,onOpenChange:open=>{if(!open&&!lock.current)closeEditor()},children:jsxs(sdk.DialogContent,{className:'max-w-md',style:{maxHeight:'calc(100dvh - 24px)'},'aria-describedby':helpId,'data-status-editor':true,
+   onEscapeKeyDown:e=>{if(isComposing(e)||lock.current)e.preventDefault()},
+   onKeyDown:e=>{if(e.key==='Escape'&&!isComposing(e.nativeEvent)){e.preventDefault();e.stopPropagation();if(!lock.current)closeEditor()}},
+   onOpenAutoFocus:e=>{e.preventDefault();input.current?.focus();input.current?.select()},
+   onCloseAutoFocus:e=>{e.preventDefault();if(alive.current&&!statusDialog.current)pencil.current?.focus({preventScroll:true})},children:[
+    jsxs(sdk.DialogHeader,{children:[jsx(sdk.DialogTitle,{children:tr('status.editTitle')}),jsx('p',{id:helpId,style:{fontSize:12,color:'var(--ui-text-secondary)'},children:tr('status.quoteHelp')})]}),
+    jsx('div',{style:{display:'grid',gridTemplateColumns:'max-content minmax(0, 1fr)',alignItems:'center',gap:'6px 12px'},children:quoteStateKeys.map(row=>{
+     const id=formId+'-'+row
+     return jsxs(React.Fragment,{children:[
+      jsx('label',{htmlFor:id,style:{fontSize:13},children:tr('status.'+quoteStates[row])}),
+      jsx(sdk.Input,{id,ref:row===state?input:undefined,type:'text',size:'sm','data-status-input':row,readOnly:busy||!rows[row],value:editor.drafts[row]??(rows[row]?fieldValue(row):''),maxLength:512,'aria-invalid':rows[row]===null||editor.failed.includes(row)||undefined,onChange:e=>{const draft=e.target.value;setEditor(current=>({...current,drafts:{...current.drafts,[row]:draft}}))},onKeyDown:e=>{if(e.key==='Enter'&&!isComposing(e.nativeEvent)){e.preventDefault();void save()}}})
+     ]},row)
+    })}),
+    readFailed?jsx('small',{role:'alert',children:tr('status.readFailed')}):null,
+    editor.failed.length?jsx('small',{role:'alert',children:[tr('status.saveFailed'),editor.partial?' '+tr('status.savePartial'):'']}):null,
+    jsxs(sdk.DialogFooter,{children:[jsx(sdk.Button,{type:'button',variant:'ghost',disabled:busy,onClick:()=>{if(!lock.current)closeEditor()},children:tr('common.cancel')}),jsx(sdk.Button,{'data-status-save':true,type:'button',disabled:busy,onClick:()=>void save(),children:tr('common.save')})]})
+   ]})}):readFailed?jsx('small',{role:'alert',children:tr('status.readFailed')}):null
+ ]})
+}
+function RotatingStatusQuote({state,historyKey,lastQuotes,phrases,editorOpen,label,statusRefresh}){
+ const [hovered,setHovered]=useState(false),held=editorOpen||hovered
+ const [value,setValue]=useState(''),[measured,setMeasured]=useState(null)
+ const currentFit=measured?.value===value?measured:null
+ const rotation=useRef(null),quoteRef=useRef(null),hover=useRef(false),reflow=useRef(null)
+ React.useLayoutEffect(()=>{
+  const previous=rotation.current,sameState=previous?.state===state
+  // Keep the current phrase during a hold, even if a partial save changed the list.
+  const list=held&&sameState&&previous.phrases?previous.phrases:phrases
+  const sameList=sameState&&(list===previous.phrases||list&&previous.phrases&&list.length===previous.phrases.length&&list.every((text,i)=>text===previous.phrases[i]))
+  const delta=sameList?statusRefresh-previous.statusRefresh:0
+  // Discard samples during a hold without losing pre-hold progress.
+  const steps=sameList&&delta>=0?previous.steps+(held||previous.held?0:delta):0
+  let next=sameState?previous.value:''
+  if(!list)next=''
+  else if(!list.includes(next)||steps>=quoteRefreshes){
+   // A batch crossing multiple thresholds still makes just one visible draw.
+   const last=next||lastQuotes.get(historyKey),alternatives=list.filter(text=>text!==last)
+   next=alternatives.length>1?alternatives[Math.floor(Math.random()*alternatives.length)]:alternatives[0]??list[0]
+  }
+  rotation.current={state,phrases:list,statusRefresh,held,steps:steps%quoteRefreshes,value:next}
+  if(next!==previous?.value)setValue(next)
+ },[state,historyKey,lastQuotes,phrases,held,statusRefresh])
+ React.useLayoutEffect(()=>{
+  // Remember committed text in this registration only, newest entries last.
+  if(!value||rotation.current.value!==value)return
+  lastQuotes.delete(historyKey);lastQuotes.set(historyKey,value)
+  if(lastQuotes.size>quoteHistoryLimit)lastQuotes.delete(lastQuotes.keys().next().value)
+ },[historyKey,lastQuotes,value])
+ React.useLayoutEffect(()=>{
+  const el=quoteRef.current;if(!value||!el||typeof ResizeObserver!=='function')return
+  let fittedWidth=0
+  const fit=()=>{
+   const ctx=document.createElement('canvas').getContext('2d');if(!ctx)return
+   const css=getComputedStyle(el),width=el.clientWidth
+   fittedWidth=width
+   ctx.font=`${css.fontWeight} ${css.fontSize} ${css.fontFamily}`
+   const clipped=ctx.measureText(value).width>width
+   let preview=value
+   if(clipped){
+    const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(value)].map(x=>x.segment):Array.from(value)
+    while(parts.length&&ctx.measureText(parts.join('')+'...').width>width)parts.pop()
+    preview=parts.join('')+'...'
+   }
+   setMeasured(current=>current?.value===value&&current.preview===preview&&current.clipped===clipped?current:{value,preview,clipped})
+  }
+  reflow.current=fit
+  // Keep a hovered preview stable on expansion, but refit before narrowing can clip it further.
+  const observer=new ResizeObserver(()=>{if(!hover.current||el.clientWidth<fittedWidth)fit()});observer.observe(el);fit()
+  return()=>{reflow.current=null;observer.disconnect()}
+ },[value])
+ return jsxs('span',{ref:quoteRef,'data-status-quote':true,title:currentFit?.clipped?value:undefined,onPointerEnter:()=>{hover.current=true;setHovered(true)},onPointerLeave:()=>{hover.current=false;setHovered(false);reflow.current?.()},style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',position:'relative'},children:[
+  jsx('span',{'aria-hidden':true,children:currentFit?.preview??value}),
+  jsx('span',{style:{position:'absolute',width:1,height:1,overflow:'hidden',clipPath:'inset(50%)'},children:value?label('status.label',value):null})
+ ]})
 }
 // SessionCrew's own namespace; never depends on Office being mounted.
 const STATUS_TTL=15000
@@ -831,8 +1364,10 @@ const backendIdleStart=row=>recentWork(row)?row.last_session_activity:row.idle_s
 const sharedIdleHistory=row=>recentWork(row)?row.shared_gateway_observation==='positive':row?.state==='online_unobserved'&&row.busy===null&&row.idle_since===null&&row.status_observation==='fresh_shared_gateway_no_observed_owner_work'
 const ownBusyStatus=(row,status)=>row.active_turn===true||row.waiting===true||status==='working'||status==='waiting'
 function oneshotProof(row,sampledAt,now){
- const {observed_at,expires_at}=row.oneshot_activity||{},observed=observed_at*1000,expires=expires_at*1000
- if(row.active_turn!==true||typeof observed_at!=='number'||typeof expires_at!=='number'||!Number.isFinite(observed)||!Number.isFinite(expires)||observed<=0||expires<=observed||observed<sampledAt-1000||observed>now+1000)return null
+ const {observed_at,expires_at}=row.oneshot_activity||{}
+ if(row.active_turn!==true||typeof observed_at!=='number'||typeof expires_at!=='number')return null
+ const observed=observed_at*1000,expires=expires_at*1000
+ if(!Number.isFinite(observed)||!Number.isFinite(expires)||observed<=0||expires<=observed||observed<sampledAt-1000||observed>now+1000)return null
  // Bound validity by the sampled lease, not by a fresh cache delivery. Use
  // the request start for a conservative expiry even with minor clock skew.
  const validUntil=Math.min(expires,sampledAt+expires-observed,sampledAt+STATUS_TTL)
@@ -846,22 +1381,42 @@ function lastActivityEstimate(row,now){
  return explicit||recency?row.last_session_activity:null
 }
 const fenceAt=(fences,name,at)=>fences.set(name,Math.max(fences.get(name)||0,at))
-const freshStatus=(q,now)=>!q.isError&&Array.isArray(q.data)&&Number.isFinite(q.dataUpdatedAt)&&now-q.dataUpdatedAt<STATUS_TTL&&q.dataUpdatedAt<=now+1000
+function partitionRailSnapshot(data){
+ const rows=new Map(),invalidOwners=new Map()
+ for(const row of data){
+  const name=row?.profile
+  if(typeof name!=='string'||!name)continue
+  if(rows.has(name)||invalidOwners.has(name)){
+   rows.delete(name);invalidOwners.set(name,'duplicate')
+  }else if(typeof row.online!=='boolean'||typeof row.state!=='string'||!row.state.trim())invalidOwners.set(name,'malformed')
+  else rows.set(name,row)
+ }
+ return {rows,invalidOwners}
+}
+const emptyRailSnapshot=partitionRailSnapshot([])
+function snapshotReason(q,now,enabled){
+ if(q.isError)return 'requestError'
+ if(q.data===undefined)return enabled?'pending':'unavailable'
+ if(!Array.isArray(q.data))return 'requestError'
+ if(!Number.isFinite(q.dataUpdatedAt)||now-q.dataUpdatedAt>=STATUS_TTL||q.dataUpdatedAt>now+1000)return 'expired'
+ return null
+}
 function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
  const scope=JSON.stringify([connection,profile,epoch,generation]), current=useRef(scope);current.current=scope
  const sameScope=()=>current.current===scope&&activityScope.generation===generation&&host.state.connectionId.get()===connection&&host.state.profile.get()===profile&&(typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===epoch)
- const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),idleFences:new Map(),estimateFences:new Map(),oneshotFences:new Map()}
+ const history=useRef(null);if(history.current?.scope!==scope)history.current={scope,starts:new Map(),idleFences:new Map(),estimateFences:new Map(),oneshotFences:new Map(),statusRefresh:0}
+ const statusHistory=history.current
  const [clock,tick]=useState(()=>Date.now())
  const enabled=!!profile&&typeof rest==='function'
  const q=useQuery({queryKey:['sessioncrew','status',connection,profile,epoch,generation],enabled,retry:false,staleTime:STATUS_TTL,refetchInterval:5000,refetchOnWindowFocus:true,queryFn:async({signal}={})=>{
  try{
   const sampledAt=Date.now()
   const data=await rest('/status',{method:'GET',timeoutMs:10000})
-  if(signal?.aborted||!sameScope())throw new LocalizedError('errors.connectionChanged')
+  if(signal?.aborted||history.current!==statusHistory||!sameScope())throw new LocalizedError('errors.connectionChanged')
   if(!Array.isArray(data))throw new LocalizedError('errors.statusFormat')
-  const names=new Set();for(const row of data){if(!row||typeof row.profile!=='string'||!row.profile||names.has(row.profile)||typeof row.online!=='boolean'||typeof row.state!=='string')throw new LocalizedError('errors.statusFormat');names.add(row.profile)}
+  const {rows}=partitionRailSnapshot(data),samples=new Map()
   const starts=history.current.starts,now=Date.now();if(history.current.lastAt&&now-history.current.lastAt>STATUS_TTL)starts.clear();history.current.lastAt=now
-  const rows=data.map(row=>{
+  for(const row of rows.values()){
    const status=railStatus(row),since=backendIdleStart(row)
    const proof=oneshotProof(row,sampledAt,now)
    if(proof&&row.online&&row.waiting!==true&&status!=='idle'&&status!=='waiting')fenceAt(history.current.oneshotFences,row.profile,sampledAt)
@@ -871,29 +1426,36 @@ function useRailSnapshot(rest,connection,profile,{epoch,generation,gateway}){
    }else if(status==='idle'&&validIdleStart(since,now))starts.set(row.profile,{since,sampledAt})
    else if(status!=='online_unobserved'||!sharedIdleHistory(row))starts.delete(row.profile)
    const sample=proof?{...row,oneshotProof:proof}:row
-   return status==='idle'?{...sample,idleSampledAt:sampledAt}:sample
-  })
-  for(const name of starts.keys())if(!names.has(name))starts.delete(name)
-  return rows
- }catch(error){if(!signal?.aborted&&sameScope())history.current.starts.clear();throw error}
+   samples.set(row.profile,status==='idle'?{...sample,idleSampledAt:sampledAt}:sample)
+  }
+  for(const name of starts.keys())if(!rows.has(name))starts.delete(name)
+  // Count successful /status requests (polls and native refetches), not cache writes or clock renders.
+  const result=data.map(row=>samples.get(row?.profile)??row)
+  statusHistory.statusRefresh++
+  return result
+ }catch(error){if(!signal?.aborted&&history.current===statusHistory&&sameScope())statusHistory.starts.clear();throw error}
  }})
  useEffect(()=>{
   if(!enabled||gateway!=='open'||typeof host.onEvent!=='function')return
   return host.onEvent('gateway.ready',event=>{
-   if((event?.connectionId??null)!==connection||event?.profile!==profile||!sameScope()||freshStatus(q,Date.now()))return
+   if((event?.connectionId??null)!==connection||event?.profile!==profile||!sameScope()||!snapshotReason(q,Date.now(),enabled))return
    void q.refetch({cancelRefetch:false})
   })
  },[enabled,gateway,scope,q.data,q.dataUpdatedAt,q.isError,q.refetch])
  useEffect(()=>{const update=()=>{if(!document.hidden)tick(Date.now())};const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update)}},[])
  const {starts,idleFences,estimateFences,oneshotFences}=history.current
- if(!freshStatus(q,Date.now())){starts.clear();return [[],clock,starts,idleFences,estimateFences,oneshotFences]}
- const rows=q.data.map(row=>{
-  const status=railStatus(row),since=backendIdleStart(row),start=starts.get(row.profile)
-  if(status==='idle'&&validIdleStart(since,Date.now()))return {...row,presentationIdleSince:since}
-  if(status==='online_unobserved'&&sharedIdleHistory(row)&&start)return {...row,presentationIdleSince:start.since,idleSampledAt:start.sampledAt,historicalIdle:true}
-  return row
- })
- return [rows,clock,starts,idleFences,estimateFences,oneshotFences]
+ const now=Date.now(),reason=snapshotReason(q,now,enabled)
+ const lastSuccessAt=Array.isArray(q.data)&&q.dataUpdatedAt>0&&q.dataUpdatedAt<=now+1000?q.dataUpdatedAt:null
+ const snapshot=React.useMemo(()=>reason?emptyRailSnapshot:partitionRailSnapshot(q.data),[reason,q.data])
+ if(reason)starts.clear()
+ const rows=new Map()
+ for(const [name,row] of snapshot.rows){
+  const status=railStatus(row),since=backendIdleStart(row),start=starts.get(name)
+  if(status==='idle'&&validIdleStart(since,now))rows.set(name,{...row,presentationIdleSince:since})
+  else if(status==='online_unobserved'&&sharedIdleHistory(row)&&start)rows.set(name,{...row,presentationIdleSince:start.since,idleSampledAt:start.sampledAt,historicalIdle:true})
+  else rows.set(name,row)
+ }
+ return [{rows,invalidOwners:snapshot.invalidOwners,reason,lastSuccessAt,statusRefresh:statusHistory.statusRefresh},clock,starts,idleFences,estimateFences,oneshotFences]
 }
 function officeStatus(row){if(!row)return 'unknown';if(!row.online)return 'offline';if(row.state==='running')return row.busy===true?'working':row.busy===false?'idle':'unknown';return ['working','waiting','idle','online_unobserved','unknown'].includes(row.state)?row.state:'unknown'}
 const statusOrder={working:0,waiting:1,idle:2,online_unobserved:3,unknown:4,offline:5}
@@ -918,13 +1480,13 @@ function RailItem({working,selected,clock,identity,children}){
 }
 // Radix may clamp its arrow while the real anchor continues moving. Never leave
 // that detached arrow near a rounded corner or an anchor outside our own rail.
-function GuardedPopover({active,onOpenChange,isLaunching,children}){
+function GuardedPopover({active,compact,onOpenChange,isLaunching,children}){
  const avatar=useRef(null),content=useRef(null),close=useRef(onOpenChange),geometryClose=useRef(false)
  const [,setContentElement]=useState(null)
  const contentRef=useCallback(node=>{content.current=node;setContentElement(node)},[])
  close.current=onOpenChange
  useEffect(()=>{
-  if(!active)return
+  if(!active||compact)return
   const a=avatar.current,c=content.current,rail=a?.closest('[data-profile-rail]')
   if(!a||!c||!rail)return
   let first=0,second=0
@@ -1087,10 +1649,10 @@ function useCompletion(storage,rest,connection,profile,showCron,hiddenMessagingS
   for(const x of state.rows){const sample=state.observed.get(x.key);if(sample?.generation===activityScope.generation&&x.source===state.baseline.source&&!x.session_source_conflict&&visibleUnread(x,owner,background))since=Math.max(since||0,sample.since)}
   return since
  }
- const ackAll=async(owner)=>{if(!usable())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
+ const ackAll=async(owner,isCurrent=()=>true)=>{if(!usable()||!isCurrent())return;const selected=new Set(state.rows.filter(x=>covered(x,owner)).map(x=>x.key));if(!selected.size)return;state.queue=queueSnapshotStorage(async()=>{if(!usable()||!isCurrent())return;const rows=state.rows.map(x=>selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}
  // Source classification comes from the scoped completion ledger, not the
  // bounded recent list. Unknown/conflicting evidence stays visible.
- return {activityFor,childMetadataFor,ackAll,unreadSince,clearedAt:name=>usable()&&state.baseline.profiles.has(name)?state.cleared.get(clearKey({name})):null,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.rows.some(x=>visibleUnread(x,{name,connectionId:connection},background)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys)=>{if(!usable()||!keys.length)return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}}
+ return {activityFor,childMetadataFor,ackAll,unreadSince,clearedAt:name=>usable()&&state.baseline.profiles.has(name)?state.cleared.get(clearKey({name})):null,coverageReady:usable(),covers:name=>state.baseline?.profiles.has(name)===true,error:typeof rest!=='function'?tr('completion.unavailable'):state.failed?tr('completion.saveFailed'):q.isError?tr('completion.unavailable'):state.gap?tr('completion.rebuilt'):q.data?.profiles?.some(p=>p.status!=='ok'||p.truncated)?tr('completion.partial'):null,retry:()=>retry(n=>n+1),has:(name,background=[])=>usable()&&state.rows.some(x=>visibleUnread(x,{name,connectionId:connection},background)),watermark:(owner,id,forAck=false)=>usable()?state.rows.filter(x=>matches(x,owner,id)&&(forAck||visible(x))).map(x=>x.key):[],ack:async(owner,id,keys,isCurrent=()=>true)=>{if(!usable()||!keys.length||!isCurrent())return;const selected=new Set(keys);state.queue=queueSnapshotStorage(async()=>{if(!usable()||!isCurrent())return;const rows=state.rows.map(x=>matches(x,owner,id)&&selected.has(x.key)&&covered(x,owner)?{...x,read:true}:x);await commitAck(owner,rows)}).catch(()=>{if(ref.current===state){state.failed=true;render(n=>n+1)}});await state.queue}}
 }
 const activityLabel=(n,t=tr)=>t('activity.observed',n)
 // Activity inputs are tri-state: unknown does not invent a child or a count.
@@ -1105,7 +1667,7 @@ export function AvatarLayers({avatar,name,color,avatarRef,unread,waiting=false,o
  const extraRunning=Number.isSafeInteger(runningCount)&&runningCount>1?runningCount-1:0
  const seenChildren=new Set(),children=childMetadata?.children?.filter(x=>{if(!['queued','recent'].includes(x.kind)||seenChildren.has(x.id))return false;seenChildren.add(x.id);return true})||[]
  const shadowColor=i=>i<extraRunning?statusColor.working:children[i-extraRunning]?.leased?statusColor.working:children[i-extraRunning]?.kind==='queued'?statusColor.waiting:statusColor.unknown
- const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
+ const face=(ref,index=0)=>{const shadow=index>0,props={ref,'data-avatar':shadow?undefined:true,'data-child-shadow':shadow||undefined,className:'profile-rail-avatar',style:{...s.avatar,boxSizing:'border-box',border:0,outline:shadow||offline?'none':'2px solid '+color,position:'absolute',left:0,top:0,zIndex:shadow?-index:1,filter:offline?'grayscale(1)':undefined,pointerEvents:avatar?'none':undefined},...(avatar?{src:avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})};return jsx(avatar?'img':'span',props,index)}
  const minutes=attentionMinutes??idleMinutes,label=minutes===null?null:Math.floor(minutes/60)+'h'+minutes%60+'m'
  return jsx('span',{ref:box,style:{display:'block',width:'100%',height:37},children:jsxs('span',{'data-avatar-stack':true,style:{position:'relative',display:'block',margin:'0 auto',left:developerMode&&waiting&&width?Math.min(0,(width+Math.min(natural,available))/2-44):undefined,width:Math.min(natural,available),height:37},children:[jsx('span',{style:{position:'absolute',inset:0,overflow:'hidden',zIndex:0},children:Array.from({length:visible},(_,i)=>jsxs('span',{style:{position:'absolute',left:(i+1)*6,top:1.5,width:34,height:34,zIndex:-(i+1),opacity:Math.max(0,1-(i+1)/7),pointerEvents:'none'},children:[face(null,i+1),jsx('span',{'data-child-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:0,width:34,height:34,borderRadius:'22%',boxShadow:'inset 0 0 0 1px '+shadowColor(i),zIndex:-(i+1),pointerEvents:'none'}})]},i))}),jsx(PopoverTrigger,{asChild:true,children:jsx('button',{...triggerProps,ref:avatarRef,type:'button',className:'profile-rail-hit',style:{...s.hit,position:'absolute',left:0,top:1.5,width:34,height:34,zIndex:1},children:face(null)})}),offline?jsx('span',{'data-avatar-outline':true,'aria-hidden':true,style:{position:'absolute',left:0,top:1.5,width:34,height:34,borderRadius:'22%',outline:'2px solid '+color,zIndex:2,pointerEvents:'none'}}):null,waiting||unread?jsx('span',{'data-completion-badge':unread&&!waiting||undefined,'data-avatar-waiting':waiting||undefined,'aria-hidden':true,style:{position:'absolute',left:26,top:-5,zIndex:3,pointerEvents:'none',...(waiting?{fontSize:14,lineHeight:1}:{...unreadCircle,left:28,top:-3})},children:waiting?'✋':undefined}):null,label!==null?jsx('span',{[attentionMinutes===null?'data-idle-minutes':'data-elapsed-minutes']:true,'aria-hidden':true,style:{position:'absolute',left:17,top:38,transform:'translateX(-50%)',zIndex:4,color:'#fff',fontSize:label.length>=10?5.5:label.length>=9?6:label.length>=8?7:label.length>=6?8:10,fontWeight:700,lineHeight:1,whiteSpace:'nowrap',textShadow:'-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',pointerEvents:'none'},children:label}):null,Number.isSafeInteger(runningCount)&&runningCount>=2?jsx('span',{'data-running-count':true,title:activityLabel(runningCount,tr),'aria-hidden':true,style:{position:'absolute',left:26,bottom:0,zIndex:3,borderRadius:'50%',minWidth:17,height:17,lineHeight:'17px',textAlign:'center',fontSize:9,color:'var(--ui-text-primary)',background:'var(--ui-bg-elevated)',border:'1px solid var(--ui-stroke-secondary)',pointerEvents:'none'},children:'x'+runningCount}):null]})})
 }
@@ -1144,7 +1706,60 @@ function Settings({preferences}){
  ]})
  return jsxs('div',{style:{padding:20,width:'100%',boxSizing:'border-box'},children:[jsx('h2',{children:'SessionCrew'}),toggle(tr('settings.hideOffline'),tr('settings.offlineHelp'),settings.hideOffline,v=>save({hideOffline:v})),toggle(tr('settings.showCron'),tr('settings.cronHelp'),settings.showCron,v=>save({showCron:v})),toggle(tr('settings.developerMode'),tr('settings.developerHelp'),settings.developerMode,v=>save({developerMode:v})),recentCountControl,jsxs('div',{style:{padding:'12px 0'},children:[jsxs('div',{style:{display:'flex',flexWrap:'wrap',alignItems:'center',gap:10},children:[jsxs('div',{style:{flex:'1 1 340px',minWidth:0},children:[jsx('div',{style:{fontSize:13,fontWeight:600,color:'var(--ui-text-primary)'},children:tr('settings.platforms')}),jsx('p',{style:description,children:tr('settings.messagingHelp')})]}),jsxs('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginLeft:'auto'},children:[jsx('button',{type:'button',disabled,style:bulkStyle,onClick:()=>save({hiddenMessagingSources:settings.hiddenMessagingSources.filter(s=>!messagingSources.has(s))}),children:tr('settings.showAllPlatforms')}),jsx('button',{type:'button',disabled,style:bulkStyle,onClick:()=>save({hiddenMessagingSources:[...new Set([...settings.hiddenMessagingSources,...messagingSources])]}),children:tr('settings.hideAllPlatforms')})]})]}),observed.map(platform),jsxs('details',{children:[jsx('summary',{style:{cursor:'pointer',padding:'10px 0',color:'var(--ui-text-primary)',fontSize:13},children:tr('settings.otherPlatforms')}),...other.map(platform)]})]}),jsxs('section',{style:{padding:'12px 0'},children:[jsx('div',{style:{fontSize:13,fontWeight:600,color:'var(--ui-text-primary)'},children:tr('settings.visibleProfiles')}),jsx('p',{style:description,children:tr('settings.storageHelp')}),q.isPending?jsx('p',{children:tr('settings.loadingProfiles')}):q.isError?jsx('p',{role:'alert',children:tr('settings.profileLoadFailed')}):jsx('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginTop:10},children:(q.data||[]).map(p=>{const visible=!settings.hiddenProfiles.includes(p.name);return jsx('button',{type:'button','aria-pressed':visible,disabled,onClick:()=>save({hiddenProfiles:visible?[...settings.hiddenProfiles,p.name]:settings.hiddenProfiles.filter(x=>x!==p.name)}),style:{minHeight:30,maxWidth:'100%',overflowWrap:'anywhere',padding:'5px 10px',border:'1px solid '+(visible?'var(--ui-accent)':'var(--ui-stroke-secondary)'),borderRadius:5,background:visible?'var(--ui-accent)':'var(--ui-bg-elevated)',color:visible?'var(--dt-midground-foreground, var(--ui-bg-editor))':'var(--ui-text-primary)',fontSize:12,cursor:disabled?'default':'pointer',opacity:disabled?0.55:1},children:p.name},p.name)})})]}),settings.error?jsx('p',{role:'alert',children:settings.error.translationKey?tr(settings.error.translationKey):localizeError(settings.error)}):null]})
 }
-function Rail({storage,rest,preferences}){
+function useRecentPrewarm({connection,profile,activation,owners,ready,rest,selectedRef}){
+ const latest=useRef(null),inFlight=useRef(false),wake=useRef(null)
+ React.useLayoutEffect(()=>{
+  const client=sdk.queryClient,cache=client?.getQueryCache?.()
+  if(!profile||!rest||!client?.prefetchQuery||!client.getQueryState||!client.isFetching||!cache?.subscribe||typeof document==='undefined')return
+  const scope=[connection,profile,activation],prefix=['sessioncrew','recent',...scope]
+  const attempted=new Set()
+  let queue=null,timer=null,stopped=false
+  const atoms=[host.state.connectionId,host.state.profile]
+  const sameScope=()=>!stopped&&atoms[0].get()===connection&&atoms[1].get()===profile&&(activation===null||typeof sdk.gatewayActivationEpoch!=='function'||sdk.gatewayActivationEpoch()===activation)
+  const canRun=()=>sameScope()&&latest.current?.ready&&document.visibilityState==='visible'&&navigator.onLine!==false&&!selectedRef.current&&!inFlight.current&&!client.isFetching({queryKey:prefix})
+  const clear=()=>{clearTimeout(timer);timer=null}
+  async function next(){
+   timer=null
+   if(!canRun())return
+   while(queue.length){
+    const name=queue.shift(),owner=latest.current.owners.get(name)
+    if(!owner||attempted.has(name))continue
+    const queryKey=recentQueryKey(scope,owner),state=client.getQueryState(queryKey)
+    if(state&&(state.fetchStatus!=='idle'||state.dataUpdateCount||state.errorUpdateCount))continue
+    attempted.add(name);inFlight.current=true
+    try{
+     // Do not leave an offline prefetch paused inside QueryClient to auto-start later.
+     await client.prefetchQuery({queryKey,queryFn:()=>recentData(owner,'background',rest),staleTime:recentStaleTime,retry:false,networkMode:'always'})
+    }finally{inFlight.current=false;wake.current?.()}
+    return
+   }
+  }
+  const pump=()=>{
+   // Snapshot order once. The live owner map is only for dispatch-time validation.
+   if(queue===null&&sameScope()&&latest.current?.ready)queue=[...latest.current.owners.keys()]
+   if(!queue?.length||!canRun()){clear();return}
+   // Yield to browser and query callbacks; recheck guards on the next turn.
+   if(timer===null)timer=setTimeout(()=>void next(),0)
+  }
+  wake.current=pump
+  const unsubscribe=cache.subscribe(event=>{
+   const key=event.query?.queryKey
+   if(event.type!=='updated'||!key||!prefix.every((part,i)=>key[i]===part))return
+   if(event.action?.type==='fetch')attempted.add(key[6])
+   pump()
+  })
+  const unwatch=atoms.map(atom=>atom.subscribe?.(()=>{if(!sameScope()){stopped=true;clear()}}))
+  document.addEventListener('visibilitychange',pump)
+  window.addEventListener('online',pump);window.addEventListener('offline',pump)
+  return()=>{
+   stopped=true;clear();wake.current=null;unsubscribe();unwatch.forEach(off=>off?.())
+   document.removeEventListener('visibilitychange',pump)
+   window.removeEventListener('online',pump);window.removeEventListener('offline',pump)
+  }
+ },[connection,profile,activation,rest,selectedRef])
+ React.useLayoutEffect(()=>{latest.current={owners,ready};wake.current?.()})
+}
+function Rail({storage,rest,preferences,lastQuotes}){
  const tr=useTranslator()
  const connectionId=useValue(host.state.connectionId),profile=useValue(host.state.profile)
  const settings=useSyncExternalStore(preferences.subscribe,preferences.get,preferences.get)
@@ -1166,9 +1781,17 @@ function Rail({storage,rest,preferences}){
   return next
   })
  },[idleStarts,idleFences,estimateFences])
- const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
+ const activation=activityScopeNow.epoch
+ const [selected,setSelected]=useState(null),[projectOwner,setProjectOwner]=useState(null),[routeGeneration,setRouteGeneration]=useState(0),selectedRef=useRef(null),selectionEpoch=useRef(0),quickOpens=useRef(new Set()),pending=useRef(new Map()),createdProjects=useRef(new Map()),unknownProjects=useRef(new Set()),dialogActive=useRef(false)
+ const statusDialog=useRef(null),rowLayer=useRef(null),rowChanges=useRef(new Map()),[,refreshRowChanges]=useState(0)
  const launchEpoch=useRef(null),[,refreshLaunch]=useState(0)
- const select=useCallback(value=>{if(value!==selectedRef.current){selectionEpoch.current++;setProjectOwner(null)}selectedRef.current=value;setSelected(value)},[])
+ const select=useCallback((key,mode='panel',scope=null)=>{
+  if(key===(selectedRef.current?.key??null)&&(!key||mode===selectedRef.current.mode))return
+  selectionEpoch.current++;rowLayer.current=null;setProjectOwner(null)
+  const value=key===null?null:{key,mode,scope};selectedRef.current=value;setSelected(value)
+ },[])
+ const isSelectionScopeCurrent=()=>!selected?.scope||selected.scope.generation===activityScope.generation&&selected.scope.activation===(sdk.gatewayActivationEpoch?.()??activation)
+ useEffect(()=>{if(selectedRef.current===selected&&!isSelectionScopeCurrent())select(null)},[selected,activityScopeNow.generation,activation,select])
  useEffect(()=>{select(null)},[connectionId,profile,select])
  useEffect(()=>{
   // Observe transitions even if React batches a switch away and back.
@@ -1178,7 +1801,7 @@ function Rail({storage,rest,preferences}){
   const dispose=atoms.map(atom=>atom.subscribe?.(check))
   return()=>{dispose.forEach(fn=>fn?.());selectionEpoch.current++}
  },[select])
- const routes=useQuery({queryKey:['sessioncrew','routes',connectionId,profile,routeGeneration],queryFn:()=>typeof host.profileRoutes==='function'?bounded(()=>host.profileRoutes(),'common.routeLookup'):Promise.resolve(null),enabled:!!profile,retry:false})
+ const routes=useQuery({queryKey:['sessioncrew','routes',connectionId,profile,routeGeneration,activation],queryFn:()=>typeof host.profileRoutes==='function'?bounded(()=>host.profileRoutes(),'common.routeLookup'):Promise.resolve(null),enabled:!!profile,retry:false})
  const liveRoutes=useRef(null)
  React.useLayoutEffect(()=>{liveRoutes.current=routes.isSuccess?{connectionId,profile,data:routes.data}:null},[connectionId,profile,routes.isSuccess,routes.data])
  const q=useQuery({queryKey:['sessioncrew','roster',connectionId,profile],queryFn:async()=>{
@@ -1192,12 +1815,8 @@ function Rail({storage,rest,preferences}){
   if(host.state.connectionId.get()!==connectionId || host.state.profile.get()!==profile) throw new Error('Connection changed')
   return rows
  },enabled:!!profile,retry:false})
- if(q.isPending) return jsx('p',{children:q.fetchStatus==='idle'?tr('common.connectionNotReady'):tr('settings.loadingProfiles')})
- if(q.isError) return jsxs('div',{children:[jsx('p',{children:tr('settings.profilesUnknown')}),jsx('button',{onClick:()=>q.refetch(),children:tr('common.retry')})]})
- if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
- const byName=new Map(office.map(row=>[row.profile,row]))
- const profiles=q.data.filter(p=>typeof p.name==='string').map((p,index)=>{
-  const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);const row=byName.get(p.name),base=railStatus(row)
+ const profiles=(q.data??[]).filter(p=>typeof p.name==='string').map((p,index)=>{
+  const attentionKey=JSON.stringify([connectionId,profile,activityScopeNow.generation,activityScopeNow.epoch,p.name,routes.data]);const row=office.rows.get(p.name),base=railStatus(row)
   const evidence=activityMap[attentionKey],activity=evidence?.activity,waiting=activity?.waiting===true,background=activity?.background||[],working=activity?.working===true
   const idleAllowed=base==='idle'||base==='online_unobserved'&&(row.status_observation==='fresh_shared_gateway_no_observed_owner_work'||recentWork(row))
   const proof=row?.oneshotProof,now=Date.now()
@@ -1208,6 +1827,7 @@ function Rail({storage,rest,preferences}){
   const idleConflict=idleAllowed&&observedIdleAt>=proof?.sampledAt
   const leaseWorking=row?.online===true&&base!=='working'&&base!=='waiting'&&base!=='idle'&&row.waiting!==true&&!waiting&&!idleConflict&&proof?.sampledAt<=now&&now<proof.validUntil&&(!activityScopeNow.gateway||activityScopeNow.gateway==='open')
   let status=base;if(base!=='offline'&&(working||background.length&&base!=='waiting'||leaseWorking))status='working'
+  const statusReason=status==='unknown'?office.reason??office.invalidOwners.get(p.name)??(row?'backendUnknown':'missing'):status==='online_unobserved'?'onlineUnobserved':null
   const canShowIdle=idleAllowed&&!waiting&&!ownBusyStatus(row,base)&&['idle','online_unobserved'].includes(status)
   // Last activity is an elapsed-time origin, not the time idle was observed.
   // Only a new observation can supersede a prior execution sample.
@@ -1222,21 +1842,42 @@ function Rail({storage,rest,preferences}){
   const idleKind=observedSince&&confirmedSince===observedSince?'observedIdle':backendSince&&row?.historicalIdle?'historicalIdle':estimateSince?'lastActivityElapsed':null
   const completionSince=settings.developerMode&&canShowIdle&&!idleSince&&!evidence?.conflict&&!activity?.unmatchedBackground&&(!activityScopeNow.gateway||activityScopeNow.gateway==='open')?completion.unreadSince(p.name,background):null
   const unreadSince=validIdleStart(completionSince,now)&&completionSince*1000>(estimateFences.get(p.name)||0)?completionSince:null
-  return {...p,index,attentionKey,status,waiting,background,idleAllowed,idleSince,idleKind,unreadSince}
+  return {...p,index,attentionKey,status,statusReason,waiting,unread:completion.has(p.name,background),idleAllowed,idleSince,idleKind,unreadSince}
  }).filter(p=>profileVisible(p,settings)).sort((a,b)=>{
   const order=p=>{
-   if(p.status==='online_unobserved'&&(p.waiting||p.idleSince)||p.status==='unknown'&&p.waiting)return statusOrder.idle
+   if(p.status==='online_unobserved'&&(p.waiting||p.unread||p.idleSince)||p.status==='unknown'&&p.waiting)return statusOrder.idle
    return statusOrder[p.status]
   }
   const aRank=order(a),rank=aRank-order(b);if(rank)return rank
-  const attention=p=>p.waiting?0:completion.has(p.name,p.background)?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
+  const attention=p=>p.waiting?0:p.unread?1:2,attentionRank=attention(a)-attention(b);if(attentionRank)return attentionRank
   if(aRank===statusOrder.idle){const when=p=>Math.max(p.idleSince||0,completion.clearedAt(p.name)||0),x=when(a),y=when(b);if(x!==y)return y-x}
   return a.index-b.index
  })
+ const routeStatus=routes.isPending?(routes.fetchStatus==='fetching'?'loading':tr('common.connectionNotReady')):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
+ const destinations=new Map(profiles.map(p=>{
+  if(routeStatus)return [p.name,{owner:null,phase:routeStatus}]
+  try{return [p.name,{owner:{connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)},phase:''}]}
+  catch(e){return [p.name,{owner:null,phase:errorMessage(e,tr)}]}
+ }))
+ const warmOwners=new Map()
+ for(const [name,{owner}] of destinations){
+  if(!owner)continue
+  const supported=typeof owner.route==='string'?name===profile&&typeof host.request==='function':typeof host.requestProfile==='function'
+  if(supported)warmOwners.set(name,owner)
+ }
+ useRecentPrewarm({connection:connectionId,profile,activation,owners:warmOwners,ready:settings.ready&&q.isSuccess&&q.fetchStatus==='idle'&&routes.isSuccess&&routes.fetchStatus==='idle',rest,selectedRef})
+ if(q.isPending) return jsx('p',{children:q.fetchStatus==='idle'?tr('common.connectionNotReady'):tr('settings.loadingProfiles')})
+ if(q.isError) return jsxs('div',{children:[jsx('p',{children:tr('settings.profilesUnknown')}),jsx('button',{onClick:()=>q.refetch(),children:tr('common.retry')})]})
+ if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
- return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'}),...profiles.map(p=>{
-  const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected===selectionKey
-  const isCurrent=()=>selectedRef.current===selectionKey&&selectionEpoch.current===epoch&&host.state.connectionId.get()===connectionId&&host.state.profile.get()===profile
+ const lastStatus=office.reason&&office.lastSuccessAt?tr('status.railReason.lastSuccess',new Date(office.lastSuccessAt).toLocaleString()):''
+ return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'+avatarContextCss}),...profiles.map(p=>{
+  const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected?.key===selectionKey,compact=active&&selected.mode!=='panel',quick=compact&&selected.mode==='quick'
+  const statusDetail=p.statusReason&&(p.statusReason==='onlineUnobserved'?tr('status.onlineUnobserved'):tr('status.railReason.'+p.statusReason))
+  const statusDetails=[statusDetail,p.statusReason===office.reason?lastStatus:''].filter(Boolean)
+  const activityDetail=activity?activityLabel(activity.observed_active_count,tr):''
+  const isCurrent=()=>selectedRef.current?.key===selectionKey&&selectionEpoch.current===epoch&&host.state.connectionId.get()===connectionId&&host.state.profile.get()===profile
+  const recentIsCurrent=()=>isCurrent()&&isSelectionScopeCurrent()
   const getLiveOwner=destination=>{
    const live=liveRoutes.current
    if(!isCurrent()||!live||live.connectionId!==connectionId||live.profile!==profile)return null
@@ -1248,11 +1889,25 @@ function Rail({storage,rest,preferences}){
    refreshLaunch(n=>n+1)
    return()=>{if(launchEpoch.current===epoch)launchEpoch.current=null;refreshLaunch(n=>n+1)}
   }
-  let owner=null,phase=routes.isPending?(routes.fetchStatus==='idle'?tr('common.connectionNotReady'):'loading'):routes.isError?tr('errors.routeLoadFailure',localizeError(errorMessage(routes.error,tr)||tr('errors.unknown'))):''
-  if(!phase) try {owner={connectionId,name:p.name,route:routeFor(p.name,connectionId,profile,routes.data)}} catch(e){phase=errorMessage(e,tr)}
-  return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,isLaunching,onOpenChange:open=>{if(!open&&dialogActive.current)return;if(open)select(selectionKey);else if(selectedRef.current===selectionKey)select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
-   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:completion.has(p.name,p.background),runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),completion.has(p.name,p.background),activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel),title:[activity?activityLabel(activity.observed_active_count,tr):'',metadataLabel].filter(Boolean).join(' ')||undefined}}),
-  jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);if(selectedRef.current&&selectedRef.current!==selectionKey)e.preventDefault()},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status})]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null]})]})},p.name)
+  const {owner,phase}=destinations.get(p.name)
+  const openMenu=e=>{e.preventDefault();if(!dialogActive.current&&!statusDialog.current)select(selectionKey,'menu')}
+  const avatarActions={onContextMenu:openMenu,onKeyDown:e=>{if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10')openMenu(e)},onClick:e=>{
+   if(e.button===0&&e.detail>1){
+    // Radix calls the child handler before its own click toggle.
+    e.preventDefault()
+    if(e.detail===2&&!dialogActive.current&&!statusDialog.current)select(selectionKey,'quick',{generation:activityScope.generation,activation:sdk.gatewayActivationEpoch?.()??activation})
+   }else if(compact){e.preventDefault();select(selectionKey)}
+  }}
+  const preserveFocus=e=>{const next=selectedRef.current;if(next&&(next.key!==selectionKey||selectionEpoch.current!==epoch))e.preventDefault()}
+  return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(statusDialog.current||!open&&(dialogActive.current||rowLayer.current?.target.owner.name===p.name))return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
+   jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activityDetail,metadataLabel),'aria-description':statusDetails.join(' · ')||undefined,title:[activityDetail,metadataLabel,...statusDetails].filter(Boolean).join(' · ')||undefined}}),
+   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{width:'max-content',minWidth:'9rem',maxWidth:'calc(100vw - 24px)'},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},quickOpens:quick?quickOpens.current:null,isCurrent:()=>!!parentContentRef.current&&recentIsCurrent(),getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(recentIsCurrent())select(null)}},selected.mode)},'menu'):
+   jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||statusDialog.current||rowLayer.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[
+    jsxs('div',{style:{display:'flex',gap:11,alignItems:'flex-start',minWidth:0,flexShrink:0},children:[jsx(p.avatar?'img':'span',{'data-panel-avatar':true,style:{...s.avatar,boxSizing:'border-box',flex:'none',borderColor:statusColor[p.status]},...(p.avatar?{src:p.avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,marginRight:14,fontSize:14,lineHeight:'20px'},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status,statusDialog,statusRefresh:office.statusRefresh,lastQuotes},JSON.stringify([epoch,activityScopeNow.generation,activation]))]})]}),
+    jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,position:'absolute',top:5,right:5,width:22,height:22,display:'grid',placeItems:'center',border:0,fontSize:20,lineHeight:1,padding:0},children:'×'}),
+    active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,
+    active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,statusDialog,rowLayer,rowChanges,refreshRowChanges,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null
+   ]},'panel')]})},p.name)
  })]}),completionError?jsx(profile&&rest?'button':'span',{'data-completion-error':true,title:completionError,'aria-label':completionError,...(profile&&rest?{onClick:completion.retry}:{}),style:{...s.button,border:0,alignSelf:'flex-end',flexShrink:0,margin:'8px 4px 4px 0',fontSize:12,padding:'1px 3px'},children:'⚠️'}):null]})
 }
-export default {id:'sessioncrew',name:'SessionCrew',defaultEnabled:true,register(ctx){pluginI18n=typeof ctx.i18n?.register==='function'&&typeof ctx.i18n?.t==='function'?ctx.i18n:null;pluginI18n?.register(messages);const rest=typeof ctx.rest==='function'?(path,opts)=>ctx.rest(path,opts):null;const preferences=createPreferences(ctx.storage);ctx.registerSettingsPage?.({id:'settings',title:'SessionCrew',icon:'account',render:()=>jsx(LocalizedRoot,{children:jsx(Settings,{preferences})})});ctx.register({id:'rail',area:'panes',title:'SessionCrew',data:{placement:'left',dock:{pane:'workspace',pos:'left'},width:'80px',minWidth:'80px'},render:()=>jsx(LocalizedRoot,{children:jsx(DialogRestContext.Provider,{value:rest,children:jsx(Rail,{storage:ctx.storage,rest,preferences})})})})}}
+export default {id:'sessioncrew',name:'SessionCrew',defaultEnabled:true,register(ctx){pluginI18n=typeof ctx.i18n?.register==='function'&&typeof ctx.i18n?.t==='function'?ctx.i18n:null;pluginI18n?.register(messages);const rest=typeof ctx.rest==='function'?(path,opts)=>ctx.rest(path,opts):null;const preferences=createPreferences(ctx.storage),lastQuotes=new Map();ctx.registerSettingsPage?.({id:'settings',title:'SessionCrew',icon:'account',render:()=>jsx(LocalizedRoot,{children:jsx(Settings,{preferences})})});ctx.register({id:'rail',area:'panes',title:'SessionCrew',data:{placement:'left',dock:{pane:'workspace',pos:'left'},width:'80px',minWidth:'80px'},render:()=>jsx(LocalizedRoot,{children:jsx(DialogRestContext.Provider,{value:rest,children:jsx(Rail,{storage:ctx.storage,rest,preferences,lastQuotes})})})})}}

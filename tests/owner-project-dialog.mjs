@@ -17,5 +17,5 @@ let dialogCalls=0;host.openProjectDialog=async()=>{dialogCalls++;throw Error('lo
 await React.act(async()=>{root.render(React.createElement(QueryClientProvider,{client},contribution.render()))})
 assert.equal(add.disabled,false,'local extension does not change availability')
 await React.act(async()=>add.click());assert.equal(dialogCalls,0)
-assert.match(document.body.textContent,/New project \(Beta\)/);assert.doesNotMatch(document.body.textContent,/Unrelated/);assert.equal(activations,0);assert.ok(document.body.textContent.includes('Session'),'selection remains open');assert.ok(calls.filter(x=>x[1]==='projects.tree').every(x=>x[0]===route),'project reads remain owner-routed')
+assert.match(document.body.textContent,/New project \(Beta\)/);assert.ok(document.querySelector('[data-project-row] button[aria-label="New conversation in Unrelated"]'),'the owner’s empty project remains listed');assert.equal(activations,0);assert.ok(document.body.textContent.includes('Session'),'selection remains open');assert.ok(calls.filter(x=>x[1]==='projects.tree').every(x=>x[0]===route),'project reads remain owner-routed')
 await React.act(async()=>root.unmount());client.clear();console.log('PASS owner dialog Rail handler')

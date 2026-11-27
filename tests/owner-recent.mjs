@@ -16,11 +16,41 @@ let root,client;async function until(fn,why){let end=Date.now()+1200;while(Date.
 async function click(text){const b=[...document.querySelectorAll('button')].find(b=>b.textContent===text||b.getAttribute('aria-label')?.startsWith(text));assert.ok(b,text);await React.act(async()=>b.click())}
 async function mount(){calls=[];client=new QueryClient({defaultOptions:{queries:{retry:false}}});root=createRoot(document.getElementById('root'));await React.act(async()=>root.render(React.createElement(QueryClientProvider,{client},contribution.render())));if(state.profile){await until(()=>document.querySelector('.profile-rail-hit'),'roster');await click('Alpha')}}
 async function close(){await React.act(async()=>root.unmount());client.clear()}
-routeHandler=async()=>[route];handler=async(r,m,p)=>m==='session.list'?{sessions:Array.from({length:24},(_,i)=>({id:'id'+i,title:'Session '+i,last_active:24-i}))}:{projects:[{label:'Project A',sessionIds:['id0']}]};await mount();await until(()=>document.body.textContent.includes('Project A'),'rows');assert.deepEqual(calls[0][0],route);assert.equal(document.querySelectorAll('[data-recent-row]').length,5);for(const n of [15,24]){await click('載入更多');assert.equal(document.querySelectorAll('[data-recent-row]').length,n)}assert.equal(document.querySelector('[data-recent-more]'),null);assert.ok(document.querySelector('[data-completion-read-all]').disabled,'mark all is disabled when completion source is unavailable');assert.equal(document.querySelector('[data-recent-list]').style.overflowY,'auto');await close()
+routeHandler=async()=>[route];handler=async(r,m,p)=>m==='session.list'?{sessions:Array.from({length:24},(_,i)=>({id:'id'+i,title:'Session '+i,last_active:24-i}))}:{projects:[{label:'Project A',sessionIds:['id0']}]};await mount();await until(()=>document.body.textContent.includes('Project A'),'rows');assert.deepEqual(calls[0][0],route)
+const list=document.querySelector('[data-recent-list]'),rowCount=()=>list.querySelectorAll('[data-recent-row]').length
+// JSDOM has no layout. Simulate the scroll measurements for the rendered rows.
+Object.defineProperties(list,{clientHeight:{value:262},scrollHeight:{get:()=>2+52*rowCount()}})
+Object.defineProperty(list.parentElement,'clientHeight',{value:260})
+assert.equal(rowCount(),15);assert.equal(document.querySelector('[data-recent-more]'),null)
+await React.act(async()=>{list.scrollTop=list.scrollHeight-list.clientHeight;list.dispatchEvent(new window.Event('scroll'))})
+await click('載入更多');assert.equal(rowCount(),24)
+assert.equal(document.querySelector('[data-recent-more]'),null);assert.ok(document.querySelector('[data-completion-read-all]').disabled,'mark all is disabled when completion source is unavailable');assert.equal(list.style.overflowY,'auto');await close()
 handler=async(r,m,p)=>m==='projects.tree'?{projects:[]}:p.scope?Promise.reject(Error('invalid params for session.list: scope: Extra inputs are not permitted')):{sessions:[{id:'x',title:'Legacy'}]};await mount();await until(()=>document.body.textContent.includes('Legacy'),'legacy');assert.deepEqual(calls.filter(x=>x[1]==='session.list').map(x=>x[2]),[{limit:200,scope:'stored'},{limit:200}]);await close()
 handler=async(r,m)=>m==='projects.tree'?{projects:[]}:Promise.reject(Error('invalid params'));await mount();await until(()=>document.body.textContent.includes('invalid params'),'generic rejection');assert.equal(calls.filter(x=>x[1]==='session.list').length,1);await close()
 handler=async(r,m)=>m==='projects.tree'?{projects:[]}:{sessions:[{id:'same',title:'Newest duplicate',last_active:20,secret:'not cached'},{id:'other',title:'Middle',last_active:10},{id:'same',title:'Old duplicate',last_active:1,secret:'not cached'}]};await mount();await until(()=>document.body.textContent.includes('Newest duplicate'),'dedup');assert.doesNotMatch(document.body.textContent,/Old duplicate/);assert.deepEqual([...document.querySelectorAll('[data-recent-row]')].map(x=>x.querySelector('strong').textContent),['Newest duplicate','Middle']);const cached=client.getQueryCache().getAll().find(x=>x.queryKey[1]==='recent').state.data;assert.equal(cached.rows[0].secret,undefined);await close()
-let fresh=false;handler=async(r,m)=>m==='session.list'?{sessions:[{id:'x',title:fresh?'Fresh on reopen':'Initial'}]}:{projects:[]};await mount();await until(()=>document.body.textContent.includes('Initial'),'initial');await click('關閉面板');fresh=true;await click('Alpha');await until(()=>document.body.textContent.includes('Fresh on reopen'),'refetch on reopen');assert.ok(calls.filter(x=>x[1]==='session.list').length>=2);await close()
+const listCalls=()=>calls.filter(x=>x[1]==='session.list').length
+const titles=()=>[...document.querySelectorAll('[data-recent-row] strong')].map(row=>row.textContent)
+const reply=title=>({sessions:[{id:'x',title}]})
+let listReply=async()=>reply('Initial')
+handler=async(r,m)=>m==='session.list'?listReply():{projects:[]}
+await mount();await until(()=>titles()[0]==='Initial','initial');assert.equal(listCalls(),1)
+const recentKey=client.getQueryCache().find({queryKey:['sessioncrew','recent'],exact:false}).queryKey
+const expire=()=>client.setQueryData(recentKey,client.getQueryData(recentKey),{updatedAt:Date.now()-10001})
+await click('關閉面板')
+let finishRefresh,failRefresh
+listReply=()=>new Promise((resolve,reject)=>{finishRefresh=resolve;failRefresh=reject})
+await click('Alpha');assert.deepEqual(titles(),['Initial']);assert.equal(listCalls(),1,'fresh reopen sends no session.list')
+await click('關閉面板');expire();await click('Alpha')
+await until(()=>listCalls()===2,'expired refresh');assert.deepEqual(titles(),['Initial'],'expired rows remain while refresh is deferred')
+await React.act(async()=>finishRefresh(reply('Refreshed')));await until(()=>titles()[0]==='Refreshed','refresh replaces rows')
+await click('關閉面板');expire();await click('Alpha');await until(()=>listCalls()===3,'second expired refresh')
+await React.act(async()=>failRefresh(Error('fixture refresh failed')))
+await until(()=>document.querySelector('[role="alert"]')?.textContent.includes('fixture refresh failed')||[...document.querySelectorAll('[role="alert"]')].some(el=>el.textContent.includes('fixture refresh failed')),'refresh failure')
+assert.deepEqual(titles(),['Refreshed'],'refresh failure retains rows')
+assert.doesNotMatch(document.body.textContent,/沒有工作階段/)
+await click('重試');await until(()=>listCalls()===4,'retry');assert.deepEqual(titles(),['Refreshed'],'retry uses same cached list')
+await React.act(async()=>finishRefresh(reply('Recovered refresh')));await until(()=>titles()[0]==='Recovered refresh','retry replaces rows')
+await close()
 handler=async(r,m)=>{if(m==='session.list')throw Error('bad session');return {projects:[]}};await mount();await until(()=>document.body.textContent.includes('bad session'),'session error');handler=async(r,m)=>m==='session.list'?{sessions:[{id:'x',title:'Recovered'}]}:{projects:[]};await click('重試');await until(()=>document.body.textContent.includes('Recovered'),'manual retry');await close()
 let resolveLate;handler=async(r,m)=>m==='session.list'?new Promise(resolve=>resolveLate=resolve):{projects:[]};await mount();await until(()=>document.body.textContent.includes('逾時'),'session timeout');handler=async(r,m)=>m==='session.list'?{sessions:[{id:'x',title:'Fresh'}]}:{projects:[]};await click('重試');await until(()=>document.body.textContent.includes('Fresh'),'timeout retry');await React.act(async()=>resolveLate({sessions:[{id:'x',title:'Stale'}]}));assert.doesNotMatch(document.body.textContent,/Stale/);await close()
 handler=async(r,m)=>m==='session.list'?{sessions:[{id:'x',title:'Visible'}]}:new Promise(()=>{});await mount();await until(()=>document.body.textContent.includes('Visible'),'pending project visible');await until(()=>document.body.textContent.includes('專案無法載入'),'project timeout');assert.match(document.body.textContent,/Visible/);await close()
@@ -30,4 +60,4 @@ routeHandler=async()=>[route,{...route,targetProfile:'conflict'}];await mount();
 state.connectionId=null;routeHandler=async()=>[{connectionId:'local-id',mode:'local',profile:'alpha',targetProfile:'alpha',primary:true}];handler=async(r,m)=>m==='session.list'?{sessions:[{id:'x',title:'Local route'}]}:{projects:[]};await mount();await until(()=>document.body.textContent.includes('Local route'),'local route');assert.equal(calls[0][0].connectionId,'local-id');await close();state.connectionId='c'
 routeHandler=async()=>[route];activityFailure=true;handler=async(r,m)=>m==='session.list'?{sessions:[{id:'x',title:'Recovered ordering'}]}:{projects:[]};await mount();await until(()=>document.body.textContent.includes('工作階段活動排序無法使用'),'activity failure');assert.equal(document.querySelectorAll('[data-recent-row]').length,0);activityFailure=false;await click('重試');await until(()=>document.body.textContent.includes('Recovered ordering'),'activity retry');await close()
 state.profile='';await mount();assert.match(document.body.textContent,/連線尚未準備好/);assert.equal(calls.length,0);await close();globalThis.setTimeout=originalTimer
-console.log('PASS 3/+10/footer, strict legacy fallback, errors/retry, bounded timeouts, stale fencing and route mismatch')
+console.log('PASS 15 initial rows, bottom-only final batch, footer, strict legacy fallback, errors/retry, bounded timeouts, stale fencing and route mismatch')
