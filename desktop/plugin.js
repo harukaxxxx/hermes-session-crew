@@ -213,6 +213,8 @@ const messages = {
       remove: path => `Remove ${path}`,
     },
     session: {
+      heading: "Sessions",
+      markAllRead: "Mark all as read",
       openLatest: "Open latest",
       loadingLatest: "Loading latest...",
       noRecentSessions: "No recent sessions",
@@ -438,6 +440,8 @@ const messages = {
       remove: path => `移除 ${path}`,
     },
     session: {
+      heading: "工作階段",
+      markAllRead: "全部標示為已讀",
       openLatest: "開啟最近",
       loadingLatest: "載入最近...",
       noRecentSessions: "查無最近",
@@ -686,7 +690,7 @@ const isMessagingSource=source=>messagingSources.has(source)
 const sourceVisible=(source,hidden)=>!isMessagingSource(source)||!hidden?.includes(source)
 const recentSessionCounts=[3,5,10,15],defaultRecentSessionCount=5,recentRowHeight=52
 // Match the per-project launch column in the stacked, scrollable layout without shifting when the cue appears.
-const recentRowPadding=8,recentChevron={width:12,flexShrink:0,textAlign:'center'}
+const recentRowPadding=8,recentChevron={width:12,flexShrink:0,textAlign:'center'},recentActionSize=20
 const recentRowPaddingRight=recentRowPadding+scrollCueWidth+scrollCueRight
 const normalizeRecentSessionCount=count=>recentSessionCounts.includes(count)?count:defaultRecentSessionCount
 const recentStaleTime=10000
@@ -786,18 +790,31 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
   return jsxs(React.Fragment,{children:[action(tr(latestLabel),busy||!canOpen,openLatest),action(tr('completion.markAllRead'),busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
  }
 
- // Match the loaded list and footer from the first render; allow shrinking in short viewports.
  const reserve=baseCount*recentRowHeight
- const recentLayout={minHeight:0,display:'flex',flexDirection:'column',flex:'1 1 auto',marginTop:12},recentList={...s.sessions,minHeight:0,height:reserve,flex:'1 1 auto',maxHeight:reserve,overflowY:'auto'}
- const placeholder=(children,center=false)=>jsxs('div',{style:recentLayout,children:[jsx('div',{'data-recent-list':true,style:center?{...recentList,display:'grid',placeItems:'center'}:recentList,children}),jsx('div',{style:{height:18,flexShrink:0}})]})
- if(!owner) return placeholder([jsx('span',{children:routeStatus},'message'),phase!=='loading'?jsx('button',{onClick:retryRoutes,children:tr('common.retry')},'retry'):null])
- if(q.isPending) return placeholder(listStatus,q.fetchStatus!=='idle')
- if(q.isError&&!rows?.length) return placeholder([jsx('span',{role:'alert',children:listStatus},'message'),retryList()])
-
-
+ const recentLayout={minHeight:0,display:'flex',flexDirection:'column',flex:'1 1 auto'},recentList={...s.sessions,minHeight:0,height:reserve,flex:'1 1 auto',maxHeight:reserve,overflowY:'auto'}
+ const placeholder=(children,center=false)=>jsx('div',{'data-recent-list':true,style:center?{...recentList,display:'grid',placeItems:'center'}:recentList,children})
+ const listReady=!!owner&&!q.isPending&&(!q.isError||!!rows?.length)
+ const readDisabled=!listReady||!completion.coverageReady
+ const readLabel=tr('session.markAllRead')
+ const readIcon=sdk.Codicon?jsx(sdk.Codicon,{name:'check-all',size:'0.75rem','aria-hidden':true}):jsx('svg',{'aria-hidden':true,width:'0.75rem',height:'0.75rem',viewBox:'0 0 16 16',fill:'none',stroke:'currentColor',strokeWidth:1.3,strokeLinecap:'round',strokeLinejoin:'round',children:jsx('path',{d:'m1 8 3 3 6-6m-3 6 1 1 7-7'})})
+ const header=jsxs('div',{'data-recent-header':true,style:{height:'clamp(12px, 4vh, 20px)',marginTop:'clamp(0px, calc(4vh - 12px), 8px)',marginBottom:'clamp(0px, calc(2vh - 6px), 4px)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`0 ${recentRowPaddingRight}px 0 ${recentRowPadding}px`},children:[
+  jsx('h2',{style:{margin:0,fontSize:11,fontWeight:600,lineHeight:'12px',color:'var(--ui-accent)'},children:tr('session.heading')}),
+  jsx('span',{title:readLabel,style:{...recentChevron,display:'flex',justifyContent:'center',height:'100%'},children:jsx('button',{
+   'data-completion-read-all':true,type:'button','aria-label':readLabel,disabled:readDisabled,onClick:()=>void completion.ackAll(owner),
+   style:{...s.button,display:'grid',placeItems:'center',width:recentActionSize,flexShrink:0,height:'100%',padding:0,border:0,cursor:readDisabled?'default':'pointer',opacity:readDisabled ? .55 : 1,pointerEvents:readDisabled?'none':undefined},children:readIcon
+  })})
+ ]})
+ const footer=jsx('div',{'data-recent-footer':true,style:{display:'flex',alignItems:'center',justifyContent:'center',height:18,flexShrink:0},children:listReady&&atBottom&&count<rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null})
  const ellipsis={whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}
  const projectLabel=id=>projects.isError?tr('project.loadFailed'):projects.isPending?tr('project.loading'):(typeof projects.data?.labels?.[id]==='object'?tr(projects.data.labels[id].fallback):projects.data?.labels?.[id])||tr('project.uncategorized')
- return jsxs('div',{style:recentLayout,children:[jsx('style',{children:rowArcCss}),jsx(RecentScroll,{style:recentList,revision:Math.min(count,rows.length),onBottomChange:setAtBottom,children:rows.length?rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:`9px ${recentRowPaddingRight}px 9px ${recentRowPadding}px`,background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:0},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,style:recentChevron,children:'›'})]},row.id)):tr('session.empty')},baseCount),q.isError?jsxs('div',{role:'alert',children:[listStatus,retryList()]}):null,error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[atBottom&&count<rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
+ const content=!owner?placeholder([jsx('span',{children:routeStatus},'message'),phase!=='loading'?jsx('button',{onClick:retryRoutes,children:tr('common.retry')},'retry'):null]):q.isPending?placeholder(listStatus,q.fetchStatus!=='idle'):!listReady?placeholder([jsx('span',{role:'alert',children:listStatus},'message'),retryList()]):jsxs(React.Fragment,{children:[
+  jsx('style',{children:rowArcCss}),
+  jsx(RecentScroll,{style:recentList,revision:Math.min(count,rows.length),onBottomChange:setAtBottom,children:rows.length?rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:`9px ${recentRowPaddingRight}px 9px ${recentRowPadding}px`,background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:0},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,style:recentChevron,children:'›'})]},row.id)):tr('session.empty')},baseCount),
+  q.isError?jsxs('div',{role:'alert',children:[listStatus,retryList()]}):null,
+  error?jsx('div',{role:'alert',children:localizeError(error)}):null,
+  projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null
+ ]})
+ return jsxs('div',{style:recentLayout,children:[header,content,footer]})
 }
 const unreadCircle={width:10,height:10,borderRadius:'50%',background:'var(--ui-red, #e53935)'}
 function FolderBreadcrumbs({root,path,busy,go}){
@@ -1241,9 +1258,9 @@ function StatusQuoteEntry({storage,ownerKey,state,statusDialog,statusRefresh,las
  const readFailed=quoteStateKeys.some(row=>rows[row]===null),helpId=formId+'-help'
  const isComposing=e=>e.isComposing||e.keyCode===229
  return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[
-  jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0,minHeight:14},children:[
+  jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0,minHeight:14,paddingRight:recentRowPaddingRight-(recentActionSize-recentChevron.width)/2},children:[
    jsx(RotatingStatusQuote,{state,historyKey:quoteKey(ownerKey,state),lastQuotes,phrases,editorOpen:!!editor,label:tr,statusRefresh}),
-   jsx('button',{ref:pencil,'data-status-edit':true,type:'button',disabled:rows[state]===undefined||!quoteEditorAvailable,onClick:openEditor,style:{...s.button,border:0,padding:4,marginBlock:-4,lineHeight:s.quote.lineHeight},'aria-label':tr('status.editTitle'),'aria-haspopup':'dialog',children:'✎'})
+   jsx('button',{ref:pencil,'data-status-edit':true,type:'button',disabled:rows[state]===undefined||!quoteEditorAvailable,onClick:openEditor,style:{...s.button,border:0,display:'grid',placeItems:'center',width:recentActionSize,height:recentActionSize,flexShrink:0,padding:0,marginBlock:-4,lineHeight:s.quote.lineHeight},'aria-label':tr('status.editTitle'),'aria-haspopup':'dialog',children:'✎'})
   ]}),
   editor?jsx(sdk.Dialog,{open:true,onOpenChange:open=>{if(!open&&!lock.current)closeEditor()},children:jsxs(sdk.DialogContent,{className:'max-w-md',style:{maxHeight:'calc(100dvh - 24px)'},'aria-describedby':helpId,'data-status-editor':true,
    onEscapeKeyDown:e=>{if(isComposing(e)||lock.current)e.preventDefault()},
@@ -1870,7 +1887,8 @@ function Rail({storage,rest,preferences,lastQuotes}){
    jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activityDetail,metadataLabel),'aria-description':statusDetails.join(' · ')||undefined,title:[activityDetail,metadataLabel,...statusDetails].filter(Boolean).join(' · ')||undefined}}),
    compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},quickOpens:quick?quickOpens.current:null,isCurrent:()=>!!parentContentRef.current&&recentIsCurrent(),getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(recentIsCurrent())select(null)}},selected.mode)},'menu'):
    jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||statusDialog.current||rowLayer.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[
-    jsxs('div',{style:{display:'flex',gap:11,alignItems:'flex-start',minWidth:0,flexShrink:0},children:[jsx(p.avatar?'img':'span',{'data-panel-avatar':true,style:{...s.avatar,boxSizing:'border-box',flex:'none',borderColor:statusColor[p.status]},...(p.avatar?{src:p.avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14,lineHeight:'20px'},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status,statusDialog,statusRefresh:office.statusRefresh,lastQuotes},JSON.stringify([epoch,activityScopeNow.generation,activation]))]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),
+    jsxs('div',{style:{display:'flex',gap:11,alignItems:'flex-start',minWidth:0,flexShrink:0},children:[jsx(p.avatar?'img':'span',{'data-panel-avatar':true,style:{...s.avatar,boxSizing:'border-box',flex:'none',borderColor:statusColor[p.status]},...(p.avatar?{src:p.avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,marginRight:14,fontSize:14,lineHeight:'20px'},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status,statusDialog,statusRefresh:office.statusRefresh,lastQuotes},JSON.stringify([epoch,activityScopeNow.generation,activation]))]})]}),
+    jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,position:'absolute',top:5,right:5,width:22,height:22,display:'grid',placeItems:'center',border:0,fontSize:20,lineHeight:1,padding:0},children:'×'}),
     active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,
     active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,statusDialog,rowLayer,rowChanges,refreshRowChanges,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null
    ]},'panel')]})},p.name)

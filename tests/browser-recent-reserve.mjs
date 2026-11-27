@@ -23,21 +23,35 @@ try{
  const release=(n,cron=0)=>page.evaluate(({n,cron})=>{const resolve=window.resolveSessions;window.resolveSessions=null;resolve({sessions:[...Array.from({length:cron},(_,i)=>({id:'cron'+i,title:'Hidden cron '+i,source:'cron'})),...Array.from({length:n},(_,i)=>({id:'id'+i,title:'Session '+i,last_active:n-i}))]})},{n,cron})
  const bottom=()=>list.evaluate(el=>{el.scrollTop=el.scrollHeight;return el.scrollTop})
  const frames=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))
+ const loaded=n=>(n?rows.first():list.getByText('No sessions',{exact:true})).waitFor()
  // Ignore the 2px marker bleed above the loaded content reserve.
- const geometry=()=>page.evaluate(()=>{const el=document.querySelector('[data-recent-list]');return {list:el.getBoundingClientRect().height-parseFloat(getComputedStyle(el).paddingTop),bubble:document.querySelector('[data-bubble]').getBoundingClientRect().height,footer:document.querySelector('[data-outer-footer]').getBoundingClientRect().top}})
- await list.waitFor();const route=await geometry();assert.equal(route.list,260)
+ const geometry=()=>page.evaluate(()=>{const el=document.querySelector('[data-recent-list]');return {list:el.getBoundingClientRect().height-parseFloat(getComputedStyle(el).paddingTop),bubble:document.querySelector('[data-bubble]').getBoundingClientRect().height,footer:document.querySelector('[data-outer-footer]').getBoundingClientRect().top,header:document.querySelector('[data-recent-header]').getBoundingClientRect().toJSON()}})
+ const checkDisabledHeader=async()=>{
+  assert.ok(await all.isVisible()&&await all.isDisabled())
+  assert.equal(await all.locator('svg[aria-hidden="true"]').count(),1,'fallback draws the icon without the SDK Codicon')
+  const hoverTitle=await all.evaluate(el=>{const {x,y,width,height}=el.getBoundingClientRect();return document.elementFromPoint(x+width/2,y+height/2)?.closest('[title]')?.title})
+  assert.equal(hoverTitle,'Mark all as read','disabled icon retains its hover target')
+ }
+ const alignment=async()=>{
+  const [icon,arrow]=await Promise.all([all.locator('svg').boundingBox(),rows.first().locator(':scope > span:last-child').boundingBox()])
+  assert.ok(Math.abs(icon.x+icon.width/2-arrow.x-arrow.width/2)<1,'icon aligns with the row chevron whether or not the cue is visible')
+ }
+ await list.waitFor();const route=await geometry();assert.equal(route.list,260);await checkDisabledHeader()
  await page.evaluate(()=>window.renderRecent('route-error'));await page.getByText('route error').waitFor();assert.deepEqual(await geometry(),route)
  for(const n of [0,1,4,5,15,24,200]){
   await page.evaluate(()=>window.mountRecent('pending'));await page.waitForFunction(()=>typeof window.resolveSessions==='function');const pending=await geometry();assert.deepEqual(pending,route)
+  await checkDisabledHeader()
   const centers=await list.evaluate(el=>{const text=document.createTreeWalker(el,NodeFilter.SHOW_TEXT).nextNode();const range=document.createRange();range.selectNodeContents(text);const a=el.getBoundingClientRect(),b=range.getBoundingClientRect();return {text:text.textContent,dx:(b.left+b.right-a.left-a.right)/2,dy:(b.top+b.bottom-a.top-a.bottom)/2}})
   assert.match(centers.text,/Loading sessions|載入工作階段/);assert.ok(Math.abs(centers.dx)<=1,`loading text horizontal center offset: ${centers.dx}px`);assert.ok(Math.abs(centers.dy)<=1,`loading text vertical center offset: ${centers.dy}px`)
   await release(n)
-  await all.waitFor()
+  await loaded(n)
   assert.equal(await rows.count(),Math.min(15,n),'default opens with up to 15 rows')
   assert.deepEqual(await geometry(),route,`loaded ${n}`)
   assert.equal(await list.evaluate(el=>el.getBoundingClientRect().height),262,'loaded viewport includes only the 2px marker bleed')
   if(n===200)assert.equal(await bubble.getByText(/Showing at most 200 fetched items|最多顯示已取得的 200 筆/).count(),0,'no visible 200-item limit notice')
   assert.equal(await cue.count(),Number(n>5),'cue is present only for overflow')
+  await checkDisabledHeader()
+  if(n>0)await alignment()
   assert.equal(await more.count(),0,'no Load more at the top')
   if(n<=15){await bottom();await frames();assert.equal(await more.count(),0,'no Load more at the bottom without remaining rows')}
   if(n===24||n===200){
@@ -54,7 +68,7 @@ try{
     assert.equal(await list.evaluate(el=>el.scrollTop),oldTop,'append preserves scroll position')
     assert.deepEqual(await geometry(),route,'load more preserves list and footer geometry')
     assert.equal(await rows.first().evaluate(el=>el.getBoundingClientRect().width),width,'cue does not shift row width')
-    assert.ok(await all.isVisible())
+    await alignment()
    }
    await bottom()
    if(n===24){await frames();assert.equal(await more.count(),0,'last partial batch exhausts the list')}
@@ -63,6 +77,7 @@ try{
  }
  const thumbBox=await thumb.boundingBox();await page.mouse.move(thumbBox.x+thumbBox.width/2,thumbBox.y+thumbBox.height/2);await page.mouse.down();await page.mouse.move(thumbBox.x+thumbBox.width/2,thumbBox.y-45,{steps:4});await page.mouse.up();await more.waitFor({state:'detached'});assert.ok(await list.evaluate(el=>el.scrollTop<el.scrollHeight-el.clientHeight),'dragging the thumb scrolls away from the bottom')
  await page.evaluate(()=>window.mountRecent('pending'));await page.waitForFunction(()=>typeof window.rejectSessions==='function');await page.evaluate(()=>{window.rejectSessions(Error('fixture failure'));window.rejectSessions=null});await page.getByText(/fixture failure/).waitFor();assert.deepEqual(await geometry(),route)
+ await checkDisabledHeader()
  await page.setViewportSize({width:900,height:200});assert.ok((await bubble.boundingBox()).height<=176);assert.ok((await list.boundingBox()).height<260,'list shrinks in a short viewport');assert.ok(await page.locator('[data-outer-footer]').isVisible())
  await page.setViewportSize({width:900,height:1000})
  for(const count of [3,10,15]){
@@ -72,13 +87,14 @@ try{
   await page.evaluate(()=>window.resolveSessions({sessions:[{id:'sparse',title:'Sparse session'}]}))
   await list.getByRole('button',{name:/Sparse session/}).waitFor()
   assert.deepEqual(await geometry(),pending,`sparse results retain the ${count}-row reserve`)
+  await alignment()
  }
  // Keep cache age fixed; native timers are still live. Stay within the poll interval.
  await page.clock.setFixedTime(new Date('2026-01-01T00:00:00Z'))
  const started=performance.now()
  await page.evaluate(()=>{window.sessionRequests=[];window.activityRequests=0;window.mountRecent('pending',3)})
  await page.waitForFunction(()=>typeof window.resolveSessions==='function')
- await release(20,3);await all.waitFor()
+ await release(20,3);await loaded(20)
  assert.equal(await rows.count(),9);assert.equal((await geometry()).list,156)
  assert.equal(await rows.first().locator('strong').textContent(),'Session 0','hidden cron rows do not consume the initial slice')
  assert.equal(await more.count(),0)
