@@ -23,7 +23,7 @@ try{
     Object.defineProperty(window,'fixtureStatus',{value:samples,writable:true,configurable:true})
    }})
   })
-  const rows=()=>page.locator('[data-profile-rail] .profile-rail-hit').evaluateAll(nodes=>nodes.map(x=>({name:x.getAttribute('aria-label').split(' · ')[0],state:x.dataset.stateName,title:x.getAttribute('title'),timer:x.closest('[data-avatar-stack]').querySelector('[data-idle-minutes]')?.textContent??null})))
+  const rows=()=>page.locator('[data-profile-rail] .profile-rail-hit').evaluateAll(nodes=>nodes.map(x=>({name:x.getAttribute('aria-label').split(' · ')[0],state:x.dataset.stateName,title:x.getAttribute('title'),description:x.getAttribute('aria-description'),timer:x.closest('[data-avatar-stack]').querySelector('[data-idle-minutes]')?.textContent??null})))
   const hasStatus=()=>page.locator('.profile-rail-hit[data-state-name="online_unobserved"][aria-label^="Aster ·"]').waitFor()
   const check=async()=>{
    await hasStatus();const seen=await rows(),byName=new Map(seen.map(x=>[x.name,x]))
@@ -31,7 +31,11 @@ try{
    assert.equal(byName.get('Profile 1').timer,dev?'0h2m':null,'legacy fresh shared shape is supported')
    assert.equal(byName.get('Profile 2').timer,dev?'0h0m':null,'session recency backed by a positive shared observation')
    for(const name of ['Aster','Profile 1','Profile 2']){
-    assert.equal(byName.get(name).state,'online_unobserved');if(dev)assert.match(byName.get(name).title,/last recorded session activity.*idle not confirmed/i);else assert.equal(byName.get(name).title,null)
+    const {state,title,description}=byName.get(name)
+    assert.equal(state,'online_unobserved')
+    assert.equal(description,'online','accessible status stays basic in either mode')
+    if(dev)assert.match(title,/^online .*last recorded session activity.*idle not confirmed/i)
+    else assert.equal(title,'online','developer mode off shows only the basic status, not elapsed diagnostics')
    }
    assert.equal(byName.get('Mika').state,'working');assert.equal(byName.get('Mika').timer,null)
    assert.equal(byName.get('Profile 3').timer,null,'no per-owner timestamp means no estimate')
