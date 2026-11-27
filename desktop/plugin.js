@@ -698,6 +698,22 @@ const ownerRouteKey=owner=>{const route=owner?.route;return [owner?.connectionId
 const recentQueryKey=(scope,owner)=>['sessioncrew','recent',...scope,...ownerRouteKey(owner),0]
 const recentRows=(data,settings)=>data?.rows.filter(row=>row.sourceConflict||(settings.showCron||row.source!=='cron')&&sourceVisible(row.source,settings.hiddenMessagingSources))
 const recentFresh=query=>query.status==='success'&&!query.isInvalidated&&Date.now()-query.dataUpdatedAt<recentStaleTime
+const avatarContextCss=`
+[data-avatar-context] > button {
+ display:flex;align-items:center;gap:.5rem;width:100%;box-sizing:border-box;
+ padding:.25rem .5rem;border:0;border-radius:var(--radius-md,.375rem);
+ background:transparent;color:inherit;text-align:left;user-select:none;
+ font-size:var(--text-xs,.75rem);line-height:var(--text-xs--line-height,1rem);
+}
+[data-avatar-context] > button:focus,
+[data-avatar-context] > button:not([aria-disabled]):hover {
+ background:var(--ui-bg-tertiary,var(--ui-control-active-background));color:var(--ui-text-primary);
+ outline:2px solid transparent;outline-offset:2px;
+}
+[data-avatar-context] > button[aria-disabled] {opacity:.5;cursor:default}
+[data-avatar-context] > button > i {flex:none;pointer-events:none}
+[data-avatar-context] > [role="alert"] {display:block}
+`
 function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:false,hiddenMessagingSources:[]},menu}){
  const tr=useTranslator()
  const activeConnection=useValue(host.state.connectionId),activeProfile=useValue(host.state.profile),activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
@@ -782,12 +798,12 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
   const latestLabel=canOpen||issue?'session.openLatest':loading?'session.loadingLatest':'session.noRecentSessions'
   const canRead=completion.coverageReady&&completion.covers(menu.owner.name)
   // Keep the first action focusable while the fresh list is loading.
-  const action=(label,disabled,run)=>jsx('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&!latestIntent.current&&menuIsCurrent())void run()},style:{...s.button,textAlign:'left',opacity:disabled ? .55 : 1,cursor:disabled?'default':'pointer'},children:label})
+  const action=(label,icon,disabled,run)=>jsxs('button',{type:'button','aria-disabled':disabled||undefined,onClick:()=>{if(!disabled&&!rowLock.current&&!latestIntent.current&&menuIsCurrent())void run()},children:[sdk.Codicon?jsx(sdk.Codicon,{name:icon,size:'0.875rem','aria-hidden':true}):null,label]})
   const markAll=async()=>{
    rowLock.current=true;setBusy(true);setError('')
    try{await completion.ackAll(menu.owner,menuIsCurrent)}finally{rowLock.current=false;if(menuIsCurrent())setBusy(false)}
   }
-  return jsxs(React.Fragment,{children:[action(tr(latestLabel),busy||!canOpen,openLatest),action(tr('completion.markAllRead'),busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
+  return jsxs(React.Fragment,{children:[action(tr(latestLabel),'history',busy||!canOpen,openLatest),action(tr('completion.markAllRead'),'check-all',busy||!canRead,markAll),issue?jsx('small',{role:'alert',children:issue}):null,error?jsx('small',{role:'alert',children:localizeError(error)}):null]})
  }
 
  const reserve=baseCount*recentRowHeight
@@ -1855,7 +1871,7 @@ function Rail({storage,rest,preferences,lastQuotes}){
  if(!q.data?.length) return jsx('p',{children:tr('settings.noProfiles')})
  const completionError=completion.error||(completion.coverageReady&&profiles.some(p=>!completion.covers(p.name))?tr('completion.profilePartial'):null)
  const lastStatus=office.reason&&office.lastSuccessAt?tr('status.railReason.lastSuccess',new Date(office.lastSuccessAt).toLocaleString()):''
- return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'}),...profiles.map(p=>{
+ return jsxs('div',{style:{height:'100%',minHeight:0,display:'flex',flexDirection:'column'},children:[jsxs('div',{'data-profile-rail':true,'aria-label':'SessionCrew',style:{...s.rail,gap:profileRailGap(settings.developerMode),height:'auto',flex:'1 1 auto',minHeight:0,width:'100%',position:'relative',alignItems:'flex-start',overflowX:'hidden',scrollbarWidth:'none'},children:[jsx('style',{children:'[data-profile-rail]::-webkit-scrollbar{display:none}'+avatarContextCss}),...profiles.map(p=>{
   const name=displayName(p),activity=completion.activityFor(p.name),metadata=completion.childMetadataFor(p.name),metadataLabel=metadata?.presentation_count?tr('activity.childDisclaimer'):'',epoch=selectionEpoch.current,selectionKey=JSON.stringify([connectionId,profile,p.name]),active=selected?.key===selectionKey,compact=active&&selected.mode!=='panel',quick=compact&&selected.mode==='quick'
   const statusDetail=p.statusReason&&(p.statusReason==='onlineUnobserved'?tr('status.onlineUnobserved'):tr('status.railReason.'+p.statusReason))
   const statusDetails=[statusDetail,p.statusReason===office.reason?lastStatus:''].filter(Boolean)
@@ -1885,7 +1901,7 @@ function Rail({storage,rest,preferences,lastQuotes}){
   const preserveFocus=e=>{const next=selectedRef.current;if(next&&(next.key!==selectionKey||selectionEpoch.current!==epoch))e.preventDefault()}
   return jsx(RailItem,{working:p.status==='working',selected:active,clock,identity:JSON.stringify([connectionId,p.name]),children:jsx(GuardedPopover,{active,compact,isLaunching,onOpenChange:open=>{if(statusDialog.current||!open&&(dialogActive.current||rowLayer.current?.target.owner.name===p.name))return;if(open)select(selectionKey);else if(isCurrent())select(null)},children:(avatarRef,contentRef,onCloseAutoFocus,parentContentRef)=>[
    jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activityDetail,metadataLabel),'aria-description':statusDetails.join(' · ')||undefined,title:[activityDetail,metadataLabel,...statusDetails].filter(Boolean).join(' · ')||undefined}}),
-   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},quickOpens:quick?quickOpens.current:null,isCurrent:()=>!!parentContentRef.current&&recentIsCurrent(),getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(recentIsCurrent())select(null)}},selected.mode)},'menu'):
+   compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{width:'max-content',minWidth:'9rem',maxWidth:'calc(100vw - 24px)'},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},quickOpens:quick?quickOpens.current:null,isCurrent:()=>!!parentContentRef.current&&recentIsCurrent(),getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(recentIsCurrent())select(null)}},selected.mode)},'menu'):
    jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||statusDialog.current||rowLayer.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[
     jsxs('div',{style:{display:'flex',gap:11,alignItems:'flex-start',minWidth:0,flexShrink:0},children:[jsx(p.avatar?'img':'span',{'data-panel-avatar':true,style:{...s.avatar,boxSizing:'border-box',flex:'none',borderColor:statusColor[p.status]},...(p.avatar?{src:p.avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,marginRight:14,fontSize:14,lineHeight:'20px'},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status,statusDialog,statusRefresh:office.statusRefresh,lastQuotes},JSON.stringify([epoch,activityScopeNow.generation,activation]))]})]}),
     jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,position:'absolute',top:5,right:5,width:22,height:22,display:'grid',placeItems:'center',border:0,fontSize:20,lineHeight:1,padding:0},children:'×'}),

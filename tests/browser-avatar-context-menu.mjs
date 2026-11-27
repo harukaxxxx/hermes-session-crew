@@ -1,10 +1,13 @@
 import {createRequire} from 'node:module'
+import {readFile} from 'node:fs/promises'
 import {pathToFileURL} from 'node:url'
 import path from 'node:path'
 import assert from 'node:assert/strict'
 
 const root=process.env.HERMES_CHECKOUT||process.env.HERMES_AGENT_ROOT
-const {chromium}=createRequire(path.join(root,'package.json'))('playwright')
+const require=createRequire(path.join(root,'package.json'))
+const desktopRequire=createRequire(path.join(root,'apps/desktop/package.json'))
+const {chromium}=(()=>{try{return require('playwright')}catch(e){if(e.code!=='MODULE_NOT_FOUND')throw e;return createRequire(desktopRequire.resolve('@playwright/test'))('playwright')}})()
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH})
 const page=await browser.newPage({viewport:{width:900,height:500},reducedMotion:'reduce'})
 page.setDefaultTimeout(5000)
@@ -87,6 +90,9 @@ try{
   void query.fetch({...query.options,queryFn:()=>new Promise((_,reject)=>{window.failRoutes=()=>reject(Error('fixture route failure'))})}).catch(()=>{})
  })
  await right('Mika');await latestState('載入最近...',true)
+ assert.ok(await focus(latest),'the loading action remains focusable')
+ await page.keyboard.press('Tab');assert.ok(await focus(all),'Tab reaches the aria-disabled mark-all action')
+ await page.keyboard.press('Shift+Tab');assert.ok(await focus(latest))
  await page.evaluate(()=>window.failRoutes())
  await menu.getByRole('alert').getByText(/fixture route failure/).waitFor()
  assert.equal(await latest.getAttribute('aria-disabled'),'true')
@@ -361,4 +367,63 @@ try{
  assert.deepEqual(await mikaLists(),['stored','live'])
  assert.deepEqual(await mikaPriorities(),['background','background'])
  console.log('PASS avatar double-click: cold foreground fetch, joined prewarm, warm cache, new ranking, filtered empty, error, pause, repeated navigation, dismissal, owner and scope cancellation')
+
+ // Compare the two plugin-owned menus through the real SDK components and CSS.
+ await page.goto(url+'&locale=en')
+ const css=await readFile('tests/sdk-css/styles.css','utf8')
+ const codicon=await readFile('tests/sdk-css/codicon.ttf')
+ // Vite emits a root-relative font URL; inline the emitted font for the file:// fixture.
+ await page.addStyleTag({content:css.replace(/url\(["']?\/?codicon\.ttf[^)]*\)/,`url(data:font/ttf;base64,${codicon.toString('base64')})`)})
+ assert.ok((await page.evaluate(()=>document.fonts.load('14px codicon').then(fonts=>fonts.length)))>0,'Desktop Codicon font is loaded')
+ await page.evaluate(()=>{
+  document.documentElement.style.setProperty('--ui-bg-tertiary','#45424d')
+  window.fixtureProjects=[{id:'style',label:'Style reference',path:'/fixture/style',sessionIds:[],isAuto:false,isNoProject:false}]
+ })
+ const surface=locator=>locator.evaluate(el=>{
+  const {minWidth,padding,border,borderRadius,backgroundColor,boxShadow,backdropFilter,color}=getComputedStyle(el)
+  // Popover's focus outline adds transparent CSS shadow layers that do not paint.
+  return {minWidth,padding,border,borderRadius,backgroundColor,boxShadow:boxShadow.replace(/rgba\(0, 0, 0, 0\) 0px 0px 0px 0px, /g,''),backdropFilter,color}
+ })
+ const rowStyle=locator=>locator.evaluate(el=>{
+  const {height,padding,borderRadius,columnGap,fontSize,lineHeight,color,backgroundColor}=getComputedStyle(el)
+  const icon=el.firstElementChild,{fontSize:iconSize,color:iconColor}=getComputedStyle(icon)
+  const glyph=icon.getBoundingClientRect(),row=el.getBoundingClientRect(),label=document.createRange()
+  label.selectNode(el.lastChild)
+  return {height,padding,borderRadius,columnGap,fontSize,lineHeight,color,backgroundColor,iconSize,iconColor,
+   iconInset:glyph.left-row.left,iconCenter:glyph.top+glyph.height/2-row.top-row.height/2,labelGap:label.getBoundingClientRect().left-glyph.right}
+ })
+ const highlighted=async locator=>{
+  const row=await locator.elementHandle()
+  try{await page.waitForFunction(el=>getComputedStyle(el).backgroundColor==='rgb(69, 66, 77)',row)}
+  finally{await row.dispose()}
+ }
+ await avatar('Aster').click();await rows.first().waitFor()
+ await page.getByRole('button',{name:'▦ Open project'}).click()
+ await page.locator('[data-project-menu]').click()
+ const projectMenu=page.getByRole('menu'),copy=projectMenu.getByRole('menuitem',{name:'Copy path'})
+ await copy.hover();await copy.and(projectMenu.locator(':focus')).waitFor();await highlighted(copy)
+ const projectSurface=await surface(projectMenu),projectRow=await rowStyle(copy)
+ assert.notEqual(projectSurface.boxShadow,'none','compiled Desktop menu CSS is loaded')
+ assert.equal(projectSurface.minWidth,'144px')
+ if(process.env.AVATAR_MENU_SCREENSHOT_DIR)await projectMenu.screenshot({path:path.join(process.env.AVATAR_MENU_SCREENSHOT_DIR,'project-context-reference.png'),animations:'disabled'})
+ await page.keyboard.press('Escape');await projectMenu.waitFor({state:'detached'})
+ await page.waitForFunction(()=>window.fixtureStorage?.['completion-snapshot-v2']?.coverage)
+ await right('Aster');await latestState('Open latest',false);await enabled(all)
+ assert.deepEqual(await surface(menu),projectSurface)
+ assert.ok(await focus(latest))
+ await highlighted(latest)
+ assert.deepEqual(await rowStyle(latest),projectRow,'focused avatar action matches the project row')
+ await all.hover();await highlighted(all)
+ assert.deepEqual(await rowStyle(all),projectRow,'hovered avatar action matches the project row')
+ for(const [action,glyph] of [[latest,'history'],[all,'check-all']]){
+  const icon=action.locator(`:scope > .codicon-${glyph}[aria-hidden="true"]`)
+  assert.equal(await icon.count(),1)
+  const before=await icon.evaluate(el=>getComputedStyle(el,'::before').content)
+  assert.ok(before!=='none'&&before!=='normal'&&before!=='""',`Codicon ${glyph} has a rendered glyph`)
+ }
+ if(process.env.AVATAR_MENU_SCREENSHOT_DIR){
+  await latest.hover()
+  await menu.screenshot({path:path.join(process.env.AVATAR_MENU_SCREENSHOT_DIR,'avatar-context-menu.png'),animations:'disabled'})
+ }
+ console.log('PASS avatar menu style: project surface, highlighted row geometry, and decorative leading Codicons')
 }finally{await browser.close()}
