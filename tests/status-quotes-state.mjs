@@ -14,7 +14,7 @@ const lastQuotes=new Map()
 let statusRefresh=40
 async function render(status,ownerKey='a',source=storage){await React.act(async()=>root.render(React.createElement(React.StrictMode,null,status&&React.createElement(mod.namespace.StatusQuote,{storage:source,ownerKey,status,statusDialog,statusRefresh,lastQuotes}))))}
 async function sample(status,count=1){for(let i=0;i<count;i++){statusRefresh++;await render(status)}}
-const find=selector=>document.querySelector(selector),quote=()=>find('[data-status-quote]'),shown=()=>quote().title,preview=()=>quote().firstChild.textContent
+const find=selector=>document.querySelector(selector),quote=()=>find('[data-status-quote]'),accessible=()=>quote().querySelector('span:not([aria-hidden])').textContent,shown=()=>accessible().replace(/^Status: /,''),preview=()=>quote().firstChild.textContent
 const input=row=>find(`[data-status-input="${row}"]`),setter=Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value').set
 const open=()=>React.act(async()=>find('[data-status-edit]').click()),save=()=>React.act(async()=>find('[data-status-save]').click()),cancel=()=>React.act(async()=>find('footer button').click())
 const fill=(row,text)=>React.act(async()=>{setter.call(input(row),text);input(row).dispatchEvent(new dom.window.Event('input',{bubbles:true}))})
@@ -25,7 +25,7 @@ values.set(key('a','working'),['First phrase','Second phrase','Third phrase','Th
 values.set(key('a','waiting'),['Waiting first','Waiting second'])
 values.set(key('a','idle'),'One，fullwidth comma, literal ASCII too')
 draws=[.8,.8,.9,.1,.9,.8]
-await render('working');assert.equal(shown(),'Third phrase');assert.equal(drawCount,1,'Strict Mode does not replay the initial draw')
+await render('working');assert.equal(accessible(),'Status: Third phrase');assert.equal(drawCount,1,'Strict Mode does not replay the initial draw')
 await sample('working',4);assert.equal(shown(),'Third phrase')
 await render('working');assert.equal(shown(),'Third phrase','same refresh does not advance');assert.equal(drawCount,1)
 await sample('working');assert.equal(shown(),'Second phrase')

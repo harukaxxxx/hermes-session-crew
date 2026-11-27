@@ -62,17 +62,18 @@ await React.act(async()=>{root.render(wrap(React.createElement(Fixture)));await 
 async function waitFor(text){for(let i=0;i<40&&!document.body.textContent.includes(text);i++)await React.act(async()=>new Promise(r=>setTimeout(r,10)));assert.ok(document.body.textContent.includes(text),`missing ${text}: ${document.body.textContent}`)}
 await waitFor('Untitled');await waitFor('Home');await waitFor("I'm busy right now.")
 assert.match(document.body.textContent,/Hide offline profiles/);assert.match(document.body.textContent,/Custom project/)
-const quoteButton=document.querySelector('[data-status-quote]');assert.equal(quoteButton.title,"I'm busy right now.")
+const accessibleQuote=()=>document.querySelector('[data-status-quote] span:not([aria-hidden])').textContent
+assert.equal(accessibleQuote(),"Status: I'm busy right now.")
 await React.act(async()=>{document.querySelector('[data-recent-row]').click();await new Promise(r=>setTimeout(r,10))})
 await waitFor('Could not open: Custom server failure')
 await change('zh-hant');await waitFor('未命名');await waitFor('主頁');await waitFor('我正在忙。')
-assert.match(document.body.textContent,/隱藏離線設定檔/);assert.equal(quoteButton.title,'我正在忙。');assert.match(document.body.textContent,/Custom title/);assert.match(document.body.textContent,/Custom project/)
+assert.match(document.body.textContent,/隱藏離線設定檔/);assert.equal(accessibleQuote(),'狀態：我正在忙。');assert.match(document.body.textContent,/Custom title/);assert.match(document.body.textContent,/Custom project/)
 await waitFor('開啟失敗：Custom server failure');assert.equal(errorMessage(new LocalizedError('errors.otherProfilesUnsupported'),(key,...args)=>translate('zh-hant',key,...args)),'此版本不支援讀取其他設定檔')
 assert.equal(errorMessage(new LocalizedTimeoutError('settings.profileList'),(key,...args)=>translate('zh-hant',key,...args)),'設定檔清單逾時')
 assert.equal(errorMessage({localizationKey:'errors.otherProfilesUnsupported',message:'External error'}),'External error')
 // External text is not translated merely because it matches plugin copy.
 assert.equal(localizeError('Could not save settings; try again'),'Could not save settings; try again')
-await change('fr');assert.equal(quoteButton.title,"I'm busy right now.");assert.match(document.body.textContent,/Hide offline profiles/)
+await change('fr');assert.equal(accessibleQuote(),"Status: I'm busy right now.");assert.match(document.body.textContent,/Hide offline profiles/)
 await React.act(async()=>root.unmount());client.clear()
 const zhDefaults={
  working:['我正在忙。','這件事還在做。','正在處理，稍等一下。','還沒做完，我繼續。','我先忙這件事。'],
@@ -89,14 +90,14 @@ await change('zh-hant')
 const defaultRoot=createRoot(document.getElementById('root'))
 let refresh=0
 const renderQuote=(status,statusRefresh)=>React.act(async()=>defaultRoot.render(wrap(React.createElement(StatusQuote,{storage,ownerKey:'defaults',status,statusDialog,statusRefresh,lastQuotes}))))
-const title=()=>document.querySelector('[data-status-quote]').title
+
 for(const [state,phrases] of Object.entries(zhDefaults)){
  const key=state==='online_unobserved'?'onlineUnobserved':state
  assert.deepEqual(translate('zh-hant',`status.${key}Quote`).split(', '),phrases)
- await renderQuote(state,refresh);assert.equal(title(),phrases[0],state)
+ await renderQuote(state,refresh);assert.equal(accessibleQuote(),`狀態：${phrases[0]}`,state)
  for(let step=1;step<=25;step++){
   await renderQuote(state,++refresh)
-  assert.equal(title(),phrases[Math.floor(step/5)%2],`${state} after ${step} refreshes despite new translator functions`)
+  assert.equal(accessibleQuote(),`狀態：${phrases[Math.floor(step/5)%2]}`,`${state} after ${step} refreshes despite new translator functions`)
  }
 }
 await React.act(async()=>defaultRoot.unmount());assert.equal(saved.size,0,'reading and rotating defaults does not write storage')
@@ -110,7 +111,7 @@ await React.act(async()=>settingsRoot.unmount());client.clear()
 // Persisted custom quote is user content, not a dictionary key or translated fallback.
 await change('en');saved.set('quote:quote-v1:working','使用者自訂');const root2=createRoot(document.getElementById('root'))
 await React.act(async()=>{root2.render(wrap(React.createElement(Fixture)));await new Promise(r=>setTimeout(r,60))})
-await waitFor('使用者自訂');await change('zh-hant');assert.equal(document.querySelector('[data-status-quote]').title,'使用者自訂')
+await waitFor('使用者自訂');await change('zh-hant');assert.equal(accessibleQuote(),'狀態：使用者自訂')
 await React.act(async()=>root2.unmount());client.clear()
 // The complete translated dialog title interpolates the owner in each locale.
 await change('en');const dialogRoot=createRoot(document.getElementById('root'))

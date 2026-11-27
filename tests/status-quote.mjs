@@ -14,6 +14,7 @@ const quote=document.querySelector('[data-status-quote]')
 assert.ok(quote,'a generic status sentence is present')
 const onlineDefaults="I'm online., I'm connected., I'm here., I've got a connection., I'm online now."
 assert.ok(onlineDefaults.split(', ').includes(quote.firstChild.textContent))
+assert.equal(quote.hasAttribute('title'),false,'a complete preview has no redundant title')
 // JSDOM does not lay out text. Exercise the real fit effect with a narrow quote.
 Object.defineProperty(quote,'clientWidth',{value:12})
 globalThis.ResizeObserver=class{constructor(fit){this.fit=fit}observe(el){if(el===quote)this.fit()}disconnect(){}}

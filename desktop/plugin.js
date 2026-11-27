@@ -471,7 +471,7 @@ const localizeError=value=>typeof value?.message==='function'?value.message():va
 const TranslationContext=createContext(null)
 function LocalizedRoot({children}){const hook=typeof sdk.usePluginI18n==='function'?sdk.usePluginI18n('sessioncrew'):null,t=pluginI18n&&hook?hook:english;return jsx(TranslationContext.Provider,{value:t,children})}
 function useTranslator(){const current=useContext(TranslationContext)||tr,ref=useRef(current);ref.current=current;return useCallback((...args)=>ref.current(...args),[])}
-const s={rail:{height:'100%',width:50,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',gap:10,paddingTop:18},hit:{width:45,height:37,padding:0,border:0,background:'transparent',cursor:'pointer',color:'var(--ui-text-primary)'},avatar:{width:34,height:34,borderRadius:'22%',border:'2px solid var(--ui-stroke-secondary)',objectFit:'cover',display:'grid',placeItems:'center'},bubble:{zIndex:50,width:310,maxWidth:'calc(100vw - 24px)',display:'flex',flexDirection:'column',padding:16,borderRadius:12,border:'1px solid var(--ui-stroke-secondary)',background:'var(--ui-bg-elevated)',color:'var(--ui-text-primary)'},quote:{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'var(--ui-text-secondary)',fontSize:11,margin:'4px 0 0'},sessions:{overflowY:'auto',minHeight:35,flex:'1 1 auto',color:'var(--ui-text-secondary)'},footer:{display:'flex',justifyContent:'space-between',gap:8,marginTop:8,flexShrink:0},button:{color:'var(--ui-text-secondary)',background:'transparent',border:'1px solid var(--ui-stroke-secondary)',borderRadius:6,padding:'6px 8px'}}
+const s={rail:{height:'100%',width:50,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',gap:10,paddingTop:18},hit:{width:45,height:37,padding:0,border:0,background:'transparent',cursor:'pointer',color:'var(--ui-text-primary)'},avatar:{width:34,height:34,borderRadius:'22%',border:'2px solid var(--ui-stroke-secondary)',objectFit:'cover',display:'grid',placeItems:'center'},bubble:{zIndex:50,width:310,maxWidth:'calc(100vw - 24px)',display:'flex',flexDirection:'column',padding:16,borderRadius:12,border:'1px solid var(--ui-stroke-secondary)',background:'var(--ui-bg-elevated)',color:'var(--ui-text-primary)'},quote:{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'var(--ui-text-secondary)',fontSize:11,lineHeight:'14px'},sessions:{overflowY:'auto',minHeight:35,flex:'1 1 auto',color:'var(--ui-text-secondary)'},footer:{display:'flex',justifyContent:'space-between',gap:8,marginTop:8,flexShrink:0},button:{color:'var(--ui-text-secondary)',background:'transparent',border:'1px solid var(--ui-stroke-secondary)',borderRadius:6,padding:'6px 8px'}}
 function displayName(p){
  const trim=v=>typeof v==='string'?v.trim():''
  const title=trim(p?.ui_meta?.['hermes-bots']?.title)||trim(p?.title)||trim(p?.bot_title)
@@ -1237,9 +1237,9 @@ function StatusQuoteEntry({storage,ownerKey,state,statusDialog,statusRefresh,las
  const readFailed=quoteStateKeys.some(row=>rows[row]===null),helpId=formId+'-help'
  const isComposing=e=>e.isComposing||e.keyCode===229
  return jsxs('div',{style:{minWidth:0,flexShrink:0},children:[
-  jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0},children:[
+  jsxs('div',{style:{display:'flex',alignItems:'center',minWidth:0,minHeight:14},children:[
    jsx(RotatingStatusQuote,{state,historyKey:quoteKey(ownerKey,state),lastQuotes,phrases,editorOpen:!!editor,label:tr,statusRefresh}),
-   jsx('button',{ref:pencil,'data-status-edit':true,type:'button',disabled:rows[state]===undefined||!quoteEditorAvailable,onClick:openEditor,style:{...s.button,border:0,padding:4},'aria-label':tr('status.editTitle'),'aria-haspopup':'dialog',children:'✎'})
+   jsx('button',{ref:pencil,'data-status-edit':true,type:'button',disabled:rows[state]===undefined||!quoteEditorAvailable,onClick:openEditor,style:{...s.button,border:0,padding:4,marginBlock:-4,lineHeight:s.quote.lineHeight},'aria-label':tr('status.editTitle'),'aria-haspopup':'dialog',children:'✎'})
   ]}),
   editor?jsx(sdk.Dialog,{open:true,onOpenChange:open=>{if(!open&&!lock.current)closeEditor()},children:jsxs(sdk.DialogContent,{className:'max-w-md',style:{maxHeight:'calc(100dvh - 24px)'},'aria-describedby':helpId,'data-status-editor':true,
    onEscapeKeyDown:e=>{if(isComposing(e)||lock.current)e.preventDefault()},
@@ -1262,7 +1262,8 @@ function StatusQuoteEntry({storage,ownerKey,state,statusDialog,statusRefresh,las
 }
 function RotatingStatusQuote({state,historyKey,lastQuotes,phrases,editorOpen,label,statusRefresh}){
  const [hovered,setHovered]=useState(false),held=editorOpen||hovered
- const [value,setValue]=useState(''),[preview,setPreview]=useState('')
+ const [value,setValue]=useState(''),[measured,setMeasured]=useState(null)
+ const currentFit=measured?.value===value?measured:null
  const rotation=useRef(null),quoteRef=useRef(null),hover=useRef(false),reflow=useRef(null)
  React.useLayoutEffect(()=>{
   const previous=rotation.current,sameState=previous?.state===state
@@ -1289,16 +1290,29 @@ function RotatingStatusQuote({state,historyKey,lastQuotes,phrases,editorOpen,lab
   if(lastQuotes.size>quoteHistoryLimit)lastQuotes.delete(lastQuotes.keys().next().value)
  },[historyKey,lastQuotes,value])
  React.useLayoutEffect(()=>{
-  if(!value){setPreview('');return}
-  const el=quoteRef.current;if(!el)return
-  const fit=()=>{const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');if(!ctx){setPreview(value);return}const css=getComputedStyle(el);ctx.font=`${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(value)].map(x=>x.segment):Array.from(value);let next=value;if(ctx.measureText(next).width>el.clientWidth){while(parts.length&&ctx.measureText(parts.join('')+'...').width>el.clientWidth)parts.pop();next=parts.join('')+'...'}setPreview(next)}
-  if(typeof ResizeObserver!=='function'){setPreview(value);return}
+  const el=quoteRef.current;if(!value||!el||typeof ResizeObserver!=='function')return
+  let fittedWidth=0
+  const fit=()=>{
+   const ctx=document.createElement('canvas').getContext('2d');if(!ctx)return
+   const css=getComputedStyle(el),width=el.clientWidth
+   fittedWidth=width
+   ctx.font=`${css.fontWeight} ${css.fontSize} ${css.fontFamily}`
+   const clipped=ctx.measureText(value).width>width
+   let preview=value
+   if(clipped){
+    const parts=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(value)].map(x=>x.segment):Array.from(value)
+    while(parts.length&&ctx.measureText(parts.join('')+'...').width>width)parts.pop()
+    preview=parts.join('')+'...'
+   }
+   setMeasured(current=>current?.value===value&&current.preview===preview&&current.clipped===clipped?current:{value,preview,clipped})
+  }
   reflow.current=fit
-  const observer=new ResizeObserver(()=>{if(!hover.current)fit()});observer.observe(el);fit()
+  // Keep a hovered preview stable on expansion, but refit before narrowing can clip it further.
+  const observer=new ResizeObserver(()=>{if(!hover.current||el.clientWidth<fittedWidth)fit()});observer.observe(el);fit()
   return()=>{reflow.current=null;observer.disconnect()}
  },[value])
- return jsxs('span',{ref:quoteRef,'data-status-quote':true,title:value,onPointerEnter:()=>{hover.current=true;setHovered(true)},onPointerLeave:()=>{hover.current=false;setHovered(false);reflow.current?.()},style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',position:'relative'},children:[
-  jsx('span',{'aria-hidden':true,children:preview}),
+ return jsxs('span',{ref:quoteRef,'data-status-quote':true,title:currentFit?.clipped?value:undefined,onPointerEnter:()=>{hover.current=true;setHovered(true)},onPointerLeave:()=>{hover.current=false;setHovered(false);reflow.current?.()},style:{...s.quote,textAlign:'left',border:0,background:'transparent',padding:0,minWidth:0,flex:'1 1 auto',position:'relative'},children:[
+  jsx('span',{'aria-hidden':true,children:currentFit?.preview??value}),
   jsx('span',{style:{position:'absolute',width:1,height:1,overflow:'hidden',clipPath:'inset(50%)'},children:value?label('status.label',value):null})
  ]})
 }
@@ -1852,7 +1866,7 @@ function Rail({storage,rest,preferences,lastQuotes}){
    jsx(ProfileAvatar,{owner,ownerName:p.name,rest,attentionKey:p.attentionKey,idleAllowed:p.idleAllowed,onActivity,avatar:p.avatar,name,color:statusColor[p.status],avatarRef,developerMode:settings.developerMode,offline:p.status==='offline',clock,status:p.status,elapsedHint:p.idleKind,unreadSince:p.unreadSince,idleMinutes:settings.developerMode&&p.idleSince?elapsedMinutes(clock,p.idleSince):null,unread:p.unread,runningCount:activity?.observed_active_count,childMetadata:metadata,childCount:metadata===undefined?activity?.observed_child_count:metadata?.presentation_count,childRunning:metadata!==undefined||activity&&Object.hasOwn(activity,'observed_child_count')?null:activity?.observed_child_active,triggerProps:{...avatarActions,'data-selected':active,'data-low':['idle','online_unobserved','offline','unknown'].includes(p.status),'data-state-name':p.status,'aria-label':tr('status.profileAria',name,tr({working:'status.working',waiting:'status.waiting',idle:'status.idle',online_unobserved:'status.onlineUnobserved',offline:'status.offline',unknown:'status.unknown'}[p.status]),p.unread,activityDetail,metadataLabel),'aria-description':statusDetails.join(' · ')||undefined,title:[activityDetail,metadataLabel,...statusDetails].filter(Boolean).join(' · ')||undefined}}),
    compact?jsx(PopoverContent,{ref:contentRef,variant:'menu','aria-label':name,'data-avatar-context':true,onCloseAutoFocus:preserveFocus,side:'right',align:'center',style:{...s.bubble,width:'max-content',minWidth:144,padding:6,gap:3},children:jsx(Recent,{owner,phase,completion,settings,menu:{owner:{name:p.name,connectionId},quickOpens:quick?quickOpens.current:null,isCurrent:()=>!!parentContentRef.current&&recentIsCurrent(),getLiveOwner,getSettings:preferences.get},onOpened:()=>{if(recentIsCurrent())select(null)}},selected.mode)},'menu'):
    jsxs(PopoverContent,{ref:contentRef,onFocusOutside:e=>{if(isLaunching())e.preventDefault()},onInteractOutside:e=>{if(dialogActive.current||statusDialog.current||rowLayer.current)e.preventDefault()},onCloseAutoFocus:e=>{onCloseAutoFocus(e);preserveFocus(e)},side:'right',align:'center',collisionPadding:0,style:{...s.bubble,boxSizing:'border-box',position:'relative',padding:'min(16px, 5vh) 16px',maxHeight:projectOwner===selectionKey?primaryWithProjectsHeight:primaryViewportHeight},children:[
-    jsxs('div',{style:{display:'flex',gap:11,alignItems:'center',minWidth:0,flexShrink:0},children:[p.avatar?jsx('img',{'data-panel-avatar':true,src:p.avatar,alt:'',style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]}}):jsx('span',{'data-panel-avatar':true,style:{...s.avatar,flex:'none',borderColor:statusColor[p.status]},children:name.slice(0,1).toUpperCase()}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status,statusDialog,statusRefresh:office.statusRefresh,lastQuotes},JSON.stringify([epoch,activityScopeNow.generation,activation]))]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),
+    jsxs('div',{style:{display:'flex',gap:11,alignItems:'flex-start',minWidth:0,flexShrink:0},children:[jsx(p.avatar?'img':'span',{'data-panel-avatar':true,style:{...s.avatar,boxSizing:'border-box',flex:'none',borderColor:statusColor[p.status]},...(p.avatar?{src:p.avatar,alt:''}:{children:name.slice(0,1).toUpperCase()})}),jsxs('div',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,fontSize:14,lineHeight:'20px'},children:name}),jsx(StatusQuote,{storage,ownerKey:'status:'+JSON.stringify([connectionId,p.name]),status:p.status,statusDialog,statusRefresh:office.statusRefresh,lastQuotes},JSON.stringify([epoch,activityScopeNow.generation,activation]))]}),jsx('button',{type:'button','aria-label':tr('common.closePanel'),onClick:()=>select(null),style:{...s.button,border:0,fontSize:20,padding:0,alignSelf:'flex-start'},children:'×'})]}),
     active?jsx(Recent,{owner,phase,completion,settings,retryRoutes:()=>setRouteGeneration(n=>n+1),onOpened:()=>{if(isCurrent())select(null)}},JSON.stringify([connectionId,p.name])):null,
     active?jsx(Launchers,{parentContentRef,owner,ownerName:name,isCurrent,getLiveOwner,isLaunching,beginLaunch,onDismiss:()=>{if(owner&&getLiveOwner(launchDestination(owner)))select(null)},createdProjects,unknownProjects,dialogActive,statusDialog,rowLayer,rowChanges,refreshRowChanges,projectOpen:projectOwner===selectionKey,setProjectOpen:open=>setProjectOwner(open?selectionKey:null),onOpened:()=>{if(isCurrent())select(null)},pending},'launch:'+JSON.stringify([connectionId,p.name,owner?.route])):null
    ]},'panel')]})},p.name)

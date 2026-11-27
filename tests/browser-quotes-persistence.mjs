@@ -11,6 +11,7 @@ try{
  await p.goto(pathToFileURL(path.resolve('tests/sdk-preview.html')).href+'?office')
  await p.addStyleTag({path:path.resolve('tests/sdk-css/styles.css')})
  const avatar=p.getByRole('button',{name:'Aster · 狀態 工作中'}),quote=p.locator('[data-status-quote]')
+ const accessible=quote.locator('span:not([aria-hidden])'),quoteLabel=value=>`狀態：${value}`
  const editTitle='編輯狀態短句'
  const editor=p.getByRole('dialog',{name:editTitle,exact:true}),field=name=>editor.getByRole('textbox',{name,exact:true}),working=field('工作中'),waiting=field('等待中')
  const overlay=p.locator('[data-slot="dialog-overlay"]')
@@ -22,7 +23,7 @@ try{
  const asterKey=state=>`status:["fixture","Aster"]:quote-v1:${state}`
  const stored=()=>p.evaluate(()=>Object.entries(window.fixtureStorage).filter(([key])=>key.startsWith('status:')))
  const changeState=state=>p.evaluate(async value=>{window.fixtureStatus[0].state=value;await window.officeClient.refetchQueries({queryKey:['sessioncrew','status']})},state)
- const waitForQuote=title=>p.waitForFunction(value=>document.querySelector('[data-status-quote]')?.title===value,title)
+ const waitForQuote=value=>p.waitForFunction(label=>document.querySelector('[data-status-quote] span:not([aria-hidden])')?.textContent===label,quoteLabel(value))
  const dismissed=async()=>{
   await editor.waitFor({state:'detached'})
   await p.waitForFunction(()=>document.activeElement?.matches('[data-status-edit]'))
@@ -72,7 +73,7 @@ try{
   await dismiss()
   await dismissed()
   assert.deepEqual(await stored(),[])
-  assert.equal(await quote.getAttribute('title'),defaultQuote)
+  assert.equal(await accessible.textContent(),quoteLabel(defaultQuote))
  }
  await open(workingDefaults.join(', '))
  const waitingDraft=` ${savedWaiting.join(', , ')} , ${savedWaiting[0]} `
@@ -104,7 +105,7 @@ try{
  await dismissed()
  const ownerValues=[...asterValues,['status:["fixture","Mika"]:quote-v1:working','Mika 的短句']]
  assert.deepEqual(await stored(),ownerValues)
- assert.equal(await quote.getAttribute('title'),mikaDefault)
+ assert.equal(await accessible.textContent(),quoteLabel(mikaDefault))
  await p.getByRole('button',{name:'關閉面板'}).click()
  await avatar.click()
  await waitForQuote(savedQuote)
@@ -145,25 +146,25 @@ try{
  },op)
  for(let i=0;i<6;i++){
   await statusQuery('cache');await p.clock.runFor(30)
-  assert.equal(await quote.getAttribute('title'),defaultQuote,'cache deliveries are not status refreshes')
+  assert.equal(await accessible.textContent(),quoteLabel(defaultQuote),'cache deliveries are not status refreshes')
  }
  const start=(await statusQuery()).updates
  await statusQuery('refetch');await p.clock.runFor(30)
  assert.equal((await statusQuery()).updates,start+1)
- assert.equal(await quote.getAttribute('title'),defaultQuote)
+ assert.equal(await accessible.textContent(),quoteLabel(defaultQuote))
  for(let i=2;i<=5;i++){
   await p.clock.runFor(5000)
   assert.equal((await statusQuery()).updates,start+i,'the existing interval sampled exactly once')
-  assert.equal(await quote.getAttribute('title'),i===5?workingDefaults[2]:defaultQuote,`default quote after ${i} successful status refreshes`)
+  assert.equal(await accessible.textContent(),quoteLabel(i===5?workingDefaults[2]:defaultQuote),`default quote after ${i} successful status refreshes`)
  }
  await statusQuery('fail');await p.clock.runFor(30)
  const unknownDefault='我這邊還沒有狀態可回報。'
- assert.equal(await quote.getAttribute('title'),unknownDefault,'status change draws from that state’s defaults')
+ assert.equal(await accessible.textContent(),quoteLabel(unknownDefault),'status change draws from that state’s defaults')
  const failed=await statusQuery()
  for(let i=1;i<=5;i++){
   await statusQuery('refetch');await p.clock.runFor(30)
   assert.deepEqual(await statusQuery(),{updates:failed.updates,errors:failed.errors+i})
-  assert.equal(await quote.getAttribute('title'),unknownDefault,'failed status refreshes do not advance')
+  assert.equal(await accessible.textContent(),quoteLabel(unknownDefault),'failed status refreshes do not advance')
  }
  await p.getByRole('button',{name:'關閉面板'}).click()
  await quote.waitFor({state:'detached'})
