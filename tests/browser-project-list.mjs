@@ -21,7 +21,7 @@ try {
   await page.getByRole('button',{name:'Aster · 狀態 工作中'}).click();await page.waitForSelector('[data-recent-row]');
   const recent=page.locator('[data-recent-list]'),recentCue=page.locator('[data-recent-scroll-cue]');
   const compareRecent=width===900&&height===700&&count===8;
-  if(compareRecent){await page.locator('[data-recent-more]').click();await recentCue.waitFor()}
+  if(compareRecent)await recentCue.waitFor()
   await page.getByRole('button',{name:'▦ 開啟專案'}).click();
   await page.mouse.move(0,0);
   const dialogs=page.locator('[data-slot="popover-content"]'),sub=dialogs.last(),rows=sub.locator('[data-project-row]'),list=sub.locator('[data-project-list]');

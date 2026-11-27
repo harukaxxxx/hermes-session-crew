@@ -21,7 +21,7 @@ try {
   const dialogs=page.locator('[data-slot="popover-content"]'),main=dialogs.first(),sub=dialogs.last(),list=main.locator('[data-recent-list]'),trigger=main.getByRole('button',{name:'▦ 開啟專案'});
   let before
   if(recentSessionCount){
-   const rows=main.locator('[data-recent-row]');await rows.nth(14).waitFor({state:'attached'});assert.equal(await rows.count(),15)
+   const rows=main.locator('[data-recent-row]');await rows.nth(23).waitFor({state:'attached'});assert.equal(await rows.count(),24)
    const bounds=await main.boundingBox();before={bubble:bounds.height,list:(await list.boundingBox()).height}
    assert.ok(Math.abs(before.bubble-(height-24))<=1,`15 sessions use the viewport cap: ${JSON.stringify(before)}`)
    assert.ok(bounds.y>=-1&&bounds.y+bounds.height<=height+1,'capped primary stays in the viewport')
@@ -51,7 +51,7 @@ try {
     const el=document.querySelector('[data-slot="popover-content"]'),recent=el?.querySelector('[data-recent-list]')
     return recent&&Math.abs(el.getBoundingClientRect().height-bubble)<1&&Math.abs(recent.getBoundingClientRect().height-list)<1
    },before,{timeout:3000});
-   assert.equal(await main.locator('[data-recent-row]').count(),15,'closing projects restores the Recent viewport without resetting the count')
+   assert.equal(await main.locator('[data-recent-row]').count(),24,'closing projects restores the Recent viewport without resetting the count')
   }
   await trigger.click();await sub.getByRole('button',{name:/Project 0 /}).click();await page.waitForFunction(()=>window.openCalls?.length===1);const calls=await page.evaluate(()=>({create:window.createCalls[0],open:window.openCalls[0]}));assert.equal(calls.create.route.profile,owner);assert.equal(calls.create.params.cwd,'/fixture/project0');assert.equal(calls.create.params.cwd_explicit,true);assert.equal(calls.open[1].route.profile,owner);
   await page.close();

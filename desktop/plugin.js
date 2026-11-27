@@ -562,16 +562,17 @@ async function openOwned(owner,id){
 // A plugin-owned overlay remains visible even when macOS hides native scrollbars.
 const scrollCueWidth=6,scrollCueRight=1
 const recentScrollViewport={height:'calc(100% + 2px)',width:'calc(100% + 2px)',marginTop:-2,marginLeft:-2,paddingTop:2,paddingLeft:2}
-function ScrollWithCue({kind,style,children,revision}){
+function ScrollWithCue({kind,style,children,revision,onBottomChange}){
  const project=kind==='project',wrapper=useRef(null),list=useRef(null),drag=useRef(null),[metrics,setMetrics]=useState(null)
  const measure=useCallback(()=>{
   const el=list.current,track=wrapper.current?.clientHeight
   if(!el)return
   const {clientHeight,scrollHeight,scrollTop}=el,range=scrollHeight-clientHeight
+  onBottomChange?.(!!track&&clientHeight>0&&range>0&&range-scrollTop<=1)
   if(!track||!clientHeight||range<=0){setMetrics(null);return}
   const height=Math.min(track,Math.max(18,track*clientHeight/scrollHeight)),travel=track-height,top=scrollTop/range*travel
   setMetrics(previous=>previous?.height===height&&previous.top===top&&previous.travel===travel&&previous.range===range?previous:{height,top,travel,range})
- },[])
+ },[onBottomChange])
  React.useLayoutEffect(measure,[measure,revision])
  useEffect(()=>{if(typeof ResizeObserver==='undefined')return;const observer=new ResizeObserver(measure);observer.observe(list.current);observer.observe(wrapper.current);return()=>observer.disconnect()},[measure])
  const start=e=>{
@@ -684,6 +685,9 @@ const messagingSources=new Set(messagingPlatforms.flatMap(([,sources])=>sources)
 const isMessagingSource=source=>messagingSources.has(source)
 const sourceVisible=(source,hidden)=>!isMessagingSource(source)||!hidden?.includes(source)
 const recentSessionCounts=[3,5,10,15],defaultRecentSessionCount=5,recentRowHeight=52
+// Match the per-project launch column in the stacked, scrollable layout without shifting when the cue appears.
+const recentRowPadding=8,recentChevron={width:12,flexShrink:0,textAlign:'center'}
+const recentRowPaddingRight=recentRowPadding+scrollCueWidth+scrollCueRight
 const normalizeRecentSessionCount=count=>recentSessionCounts.includes(count)?count:defaultRecentSessionCount
 const recentStaleTime=10000
 const ownerRouteKey=owner=>{const route=owner?.route;return [owner?.connectionId,owner?.name,typeof route==='string'?'legacy':route?.connectionId,route?.profile,route?.targetProfile,route?.mode]}
@@ -695,9 +699,9 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
  const activeConnection=useValue(host.state.connectionId),activeProfile=useValue(host.state.profile),activation=typeof sdk.useGatewayActivationEpoch==='function'?sdk.useGatewayActivationEpoch():null
  const recentRest=useContext(DialogRestContext)
  const baseCount=normalizeRecentSessionCount(settings.recentSessionCount)
- const [page,setPage]=useState({baseCount,extra:0}),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false),latestIntent=useRef(null),quickStarted=useRef(false)
+ const [page,setPage]=useState({baseCount,extra:0}),[atBottom,setAtBottom]=useState(false),[projectGeneration,setProjectGeneration]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),rowLock=useRef(false),latestIntent=useRef(null),quickStarted=useRef(false)
  if(page.baseCount!==baseCount)setPage({baseCount,extra:0})
- const count=baseCount+(page.baseCount===baseCount?page.extra:0)
+ const count=baseCount*3+(page.baseCount===baseCount?page.extra:0)
  const key=ownerRouteKey(owner),queryKey=recentQueryKey([activeConnection,activeProfile,activation],owner),intentKey=JSON.stringify(queryKey)
  const menuIsCurrent=menu?.isCurrent
  function liveMenuOwner(){
@@ -793,7 +797,7 @@ function Recent({owner,phase,retryRoutes,onOpened,completion,settings={showCron:
 
  const ellipsis={whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}
  const projectLabel=id=>projects.isError?tr('project.loadFailed'):projects.isPending?tr('project.loading'):(typeof projects.data?.labels?.[id]==='object'?tr(projects.data.labels[id].fallback):projects.data?.labels?.[id])||tr('project.uncategorized')
- return jsxs('div',{style:recentLayout,children:[jsx('style',{children:rowArcCss}),jsx(RecentScroll,{style:recentList,revision:Math.min(count,rows.length),children:rows.length?rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:'9px 8px',background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:4},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,children:'›'})]},row.id)):tr('session.empty')},baseCount),q.isError?jsxs('div',{role:'alert',children:[listStatus,retryList()]}):null,error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[count<rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
+ return jsxs('div',{style:recentLayout,children:[jsx('style',{children:rowArcCss}),jsx(RecentScroll,{style:recentList,revision:Math.min(count,rows.length),onBottomChange:setAtBottom,children:rows.length?rows.slice(0,count).map(row=>jsxs('button',{'data-recent-row':true,type:'button',disabled:busy,onClick:()=>open(row.id),style:{position:'relative',height:recentRowHeight,boxSizing:'border-box',minWidth:0,width:'100%',display:'flex',alignItems:'center',gap:10,textAlign:'left',color:'inherit',border:0,borderRadius:7,padding:`9px ${recentRowPaddingRight}px 9px ${recentRowPadding}px`,background:'transparent',cursor:'pointer'},children:[['working','background'].includes(activity[row.id])?jsx('span',{'data-session-arc':true,'aria-hidden':true}):null,jsx('span',{'data-session-indicator':true,style:{position:'absolute',left:0,top:0,pointerEvents:'none'},children:activity[row.id]==='waiting'?jsx('span',{'data-session-waiting':true,role:'img','aria-label':tr('sessionActivity.waiting'),title:tr('sessionActivity.waiting'),style:{display:'block',fontSize:14,lineHeight:1},children:'✋'}):activity[row.id]!=='background'&&completion.watermark(owner,row.id).length?jsx('span',{'data-session-completion-badge':true,role:'img','aria-label':tr('completion.unread'),title:tr('completion.unread'),style:{...unreadCircle,display:'block',position:'relative',left:-2,top:-2}}):null}),jsxs('span',{style:{minWidth:0,flex:'1 1 auto'},children:[jsx('strong',{style:{...ellipsis,display:'block',fontSize:12,color:'var(--ui-text-primary)'},title:row.title||tr('session.untitled'),children:row.title||tr('session.untitled')}),jsx('span',{style:{...ellipsis,display:'block',fontSize:11,marginTop:0},title:projectLabel(row.id),children:'▧ '+projectLabel(row.id)})]}),jsx('span',{'aria-hidden':true,style:recentChevron,children:'›'})]},row.id)):tr('session.empty')},baseCount),q.isError?jsxs('div',{role:'alert',children:[listStatus,retryList()]}):null,error?jsx('div',{role:'alert',children:localizeError(error)}):null,projects.isError?jsx('button',{onClick:()=>setProjectGeneration(n=>n+1),children:tr('project.retry')}):null,jsxs('div',{'data-recent-footer':true,style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',minHeight:18,flexShrink:0},children:[atBottom&&count<rows.length?jsx('button',{'data-recent-more':true,type:'button',onClick:()=>setPage(previous=>({...previous,extra:previous.extra+10})),style:{...s.button,border:0,padding:'0 8px',height:18,lineHeight:'18px'},'aria-label':tr('session.showMore'),children:tr('common.loadMore')}):null,jsx('button',{'data-completion-read-all':true,type:'button',disabled:!completion.coverageReady,onClick:()=>void completion.ackAll(owner),style:{...s.button,position:'absolute',right:0,border:0,padding:'0 8px',height:18,lineHeight:'18px'},children:tr('completion.markAllRead')})]})]})
 }
 const unreadCircle={width:10,height:10,borderRadius:'50%',background:'var(--ui-red, #e53935)'}
 function FolderBreadcrumbs({root,path,busy,go}){
